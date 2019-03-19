@@ -1,0 +1,9 @@
+# cmake files
+**/CMakeCache.txt
+**/CMakeFiles/*
+**/CMakeFiles
+**/cmake_install.cmake
+**/Makefile
+
+# binary files
+bin/*

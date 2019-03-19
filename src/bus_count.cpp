@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <iostream>
+#include <fstream>
 #include <chrono> 
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
@@ -9,9 +10,6 @@
 #include <dirent.h>
 #include <algorithm>
 
-//Neural compute stick
-#include <mvnc.h>
-#include <./wrapper/ncs_wrapper.hpp>
 #include <detection.hpp>
 
 using namespace std;
@@ -276,7 +274,7 @@ public:
   
 };
 
-int run(NCSWrapper &NCS, World &world, Tracks &tracks, string dir, string file, bool flip) {
+int run(Net net, World &world, Tracks &tracks, string dir, string file, bool flip) {
   cout << "Loading video stream" << endl;
   VideoCapture stream(dir + file);
   stream.set(cv::CAP_PROP_POS_FRAMES, 0);
@@ -297,7 +295,7 @@ int run(NCSWrapper &NCS, World &world, Tracks &tracks, string dir, string file, 
   cv::resize(next_frame, next_frame, Size(frame_size, frame_size));
   if (flip)
     cv::flip(next_frame, next_frame, 0);
-  NCS_swap_image(next_frame, NCS);
+  swap_image(next_frame, net);
   frame = next_frame;
   
   int frame_count = 0;
@@ -319,7 +317,7 @@ int run(NCSWrapper &NCS, World &world, Tracks &tracks, string dir, string file, 
     
     // Get some detections (results will be for frame, not next_frame)
     cout << "Detecting Stuff" << endl;
-    vector<Detection> detections = NCS_swap_image(next_frame, NCS);
+    vector<Detection> detections = swap_image(next_frame, net);
     
     tracks.add_detections(detections);
     for (Detection d : detections) {      
@@ -371,7 +369,7 @@ bool begins_with(string value, string prefix) {
   return value.rfind(prefix, 0) == 0;
 }
 
-int process_folder(NCSWrapper &NCS, string folder) {
+int process_folder(Net &net, string folder) {
   // setup the world and persistent data
   int frame_size = 300;
   World world = World(
@@ -417,7 +415,7 @@ int process_folder(NCSWrapper &NCS, string folder) {
   for (string filename : filenames) {
     cout << endl << "##   PROCESSING " << folder << "/" << filename << "  ##" << endl << endl;
     
-    bool quit = run(NCS, world, tracks, folder+"/", filename, flip);
+    bool quit = run(net, world, tracks, folder+"/", filename, flip);
     if (quit) {
       cout << endl << "REQUESTED QUIT" << endl;
       return 1;
@@ -428,10 +426,10 @@ int process_folder(NCSWrapper &NCS, string folder) {
 
 
 int main() {  
-  cout << "Loading NCS" << endl;
-  NCSWrapper NCS = NCS_create();
+  cout << "Loading Model" << endl;
+  Net net = create_net();
 
-  string data_folder = "data/";
+  string data_folder = "video/";
   DIR *data_dir;
   struct dirent *d_ent;
   if ((data_dir = opendir(data_folder.c_str())) == NULL) {
@@ -442,14 +440,14 @@ int main() {
     
     string video_folder_name(d_ent->d_name);
     
-    if (!ends_with(video_folder_name, "video") && !ends_with(video_folder_name, "videos")) {
+    if (!begins_with(video_folder_name, "pi")) {
       cout << " Skipping directory " + video_folder_name << endl;
       continue;
     }
     
     cout << "### ENTERING " << video_folder_name << " ###" << endl;
     
-    bool quit = process_folder(NCS, data_folder + video_folder_name);
+    bool quit = process_folder(net, data_folder + video_folder_name);
     if (quit) {
       cout << "PROGRAM QUITTING" << endl; 
       return 0;
