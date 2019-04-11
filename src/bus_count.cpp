@@ -1,16 +1,22 @@
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
-#include <chrono> 
-#include "opencv2/highgui.hpp"
-#include "opencv2/imgproc.hpp"
-#include "opencv2/objdetect.hpp"
-#include "opencv2/tracking.hpp"
-#include "opencv2/dnn.hpp"
-#include <dirent.h>
+// STD CPP includes
 #include <algorithm>
+#include <chrono> 
+#include <fstream>
+#include <iostream>
 
+// STD C includes
+#include <cstdio>
+
+// External library includes
+#include <opencv2/dnn.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/objdetect.hpp>
+#include <opencv2/video/tracking.hpp>
+
+// Local includes
 #include <detection.hpp>
+#include <dirent.h>
 
 using namespace std;
 using namespace cv;
