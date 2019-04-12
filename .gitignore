@@ -1,4 +1,5 @@
 # cmake files
+build
 **/CMakeCache.txt
 **/CMakeFiles/*
 **/CMakeFiles
@@ -7,3 +8,6 @@
 
 # binary files
 bin/*
+
+# generated files
+video/**/*.csv
