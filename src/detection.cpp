@@ -23,8 +23,11 @@ using namespace cv::dnn;
 #define NETWORK_SCALE (2/255.0)
 #define NETWORK_MEAN (Scalar(127.5, 127.5, 127.5))
 #define PERSON_CLASS 15
-#define MODEL_PROTO "./models/default/patched_MobileNetSSD_deploy.prototxt"
-#define MODEL_BIN "./models/default/MobileNetSSD_deploy.caffemodel"
+//#define MODEL_PROTO "./models/mobilenet/patched_MobileNetSSD_deploy.prototxt"
+//#define MODEL_BIN "./models/mobilenet/MobileNetSSD_deploy.caffemodel"
+
+#define MODEL_XML "./models/mobilenet/MobileNetSSD_deploy.xml"
+#define MODEL_BIN "./models/mobilenet/MobileNetSSD_deploy.bin"
 
 // Takes an input picture and converts it to a blob ready for 
 // passing into a neural network
@@ -90,14 +93,18 @@ vector<Detection> postprocess(Mat result, int w, int h)
 
 Net create_net()
 {
-    Net net = readNetFromCaffe(MODEL_PROTO, MODEL_BIN);
+    // Use the Caffe model (does not work with movidius on raspberry pi)
+    //Net net = readNetFromCaffe(MODEL_PROTO, MODEL_BIN);
+    
+    // Use the OpenVino (must set prefered backend to Inference Engine. Works on Pi with NCS) 
+    Net net = readNetFromModelOptimizer(MODEL_XML, MODEL_BIN);
     
     // a generic implementation that will probably work for everyone
-    net.setPreferableBackend(DNN_BACKEND_OPENCV);
+    //net.setPreferableBackend(DNN_BACKEND_OPENCV);
     
     // Alternatively, use the optimised OpenVino implementation 
-    //net.setPreferableBackend(DNN_BACKEND_INFERENCE_ENGINE);
-    //net.setPreferableTarget(DNN_TARGET_MYRIAD); // change to match your system
+    net.setPreferableBackend(DNN_BACKEND_INFERENCE_ENGINE);
+    net.setPreferableTarget(DNN_TARGET_MYRIAD); // change to match your system
     return net;    
 }
 
