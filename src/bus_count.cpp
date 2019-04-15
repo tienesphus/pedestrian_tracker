@@ -14,8 +14,6 @@
 #include <opencv2/objdetect.hpp>
 #include <opencv2/video/tracking.hpp>
 
-#include <boost/filesystem.hpp>
-
 // Local includes
 #include <detection.hpp>
 #include <dirent.h>
