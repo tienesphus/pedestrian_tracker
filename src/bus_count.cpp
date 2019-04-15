@@ -14,6 +14,8 @@
 #include <opencv2/objdetect.hpp>
 #include <opencv2/video/tracking.hpp>
 
+#include <boost/filesystem.hpp>
+
 // Local includes
 #include <detection.hpp>
 #include <dirent.h>
@@ -71,7 +73,7 @@ public:
   int count_in = 0;
   
   World(Line inside, Line outside, Line inner_bounds_a, Line inner_bounds_b):
-    inside(inside), outside(outside), 
+    inside(inside), outside(outside),
     inner_bounds_a(inner_bounds_a), inner_bounds_b(inner_bounds_b) {}
     
   void draw(Mat &img) {
@@ -376,17 +378,45 @@ bool begins_with(string value, string prefix) {
 }
 
 int process_folder(Net &net, string folder) {
+  // Read config info
+  string config = folder + "/config.csv";
+  //char* thePath = realpath(config.c_str(), NULL);
+  cout << " Reading world parameters: " << config << endl;
+  fstream config_file(config);
+  if (!config_file.is_open()) {
+    cout << "Cannot find config file. Skipping dir";
+    return 0;
+  }
+  int iax, iay, ibx, iby; // input line
+  int oax, oay, obx, oby; // output line
+  int b1ax, b1ay, b1bx, b1by; // bounds 1 line
+  int b2ax, b2ay, b2bx, b2by; // bounds 2 line
+  config_file >> iax >> iay >> ibx >> iby;
+  config_file >> oax >> oay >> obx >> oby;
+  config_file >> b1ax >> b1ay >> b1bx >> b1by;
+  config_file >> b2ax >> b2ay >> b2bx >> b2by;
+  config_file.close();
+
   // setup the world and persistent data
   int frame_size = 300;
   World world = World(
     // inside, outside:
-    Line(Point(0, frame_size/2), Point(frame_size, frame_size/2)),
-    Line(Point(frame_size, frame_size/2-20), Point(0, frame_size/2-20)),
-    
+    Line(Point(iax, iay), Point(ibx, iby)),
+    Line(Point(oax, oay), Point(obx, oby)),
+
     // inner bounds:
-    Line(Point(frame_size/6, frame_size), Point(frame_size/5, 0)),
-    Line(Point(frame_size*2/3, 0), Point(frame_size*2/3, frame_size))
+    Line(Point(b1ax, b1ay), Point(b1bx, b1by)),
+    Line(Point(b2ax, b2ay), Point(b2bx, b2by))
   );
+  /*World world = World(
+      // inside, outside:
+      Line(Point(0, frame_size/2), Point(frame_size, frame_size/2)),
+      Line(Point(frame_size, frame_size/2-20), Point(0, frame_size/2-20)),
+
+      // inner bounds:
+      Line(Point(frame_size/6, frame_size), Point(frame_size/5, 0)),
+      Line(Point(frame_size*2/3, 0), Point(frame_size*2/3, frame_size))
+  );*/
   Tracks tracks = Tracks();
 
   bool flip = (folder.find("flip") != string::npos);

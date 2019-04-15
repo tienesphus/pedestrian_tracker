@@ -11,3 +11,7 @@ bin/*
 
 # generated files
 video/**/*.csv
+
+# IDE files
+.idea/*
+cmake-build-debug/*
