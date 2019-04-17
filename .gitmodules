@@ -1,6 +1,6 @@
 [submodule "models/MobileNetSSD_IE"]
 	path = models/MobileNetSSD_IE
-	url = https://gitlab.com/buspassengercount/networks
+	url = https://gitlab.com/buspassengercount/networks.git
 	branch = MobileNetSSD_IE
 	shallow = true
 
