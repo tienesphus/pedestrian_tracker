@@ -1,16 +1,8 @@
 # cmake files
-build
-**/CMakeCache.txt
-**/CMakeFiles/*
-**/CMakeFiles
-**/cmake_install.cmake
-**/Makefile
+build/*
 
 # binary files
 bin/*
-
-# generated files
-video/**/*.csv
 
 # IDE files
 .idea/*

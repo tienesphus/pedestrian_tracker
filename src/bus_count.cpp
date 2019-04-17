@@ -377,12 +377,12 @@ bool begins_with(string value, string prefix) {
 
 int process_folder(Net &net, string folder) {
   // Read config info
-  string config = folder + "/config.csv";
+  string config = "./config.csv";
   //char* thePath = realpath(config.c_str(), NULL);
   cout << " Reading world parameters: " << config << endl;
   fstream config_file(config);
   if (!config_file.is_open()) {
-    cout << "Cannot find config file. Skipping dir";
+    cout << "Cannot find config file. Skipping";
     return 0;
   }
   int iax, iay, ibx, iby; // input line
@@ -463,7 +463,7 @@ int main() {
   cout << "Loading Model" << endl;
   Net net = create_net();
 
-  string data_folder = "video/";
+  string data_folder = "../samplevideos/";
   DIR *data_dir;
   struct dirent *d_ent;
   if ((data_dir = opendir(data_folder.c_str())) == NULL) {

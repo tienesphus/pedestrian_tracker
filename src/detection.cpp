@@ -23,11 +23,11 @@ using namespace cv::dnn;
 #define NETWORK_SCALE (2/255.0)
 #define NETWORK_MEAN (Scalar(127.5, 127.5, 127.5))
 #define PERSON_CLASS 15
-#define MODEL_CAFFE_PROTO "./models/mobilenet/patched_MobileNetSSD_deploy.prototxt"
-#define MODEL_CAFFE_BIN "./models/mobilenet/MobileNetSSD_deploy.caffemodel"
+#define MODEL_CAFFE_PROTO "./models/MobileNetSSD_caffe/MobileNetSSD.prototxt"
+#define MODEL_CAFFE_BIN "./models/MobileNetSSD_caffe/MobileNetSSD.caffemodel"
 
-#define MODEL_NCS_XML "./models/mobilenet/MobileNetSSD_deploy.xml"
-#define MODEL_NCS_BIN "./models/mobilenet/MobileNetSSD_deploy.bin"
+#define MODEL_NCS_XML "./models/MobileNetSSD_IE/MobileNetSSD.xml"
+#define MODEL_NCS_BIN "./models/MobileNetSSD_IE/MobileNetSSD.bin"
 
 // Takes an input picture and converts it to a blob ready for 
 // passing into a neural network
