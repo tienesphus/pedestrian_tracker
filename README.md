@@ -34,7 +34,7 @@ git clone https://gitlab.com/buspassengercount/samplevideos.git
 ### Building
 ```
 git clone https://gitlab.com/buspassengercount/dnn_counting.git
-cd dnn_counting
+cd cpp_counting
 mkdir build && cd build
 cmake ..
 make
