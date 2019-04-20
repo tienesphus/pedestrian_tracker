@@ -22,8 +22,8 @@ Only once, you will have to download the required Neural Network modules.
 
 ```
 git submodule update --init modules/<network>
-# It asks me for my pasword 3 times. Not sure why?!?!
 ```
+Note: All submodules are stored in private repos, hence will require logging in for each (git doesn't have any concept of gitlab groups, so can't share the same password for each repo). To circumvent this, we will probably need to modify the submodules to make use of SSH, which will allow us to use either `ssh-agent` or SSH public-private keys.
 
 If the test videos are being used, it is assumed that the sample video repo has been downloaded to `../samplevideos`.
 ```
@@ -41,7 +41,15 @@ make
 ```
 
 ### Running
+From within the build directory:
 
 ```
-./build/bin/bus_count
+./bin/bus_count
 ```
+
+To run the daemon (currently only a simple RTSP server):
+```
+./bin/buscountd
+```
+
+Note: At this stage, the daemon does not yet make use of OpenCV, and is only a simple implementation of an RTSP server.

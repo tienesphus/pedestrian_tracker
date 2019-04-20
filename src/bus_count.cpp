@@ -7,6 +7,9 @@
 // STD C includes
 #include <cstdio>
 
+// Linux/POSIX libraries
+#include <dirent.h>
+
 // External library includes
 #include <opencv2/dnn.hpp>
 #include <opencv2/highgui.hpp>
@@ -15,8 +18,7 @@
 #include <opencv2/video/tracking.hpp>
 
 // Local includes
-#include <detection.hpp>
-#include <dirent.h>
+#include "detection.hpp"
 
 using namespace std;
 using namespace cv;
