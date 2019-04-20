@@ -1,9 +1,13 @@
 # cmake files
-build/*
+build
 
 # binary files
-bin/*
+bin
 
 # IDE files
 .idea/*
 cmake-build-debug/*
+
+# Submodules
+models/*
+!models/.keep
