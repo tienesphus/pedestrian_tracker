@@ -16,7 +16,7 @@ struct Detection {
     /**
      * Draws this detection onto the image
      */
-    void draw(cv::Mat &frame);
+    void draw(cv::Mat &frame) const;
 };
 
 /**
@@ -34,18 +34,18 @@ public:
     /**
      * Gets the image that these detections are for
      */
-    cv::Ptr<cv::Mat> get_frame();
+    cv::Ptr<cv::Mat> get_frame() const;
     
     /**
      * Get the detections that occured
      */
-    std::vector<Detection> get_detections();
+    std::vector<Detection> get_detections() const;
     
     /**
      * Gets the display that shows the results of the detections
      * @returns the display. an empty pointer if draw() has not been called
      */
-    cv::Ptr<cv::Mat> get_display();
+    cv::Ptr<cv::Mat> get_display() const;
     
     /**
      * Creates an image and draws the results onto it.

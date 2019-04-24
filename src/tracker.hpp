@@ -62,12 +62,12 @@ public:
      * Processes some detections
      * @returns the new state of the world
      */
-    cv::Ptr<WorldState> process(Detections &detections);
-
+    WorldState process(const Detections &detections);
+    
     /**
-     * Updates the status of this Track. Updates the world count.
+     * Draws the current state
      */
-    bool update(const WorldConfig& config, WorldState& world);
+    void draw(cv::Mat &img) const;
     
 private:
     WorldConfig config;
@@ -75,10 +75,8 @@ private:
     std::vector<Track*> tracks;
     int index_count;
     
-    /**
-     * Draws the current state
-     */
-    void draw(cv::Mat &img) const;
+    void merge(const Detections &detections);
+    void update();
 };
 
 #endif

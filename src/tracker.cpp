@@ -92,7 +92,22 @@ Tracker::~Tracker()
         delete track;
 }
 
-cv::Ptr<WorldState> Tracker::process(Detections &detections) 
+WorldState Tracker::process(const Detections &detections) 
+{
+    
+    merge(detections);
+    update();
+    
+    state.display = detections.get_display();
+    
+    return state;
+}
+
+/**
+ * Looks for detections that are near current tracks. If there is something
+ * close by, then the detection will be merged into it.
+ */
+void Tracker::merge(const Detections &detections)
 {
     for (Detection detection : detections.get_detections()) 
     {
@@ -131,30 +146,23 @@ cv::Ptr<WorldState> Tracker::process(Detections &detections)
             tracks.push_back(t);
         }
     }
-    
-    cv::Ptr<cv::Mat> display = detections.get_display();
-    if (!display.empty()) 
-    {
-        for (Track* track : tracks)
-            track->draw(*display);
-    }
-    
-    // TODO return correct results
-    return cv::Ptr<WorldState>(new WorldState(0,0, display));
 }
 
-
-bool Tracker::update(const WorldConfig& config, WorldState& world)
+/**
+ * Updates the status of each Track. Updates the world count.
+ * Deletes old tracks.
+ */
+void Tracker::update()
 {
     std::vector<Track*> new_tracks;
-    for (Track* t : tracks) 
+    for (Track* t : this->tracks) 
     {
-        if (t->update(config, world))
+        if (t->update(this->config, this->state))
             new_tracks.push_back(t);
         else
             delete t;
     }
-    tracks = new_tracks;
+    this->tracks = new_tracks;
 }
 
 void Tracker::draw(cv::Mat& img) const

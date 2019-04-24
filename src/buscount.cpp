@@ -98,9 +98,12 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     // n_tracker: Tracks detections
     Tracker tracker(world_config);
     flow::function_node<Ptr<Detections>, Ptr<WorldState>> n_tracker(g, flow::serial,
-        [&tracker](const Ptr<Detections> detections) -> Ptr<WorldState> {
+        [&tracker, draw](const Ptr<Detections> detections) -> Ptr<WorldState> {
             std::cout << "START TRACK" << std::endl;
-            auto state = tracker.process(*detections);            
+            WorldState s_state = tracker.process(*detections);
+            Ptr<WorldState> state = Ptr<WorldState>(new WorldState(s_state));
+            if (draw)
+                tracker.draw(*(state->display));
             std::cout << "END TRACK" << std::endl;
             return state;
         }
@@ -108,7 +111,7 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     
     // drawer: Draws the state of the world to a Mat
     flow::function_node<Ptr<WorldState>, Ptr<Mat>> drawer(g, flow::serial,
-        [&world_config](const Ptr<WorldState> world){
+        [&world_config](Ptr<WorldState> world) -> Ptr<Mat> {
             std::cout << "START DRAWER" << std::endl;
             world->draw();
             world_config.draw(*(world->display));

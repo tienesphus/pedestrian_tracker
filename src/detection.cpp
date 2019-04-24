@@ -10,7 +10,7 @@ Detection::Detection(const cv::Rect2d& box, float confidence):
     box(box), confidence(confidence)
 {}
 
-void Detection::draw(cv::Mat& frame)
+void Detection::draw(cv::Mat& frame) const
 {
     cv::rectangle(frame, this->box, cv::Scalar(0, 0, this->confidence*255), 3);
 }
@@ -21,17 +21,17 @@ Detections::Detections(const cv::Ptr<cv::Mat>& frame, const std::vector<Detectio
 {
 }
 
-cv::Ptr<cv::Mat> Detections::get_frame()
+cv::Ptr<cv::Mat> Detections::get_frame() const
 {
     return frame;
 }
 
-std::vector<Detection> Detections::get_detections()
+std::vector<Detection> Detections::get_detections() const
 {
     return this->detections;
 }
 
-cv::Ptr<cv::Mat> Detections::get_display()
+cv::Ptr<cv::Mat> Detections::get_display() const
 {
     return this->display;
 }
