@@ -1,8 +1,10 @@
 #include <iostream>
 #include <vector>
-#include <unistd.h>
 
 #include "tbb/flow_graph.h"
+#include "tbb/tick_count.h"
+#include "tbb/concurrent_queue.h"
+
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 
@@ -36,40 +38,34 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
      *   |         v
      *   |      drawer
      *   |         | Ptr<Mat>
-     *   |         +------------------+
-     *   |         V                  V
-     *   |      display        video_streamer
-     *   |         | continue_msg     | continue_msg         
-     *   |         |                  |
-     *   |         +---------+--------+
-     *   |                   V
-     *   |              limitter_joint
-     *   |                   | tuple<continue_msg, continue_msg>
-     *   |                   V
-     *   |              limiter_fb
-     *   |                   | continue_msg
-     *   +-------------------+
+     *   |         V
+     *   |    video_streamer
+     *   |         | continue_msg
+     *   |         V
+     *   |     tick_counter
+     *   |         | continue_msg
+     *   +---------+
      *
     */            
     flow::graph g;
+    tbb::concurrent_queue<Ptr<Mat>> display_queue;
     
     VideoCapture cap(input);
     bool quit = false;
-    int frame_count = 0;
     
     // src: Reads images from the input stream.
     //      It will continuously try to push more images down the stream
     flow::source_node<Ptr<Mat>> src(g,
-        [&cap, &quit, &frame_count](Ptr<Mat> &v) -> bool {
-            std::cout << ("SOURCE frame" + std::to_string(frame_count++)) << std::endl;
-            Mat* frame = new Mat();
+        [&cap, &quit](Ptr<Mat> &v) -> bool {
+            std::cout << "START SRC" << std::endl;
             if (quit) {
                 return false;
             }
+            Mat* frame = new Mat();
             bool res = cap.read(*frame);
             if (res) {
                 v = Ptr<Mat>(frame);
-                std::cout << ("SOURCE FIN") << std::endl;
+                std::cout << "SOURCE END" << std::endl;
                 return true;
             } else {
                 return false;
@@ -78,7 +74,8 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     
     // frame_limiter: by default, infinite frames can be in the graph at one.
     //                This node will limit the graph so that only MAX_FRAMES
-    //                will be processed at once.
+    //                will be processed at once. Without limiting, runnaway
+    //                occurs (src will keep producing into an unlimited buffer)
     const int MAX_FRAMES = 2;
     flow::limiter_node<Ptr<Mat>> frame_limiter(g, MAX_FRAMES);
     
@@ -111,37 +108,16 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     
     // drawer: Draws the state of the world to a Mat
     flow::function_node<Ptr<WorldState>, Ptr<Mat>> drawer(g, flow::serial,
-        [&world_config](Ptr<WorldState> world) -> Ptr<Mat> {
+        [&world_config, draw, &display_queue](Ptr<WorldState> world) -> Ptr<Mat> {
             std::cout << "START DRAWER" << std::endl;
-            world->draw();
-            world_config.draw(*(world->display));
+            if (draw)
+            {
+                world->draw();
+                world_config.draw(*(world->display));
+                display_queue.push(world->display);
+            }
             std::cout << "END DRAWER" << std::endl;
             return world->display;
-        }
-    );
-    
-    // display: Displays a Mat on the screen
-    flow::function_node<Ptr<Mat>, flow::continue_msg> display(g, flow::serial, 
-        [&quit](const Ptr<Mat> frame) -> flow::continue_msg {
-            // TODO: only the main thread should call GUI functions.
-            // Calling them here causes error messages on shutdown
-            // Also - it completely locks up. Don't know why that is though...
-            std::cout << "START DISPLAY" << std::endl;
-            if (!quit) {
-                std::cout << "  imshow()" << std::endl;
-                imshow("output", *frame);
-                std::cout << "  waitKey()" << std::endl;
-                int key = waitKey(500);
-                std::cout << "  done" << std::endl;
-                if (key == 'q') {
-                    std::cout << "  QUIT REGISTERED" << std::endl;
-                    quit = true;
-                    std::cout << "  destroyWindow()" << std::endl;
-                    destroyWindow("output");
-                }
-            }
-            std::cout << "END DISPLAY" << std::endl;
-            return flow::continue_msg();
         }
     );
     
@@ -156,33 +132,56 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
         }
     );
     
-    // limiter_joint: Ensures that both the display code and the streaming
-    //                code can't fall behind. IDK if this is actually nesscessary;
-    //                maybe just one node's output will work fine?
-    flow::join_node<flow::tuple<flow::continue_msg, flow::continue_msg>> limiter_joint(g);
-
-    // limitter_fb: Converter from a tuple<continue_msg> into a continue_msg
-    //              so it can be plugged into the frame_limiter node
-    flow::function_node<flow::tuple<flow::continue_msg, flow::continue_msg>, flow::continue_msg> limiter_fb(g, flow::serial,
-        [](const flow::tuple<flow::continue_msg, flow::continue_msg>) {
-            std::cout << "START LIMITER_FB" << std::endl;
-            std::cout << "END LIMITER_FB" << std::endl;
+    // tick_counter: Calculates the speed that the program is running at by moving average.
+    int frame_count = 0;
+    const int AVG_SIZE = 10;
+    tbb::tick_count ticks[AVG_SIZE] = {tbb::tick_count::now()};
+    
+    flow::function_node<flow::continue_msg, flow::continue_msg> tick_counter(g, flow::serial,
+        [&frame_count, &ticks, AVG_SIZE](flow::continue_msg) {
+            std::cout << "START TICK COUNTER" << std::endl;
+            
+            frame_count++;
+            tbb::tick_count now = tbb::tick_count::now();
+            tbb::tick_count prev = ticks[frame_count % AVG_SIZE];
+            ticks[frame_count % AVG_SIZE] = now;
+            float fps = AVG_SIZE/(now-prev).seconds();
+            
+            std::cout << ("END TICK  frame: " + std::to_string(frame_count) + " fps: " + std::to_string(fps)) << std::endl;
             return flow::continue_msg();
         }
     );
-    
+        
+    // Setup flow dependencis
     flow::make_edge(src,            frame_limiter);
     flow::make_edge(frame_limiter,  n_detector);
     flow::make_edge(n_detector,     n_tracker);
     flow::make_edge(n_tracker,      drawer);
-    flow::make_edge(drawer,         display);
     flow::make_edge(drawer,         video_streamer);
-    flow::make_edge(display,        flow::input_port<0>(limiter_joint));
-    flow::make_edge(video_streamer, flow::input_port<1>(limiter_joint));
-    flow::make_edge(limiter_joint,  limiter_fb);
-    flow::make_edge(limiter_fb,     frame_limiter.decrement);
+    flow::make_edge(video_streamer, tick_counter);
+    flow::make_edge(tick_counter,   frame_limiter.decrement);
     
+    // Begin running stuff
     src.activate();
+    
+    // The display code _must_ be run on the main thread. Thus, we pass
+    // display frames here through a queue
+    Ptr<Mat> display_img;
+    while (!quit && draw) {
+        if (display_queue.try_pop(display_img))
+        {
+            std::cout << "imshow()" << std::endl;
+            imshow("output", *display_img);
+            std::cout << "waitkey()" << std::endl;
+        }
+        // TODO test if waitKey allows tbb to use this core
+        int key = waitKey(20);
+        if (key =='q')
+            quit = true;
+    }
+    
+    // Allow the last few frames to pass through
+    // If this is not done, invalid memory can occurs
     g.wait_for_all();
 }
 
@@ -201,6 +200,8 @@ int main() {
     WorldConfig world_config = WorldConfig::from_file("/home/cv/code/cpp_counting/config.csv");
     
     std::string input = "/home/cv/code/samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    
+    
     
     run_graph(input, net_config, world_config, true);
     
