@@ -28,27 +28,29 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
      *            src
      *             | Ptr<Mat>
      *             v
-     *   +--> throttle
-     *   |       | Ptr<Mat>
-     *   |       v
-     *   |   pre_detect (TODO)
-     *   |       | Ptr<Mat>
-     *   |       v
-     *   |     detect
-     *   |       | Ptr<Mat>
-     *   |       v
-     *   |   post_detect (TODO)
-     *   |       | Ptr<Detections>
-     *   |       v
-     *   |  track_n_draw
-     *   |       | Ptr<Mat>
-     *   |       v
-     *   |     stream              
-     *   |       | continue_msg
-     *   |       v
-     *   |     monitor
-     *   |       | continue_msg
-     *   +-------+
+     *   +-->-- throttle
+     *   |         | Ptr<Mat>
+     *   |         |
+     *   |         +-------> pre_detect
+     *   |         |            | continue_msg
+     *   |         |            v
+     *   |         |          detect
+     *   |         v            | Ptr<Mat>
+     *   |       joint  <-------+
+     *   |         | tuple<Mat, Mat>
+     *   |         v
+     *   |    post_detect
+     *   |         | Ptr<Detections>
+     *   |         v
+     *   |    track_n_draw
+     *   |         | Ptr<Mat>
+     *   |         v
+     *   |       stream              
+     *   |         | continue_msg
+     *   |         v
+     *   |       monitor
+     *   |         | continue_msg
+     *   +---------+
     */            
     
     // shared variables
@@ -66,7 +68,10 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
                 return false;
             }
             Mat* frame = new Mat();
-            bool res = cap.read(*frame);
+            // read three times so that we effectively are running real time
+            bool res = cap.read(*frame) 
+                        && cap.read(*frame) 
+                        && cap.read(*frame);
             if (res) {
                 v = Ptr<Mat>(frame);
                 std::cout << "SOURCE END" << std::endl;
@@ -90,21 +95,41 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     
     // pre_detect: Preprocesses the image into a 'blob' so it is ready 
     //             to feed into a detection algorithm
-    // TODO implement pre_detect
+    flow::function_node<Ptr<Mat>, flow::continue_msg> pre_detect(g, flow::serial,
+        [&detector](const Ptr<Mat> input) -> flow::continue_msg {
+            std::cout << "START PRE DETECT" << std::endl;
+            detector.pre_process(*input);
+            std::cout << "END PRE DETECT" << std::endl;
+            return flow::continue_msg();
+        }
+    );
     
     // detect: Takes the preprocessed blob
-    flow::function_node<Ptr<Mat>, Ptr<Detections>> detect(g, flow::serial,
-        [&detector, draw](const Ptr<Mat> input) -> Ptr<Detections> {
-            std::cout << "START DETECTIONS" << std::endl;
-            auto detections = detector.process(input);
-            std::cout << "END DETECTIONS" << std::endl;
+    flow::function_node<flow::continue_msg, Ptr<Mat>> detect(g, flow::serial,
+        [&detector](flow::continue_msg _) -> Ptr<Mat> {
+            std::cout << "START DETECT" << std::endl;
+            auto detections = detector.process();
+            std::cout << "END DETECT" << std::endl;
             return detections;
         }
     );
     
+    // joint: combines the results from the original image and the detection data
+    flow::join_node<flow::tuple<Ptr<Mat>, Ptr<Mat>>> joint(g);
+    
     // post_detect: Takes the raw detection output, interperets it, and
     //              produces some meaningful results
-    // TODO implement post_detect
+    flow::function_node<flow::tuple<Ptr<Mat>, Ptr<Mat>>, Ptr<Detections>> post_detect(g, flow::serial,
+        [&detector](const flow::tuple<Ptr<Mat>, Ptr<Mat>> input) -> Ptr<Detections> {
+            std::cout << "START POST DETECT" << std::endl;
+            Ptr<Mat> original = std::get<0>(input);
+            Ptr<Mat> results  = std::get<1>(input);
+            
+            auto detections = detector.post_process(original, *results);
+            std::cout << "END POST DETECT" << std::endl;
+            return detections;
+        }
+    );
     
     // track: Tracks detections
     Tracker tracker(world_config);
@@ -179,8 +204,12 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
         
     // Setup flow dependencis
     flow::make_edge(src,          throttle);
-    flow::make_edge(throttle,     detect);
-    flow::make_edge(detect,       track_n_draw);
+    flow::make_edge(throttle,     pre_detect);
+    flow::make_edge(pre_detect,   detect);
+    flow::make_edge(throttle,     flow::input_port<0>(joint));
+    flow::make_edge(detect,       flow::input_port<1>(joint));
+    flow::make_edge(joint,        post_detect);
+    flow::make_edge(post_detect,  track_n_draw);
     flow::make_edge(track_n_draw, stream);
     flow::make_edge(stream,       monitor);
     flow::make_edge(monitor,      throttle.decrement);

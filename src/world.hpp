@@ -50,13 +50,15 @@ struct WorldConfig
      *  - x2
      *  - y2
      * 
+     * Each data point should be scaled between 0-1
+     * 
      * Ensure that the normals of inside/outside face away from each other
      * and the bounds lines face towards each other.
      *
      * @param the filename to read from
      * @returns a new WorldConfig
      */
-    static WorldConfig from_file(std::string fname);
+    static WorldConfig from_file(const std::string& fname);
     
     WorldConfig(const Line &inside, const Line &outside, 
             const Line &inner_bounds_a, const Line &inner_bounds_b);

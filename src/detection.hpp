@@ -54,7 +54,7 @@ private:
 struct NetConfigIR {
     float thresh;
     int clazz;
-    cv::Size size;
+    cv::Size networkSize;
     float scale;
     cv::Scalar mean;
     std::string xml;
@@ -75,16 +75,27 @@ public:
     Detector(const NetConfigIR &config);
     
     /**
-     * Finds things in the image
+     * Preprocesses an image and loads it into the graph
+     */
+    void pre_process(const cv::Mat &frame);
+    
+    /**
+     * Processes the loaded image
+     * @return some unintelligent raw output
+     */
+    cv::Ptr<cv::Mat> process();
+    
+    /**
+     * Takes raw processing output and makes sense of them
      * @return the detected things
      */
-    cv::Ptr<Detections> process(const cv::Ptr<cv::Mat> &frame);
+    cv::Ptr<Detections> post_process(const cv::Ptr<cv::Mat>& original, cv::Mat &results) const;
     
 private:
     cv::dnn::Net net;
     float thresh;
     int clazz;
-    cv::Size size;
+    cv::Size networkSize;
     float scale;
     cv::Scalar mean;
 };

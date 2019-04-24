@@ -27,7 +27,7 @@ WorldConfig::WorldConfig(const Line &inside, const Line &outside,
 {
 }
 
-WorldConfig WorldConfig::from_file(std::string fname)
+WorldConfig WorldConfig::from_file(const std::string& fname)
 {
     std::fstream config_file(fname);
     if (!config_file.is_open()) 

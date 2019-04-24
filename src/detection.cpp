@@ -44,7 +44,7 @@ void Detections::draw(cv::Mat& display) const
 //  ----------- DETECTOR ---------------
 
 Detector::Detector(const NetConfigIR &config):
-        clazz(config.clazz), thresh(config.thresh), size(config.size), 
+        clazz(config.clazz), thresh(config.thresh), networkSize(config.networkSize), 
         scale(config.scale), mean(config.mean)
 {
     // Use the OpenVino (must set prefered backend to Inference Engine. Works on Pi with NCS) 
@@ -56,21 +56,23 @@ Detector::Detector(const NetConfigIR &config):
 }
 
 
-// Takes an input picture and converts it to a blob ready for 
-// passing into a neural network
-void preprocess(const cv::Mat &image, cv::Mat &result_blob, const cv::Size &size, const cv::Scalar& mean, float scale)
+void Detector::pre_process(const cv::Mat &image)
 {
-    cv::Mat resized;
-    std::cout << "  Preprocessing image" << std::endl;
-    cv::resize(image, resized, size);
-    cv::dnn::blobFromImage(resized, result_blob, scale, size, mean);
+    cv::Mat blob;
+    cv::dnn::blobFromImage(image, blob, this->scale, this->networkSize, this->mean);
     //result.convertTo(result, CV_32F, 1/127.5, -1);
+    this->net.setInput(blob);
 }
 
-std::vector<Detection> postprocess(cv::Mat result, int w, int h, float thresh, int clazz)
-{
-    std::cout << "  Interpretting Results" << std::endl;
-    
+cv::Ptr<cv::Mat> Detector::process() {
+    // pass the network
+    cv::Ptr<cv::Mat> results(new cv::Mat());
+    net.forward(*results);
+    return results;
+}
+
+cv::Ptr<Detections> Detector::post_process(const cv::Ptr<cv::Mat>& original, cv::Mat& data) const
+{   
     // result is of size [nimages, nchannels, a, b]
     // nimages = 1 (as only one image at a time)
     // nchannels = 1 (for RGB/BW?, not sure why we only have one, or why there would be a channel dimension)
@@ -85,12 +87,15 @@ std::vector<Detection> postprocess(cv::Mat result, int w, int h, float thresh, i
     //  6 - y2
     
     // Therefore, we discard first two dimensions to only have the data
-    cv::Mat detections(result.size[2], result.size[3], CV_32F, result.ptr<float>());
+    cv::Mat detections(data.size[2], data.size[3], CV_32F, data.ptr<float>());
 
     std::vector<Detection> results;
+    int w = original->cols;
+    int h = original->rows;
+    
     for (int i = 0; i < detections.size[0]; i++) {
         float confidence = detections.at<float>(i, 2);
-        if (confidence > thresh) {
+        if (confidence > this->thresh) {
             int id = int(detections.at<float>(i, 1));
             int x1 = int(detections.at<float>(i, 3) * w);
             int y1 = int(detections.at<float>(i, 4) * h);
@@ -99,27 +104,10 @@ std::vector<Detection> postprocess(cv::Mat result, int w, int h, float thresh, i
             cv::Rect2d r(cv::Point2d(x1, y1), cv::Point2d(x2, y2));
             
             std::cout << "    Found: " << id << "(" << confidence << "%) - " << r << std::endl;
-            if (id == clazz)
+            if (id == this->clazz)
                 results.push_back(Detection(r, confidence));
         }
     }
-
-    return results;
-}
-
-cv::Ptr<Detections> Detector::process(const cv::Ptr<cv::Mat> &frame) {
-    // TODO move pre/post processing to a seperate task
     
-    // preprocess
-    cv::Mat preprocessed_blob;
-    preprocess(*frame, preprocessed_blob, this->size, this->mean, this->scale);
-
-    // pass the network
-    net.setInput(preprocessed_blob);
-    cv::Mat results = net.forward();
-    
-    // post_process
-    std::vector<Detection> detects = postprocess(results, frame->cols, frame->rows, this->thresh, this->clazz);
-    
-    return cv::Ptr<Detections>(new Detections(frame, detects));
+    return cv::Ptr<Detections>(new Detections(original, results));
 }
