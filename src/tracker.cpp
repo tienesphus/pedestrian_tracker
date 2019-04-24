@@ -72,8 +72,18 @@ bool Track::update(const WorldConfig &config, WorldState &world)
 }
 
 Tracker::Tracker(WorldConfig config):
-    config(config), state(WorldState(cv::Ptr<cv::Mat>(), 0, 0)), index_count(0)
+    config(config), state(WorldState(0, 0, cv::Ptr<cv::Mat>())), index_count(0)
 {
+}
+
+Tracker::Tracker(const Tracker& tracker):
+    config(tracker.config), state(tracker.state), index_count(tracker.index_count)
+{
+    // duplicate each of the track references
+    this->tracks.reserve(tracker.tracks.size());
+    for (Track* track : tracker.tracks) {
+        tracks.push_back(new Track(*track));
+    }
 }
 
 Tracker::~Tracker()
@@ -84,7 +94,8 @@ Tracker::~Tracker()
 
 cv::Ptr<WorldState> Tracker::process(Detections &detections) 
 {
-    for (Detection detection : detections.get_detections()) {
+    for (Detection detection : detections.get_detections()) 
+    {
         std::cout << "Looking for merges" << std::endl;
         int replace_index = -1;
         float best_merginess = 0;
@@ -121,15 +132,23 @@ cv::Ptr<WorldState> Tracker::process(Detections &detections)
         }
     }
     
-    // TODO: return something
-    return cv::Ptr<WorldState>();
+    cv::Ptr<cv::Mat> display = detections.get_display();
+    if (!display.empty()) 
+    {
+        for (Track* track : tracks)
+            track->draw(*display);
+    }
+    
+    // TODO return correct results
+    return cv::Ptr<WorldState>(new WorldState(0,0, display));
 }
 
 
 bool Tracker::update(const WorldConfig& config, WorldState& world)
 {
     std::vector<Track*> new_tracks;
-    for (Track* t : tracks) {
+    for (Track* t : tracks) 
+    {
         if (t->update(config, world))
             new_tracks.push_back(t);
         else

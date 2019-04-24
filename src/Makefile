@@ -3,7 +3,7 @@ CFLAGS = -std=c++11 -Wfatal-errors
 
 OPENCV = `pkg-config --cflags --libs opencv4`
 
-buscount: buscount.o tracker.o world.o detection.o utils.o
+buscount: utils.o world.o detection.o tracker.o buscount.o
 	g++ ${CFLAGS} -o buscount buscount.o tracker.o detection.o world.o utils.o ${OPENCV} -ltbb
 
 buscount.o: buscount.cpp tracker.hpp detection.hpp world.hpp utils.hpp

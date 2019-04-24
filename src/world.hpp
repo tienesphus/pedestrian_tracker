@@ -9,13 +9,24 @@
  * The current global state of the world
  */
 struct WorldState {
-    cv::Ptr<cv::Mat> frame;
     int in_count;
     int out_count;
     
-    WorldState(const cv::Ptr<cv::Mat>& frame, int in, int out);
+    // Image to display. null if not drawing
+    cv::Ptr<cv::Mat> display;
     
-    void draw(cv::Mat &img) const;
+    /**
+     * Constructs the world state.
+     * @param in the current in count
+     * @param out the current out count
+     * @param display an image to show the results. empty ptr if drawing
+     */
+    WorldState(int in, int out, const cv::Ptr<cv::Mat>& display);
+    
+    /**
+     * Draws the state to the display
+     */
+    void draw() const;
 };
 
 /**
@@ -28,6 +39,29 @@ struct WorldConfig
   
     Line inner_bounds_a;
     Line inner_bounds_b;
+    
+    /**
+     * Reads configuration data from a csv file.
+     * The csv file must use only whitespace to seperate values (no commas).
+     * It's data must be ordered as:
+     * - inside line
+     * - outside line
+     * - bounds_a line
+     * - bounds_a line
+     * 
+     * Each line should be ordered as:
+     *  - x1
+     *  - y1
+     *  - x2
+     *  - y2
+     * 
+     * Ensure that the normals of inside/outside face away from each other
+     * and the bounds lines face towards each other.
+     *
+     * @param the filename to read from
+     * @returns a new WorldConfig
+     */
+    static WorldConfig from_file(std::string fname);
     
     WorldConfig(const Line &inside, const Line &outside, 
             const Line &inner_bounds_a, const Line &inner_bounds_b);

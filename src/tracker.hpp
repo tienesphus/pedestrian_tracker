@@ -11,8 +11,9 @@
  */
 class Track
 {
+    friend class Tracker;
 
-public:  
+private:  
     /**
      * Initialises a Track
      * @param box the bounding box of where the track is
@@ -31,7 +32,6 @@ public:
      */
     void draw(cv::Mat &img) const;
 
-private:
     cv::Rect2d box;
     float confidence;
     int index;
@@ -40,8 +40,6 @@ private:
     bool been_outside = false;
     bool counted_in = false;
     bool counted_out = false;
-    
-    friend class Tracker;
 };
 
 /**
@@ -52,6 +50,11 @@ class Tracker
     
 public:
     Tracker(WorldConfig config);
+    
+    /**
+     * Copy constructor
+     */ 
+    Tracker(const Tracker& tracker);
 
     ~Tracker();
   
@@ -65,17 +68,17 @@ public:
      * Updates the status of this Track. Updates the world count.
      */
     bool update(const WorldConfig& config, WorldState& world);
-
-    /**
-     * Draws the current state
-     */
-    void draw(cv::Mat &img) const;
     
 private:
     WorldConfig config;
     WorldState state;
     std::vector<Track*> tracks;
     int index_count;
+    
+    /**
+     * Draws the current state
+     */
+    void draw(cv::Mat &img) const;
 };
 
 #endif

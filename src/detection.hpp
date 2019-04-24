@@ -12,6 +12,11 @@ struct Detection {
     float confidence;
 
     Detection(const cv::Rect2d& box, float confidence);
+    
+    /**
+     * Draws this detection onto the image
+     */
+    void draw(cv::Mat &frame);
 };
 
 /**
@@ -19,10 +24,11 @@ struct Detection {
  */
 class Detections {
 public:
-    // Constructs an no results detection
-    Detections(const cv::Ptr<cv::Mat> &frame);
-    
-    // Constructs detection with results
+    /**
+     * Constructs a detection result
+     * @param frame the image the detections were made on
+     * @param detections a list of detections that were made
+     */
     Detections(const cv::Ptr<cv::Mat> &frame, const std::vector<Detection> &detections);
     
     /**
@@ -34,9 +40,21 @@ public:
      * Get the detections that occured
      */
     std::vector<Detection> get_detections();
+    
+    /**
+     * Gets the display that shows the results of the detections
+     * @returns the display. an empty pointer if draw() has not been called
+     */
+    cv::Ptr<cv::Mat> get_display();
+    
+    /**
+     * Creates an image and draws the results onto it.
+     */
+    void draw();
         
 private:
     cv::Ptr<cv::Mat> frame;
+    cv::Ptr<cv::Mat> display;
     std::vector<Detection> detections;
 };
 
@@ -60,6 +78,7 @@ public:
      * Constructs a detector from an Intermediate Representation 
      * (an OpenVino model)
      */
+     // TODO allow other models types to be constructed
     Detector(const NetConfigIR &config);
     
     /**

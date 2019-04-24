@@ -10,15 +10,14 @@ Detection::Detection(const cv::Rect2d& box, float confidence):
     box(box), confidence(confidence)
 {}
 
-
-
-Detections::Detections(const cv::Ptr<cv::Mat>& frame):
-    frame(frame)
+void Detection::draw(cv::Mat& frame)
 {
+    cv::rectangle(frame, this->box, cv::Scalar(0, 0, this->confidence*255), 3);
 }
 
+
 Detections::Detections(const cv::Ptr<cv::Mat>& frame, const std::vector<Detection> &detections):
-    frame(frame), detections(detections)
+    frame(frame), detections(detections), display(cv::Ptr<cv::Mat>())
 {
 }
 
@@ -30,6 +29,22 @@ cv::Ptr<cv::Mat> Detections::get_frame()
 std::vector<Detection> Detections::get_detections()
 {
     return this->detections;
+}
+
+cv::Ptr<cv::Mat> Detections::get_display()
+{
+    return this->display;
+}
+
+void Detections::draw()
+{
+    cv::Mat* mat = new cv::Mat();
+    this->frame->copyTo(*mat);
+    for (Detection d : this->detections)
+    {
+        d.draw(*mat);
+    }
+    this->display = cv::Ptr<cv::Mat>(mat);
 }
 
 
@@ -51,17 +66,16 @@ Detector::Detector(const NetConfigIR &config):
 // passing into a neural network
 void preprocess(const cv::Mat &image, cv::Mat &result_blob, const cv::Size &size, const cv::Scalar& mean, float scale)
 {
-    // TODO move the constants here to variables in the constructor   
     cv::Mat resized;
-    std::cout << "Preprocessing image" << std::endl;
+    std::cout << "  Preprocessing image" << std::endl;
     cv::resize(image, resized, size);
     cv::dnn::blobFromImage(resized, result_blob, scale, size, mean);
     //result.convertTo(result, CV_32F, 1/127.5, -1);
 }
 
-std::vector<Detection> postprocess(cv::Mat result, int w, int h, float thresh)
+std::vector<Detection> postprocess(cv::Mat result, int w, int h, float thresh, int clazz)
 {
-    std::cout << "Interpretting Results" << std::endl;
+    std::cout << "  Interpretting Results" << std::endl;
     
     // result is of size [nimages, nchannels, a, b]
     // nimages = 1 (as only one image at a time)
@@ -79,18 +93,6 @@ std::vector<Detection> postprocess(cv::Mat result, int w, int h, float thresh)
     // Therefore, we discard first two dimensions to only have the data
     cv::Mat detections(result.size[2], result.size[3], CV_32F, result.ptr<float>());
 
-    //cout << "  Detections size: " << detections.size << " (" << detections.size[0] << ")" << endl;
-    /*for (int i = 0; i < detections.size[0]; i++) {
-    cout << "  ";
-    for (int j = 0; j < detections.size[1]; j++) {
-      cout << detections.at<float>(i, j) << " ";
-    }
-    cout << endl;
-    }*/
-
-    std::cout << "  Reading detection" << std::endl;
-    //cout << result.size << endl;
-
     std::vector<Detection> results;
     for (int i = 0; i < detections.size[0]; i++) {
         float confidence = detections.at<float>(i, 2);
@@ -101,10 +103,10 @@ std::vector<Detection> postprocess(cv::Mat result, int w, int h, float thresh)
             int x2 = int(detections.at<float>(i, 5) * w);
             int y2 = int(detections.at<float>(i, 6) * h);
             cv::Rect2d r(cv::Point2d(x1, y1), cv::Point2d(x2, y2));
-
-            std::cout << "    Found: " << id << "(" << confidence << "%) - " << r << std::endl;            
-            results.push_back(Detection(r, confidence));
-            // TODO filter out incorrect classes
+            
+            std::cout << "    Found: " << id << "(" << confidence << "%) - " << r << std::endl;
+            if (id == clazz)
+                results.push_back(Detection(r, confidence));
         }
     }
 
@@ -122,6 +124,8 @@ cv::Ptr<Detections> Detector::process(const cv::Ptr<cv::Mat> &frame) {
     net.setInput(preprocessed_blob);
     cv::Mat results = net.forward();
     
-    // post_process    
-    return cv::Ptr<Detections>(new Detections(frame, postprocess(results, frame->cols, frame->rows, thresh)));
+    // post_process
+    std::vector<Detection> detects = postprocess(results, frame->cols, frame->rows, this->thresh, this->clazz);
+    
+    return cv::Ptr<Detections>(new Detections(frame, detects));
 }
