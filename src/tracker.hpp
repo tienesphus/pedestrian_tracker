@@ -1,8 +1,9 @@
-#ifndef  TRACKER_H
+#ifndef TRACKER_H
 #define TRACKER_H
 
-#include "opencv2/core/cvstd.hpp"
-#include "opencv2/core/mat.hpp"
+#include <opencv2/core/cvstd.hpp>
+#include <opencv2/core/mat.hpp>
+
 #include "detection.hpp"
 #include "world.hpp"
 

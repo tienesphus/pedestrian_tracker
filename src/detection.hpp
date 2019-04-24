@@ -1,7 +1,7 @@
 #ifndef DETECTION_H
 #define DETECTION_H
 
-#include "opencv2/dnn/dnn.hpp"
+#include <opencv2/dnn/dnn.hpp>
 #include <vector>
 
 /**

@@ -1,9 +1,11 @@
 
-#include "detection.hpp"
-#include "opencv2/core/mat.hpp"
-#include "opencv2/core/cvstd.hpp"
-#include "opencv2/imgproc.hpp"
 #include <iostream>
+
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/cvstd.hpp>
+#include <opencv2/imgproc.hpp>
+
+#include "detection.hpp"
 
 //  ----------- DETECTION ---------------
 

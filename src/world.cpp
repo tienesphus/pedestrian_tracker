@@ -1,5 +1,7 @@
 #include "world.hpp"
 
+#include <fstream>
+
 //  ----------- WORLD STATE ---------------
 
 WorldState::WorldState(int in, int out):

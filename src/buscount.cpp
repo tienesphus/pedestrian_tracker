@@ -1,9 +1,9 @@
 #include <iostream>
 #include <vector>
 
-#include "tbb/flow_graph.h"
-#include "tbb/tick_count.h"
-#include "tbb/concurrent_queue.h"
+#include <tbb/flow_graph.h>
+#include <tbb/tick_count.h>
+#include <tbb/concurrent_queue.h>
 
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
