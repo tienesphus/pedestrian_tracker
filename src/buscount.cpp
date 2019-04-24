@@ -24,37 +24,46 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     /*
      * This code below produces the following flow graph:
      * 
+     * TODO pipe src, detect and track into render so all the drawing code is together
+     * 
      *            src
      *             | Ptr<Mat>
      *             v
-     *   +--> frame_limiter
+     *   +-->   throttle
      *   |         | Ptr<Mat>
      *   |         v
-     *   |      detector
+     *   |    pre_detect
+     *   |         | Ptr<Mat>
+     *   |         v
+     *   |       detect
+     *   |         | Ptr<Mat>
+     *   |         v
+     *   |    post_detect
      *   |         | Ptr<Detections>
      *   |         v
-     *   |      tracker
+     *   |       track
      *   |         | Ptr<WorldState>
      *   |         v
-     *   |      drawer
+     *   |       render
      *   |         | Ptr<Mat>
      *   |         V
-     *   |    video_streamer
+     *   |      stream
      *   |         | continue_msg
      *   |         V
-     *   |     tick_counter
+     *   |      monitor
      *   |         | continue_msg
      *   +---------+
      *
     */            
+    
+    // shared variables
     flow::graph g;
     tbb::concurrent_queue<Ptr<Mat>> display_queue;
-    
-    VideoCapture cap(input);
     bool quit = false;
     
     // src: Reads images from the input stream.
     //      It will continuously try to push more images down the stream
+    VideoCapture cap(input);
     flow::source_node<Ptr<Mat>> src(g,
         [&cap, &quit](Ptr<Mat> &v) -> bool {
             std::cout << "START SRC" << std::endl;
@@ -72,16 +81,24 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
             }
         }, false);
     
-    // frame_limiter: by default, infinite frames can be in the graph at one.
-    //                This node will limit the graph so that only MAX_FRAMES
-    //                will be processed at once. Without limiting, runnaway
-    //                occurs (src will keep producing into an unlimited buffer)
+    // throttle: by default, infinite frames can be in the graph at one.
+    //           This node will limit the graph so that only MAX_FRAMES
+    //           will be processed at once. Without limiting, runnaway
+    //           occurs (src will keep producing into an unlimited buffer)
     const int MAX_FRAMES = 2;
-    flow::limiter_node<Ptr<Mat>> frame_limiter(g, MAX_FRAMES);
+    flow::limiter_node<Ptr<Mat>> throttle(g, MAX_FRAMES);
     
-    // n_detector: Finds things in the image
+    // The detect nodes all world together through the Detector object.
+    // Note that the detect node is the bottle-neck in the pipeline, thus,
+    // as much as possible should be moved into pre_detect or post_detect.
     Detector detector(net_config);
-    flow::function_node<Ptr<Mat>, Ptr<Detections>> n_detector(g, flow::serial,
+    
+    // pre_detect: Preprocesses the image into a 'blob' so it is ready 
+    //             to feed into a detection algorithm
+    // TODO implement pre_detect
+    
+    // detect: Takes the preprocessed blob
+    flow::function_node<Ptr<Mat>, Ptr<Detections>> detect(g, flow::serial,
         [&detector, draw](const Ptr<Mat> input) -> Ptr<Detections> {
             std::cout << "START DETECTIONS" << std::endl;
             auto detections = detector.process(input);
@@ -92,9 +109,13 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
         }
     );
     
-    // n_tracker: Tracks detections
+    // post_detect: Takes the raw detection output, interperets it, and
+    //              produces some meaningful results
+    // TODO implement post_detect
+    
+    // track: Tracks detections
     Tracker tracker(world_config);
-    flow::function_node<Ptr<Detections>, Ptr<WorldState>> n_tracker(g, flow::serial,
+    flow::function_node<Ptr<Detections>, Ptr<WorldState>> track(g, flow::serial,
         [&tracker, draw](const Ptr<Detections> detections) -> Ptr<WorldState> {
             std::cout << "START TRACK" << std::endl;
             WorldState s_state = tracker.process(*detections);
@@ -106,8 +127,9 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
         }
     );
     
-    // drawer: Draws the state of the world to a Mat
-    flow::function_node<Ptr<WorldState>, Ptr<Mat>> drawer(g, flow::serial,
+    // render: Draws the state of the world to a Mat. Also Passes the
+    //         drawing to display_queue to be displayed
+    flow::function_node<Ptr<WorldState>, Ptr<Mat>> render(g, flow::serial,
         [&world_config, draw, &display_queue](Ptr<WorldState> world) -> Ptr<Mat> {
             std::cout << "START DRAWER" << std::endl;
             if (draw)
@@ -121,8 +143,8 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
         }
     );
     
-    // video_streamer: Writes images to a stream
-    flow::function_node<Ptr<Mat>, flow::continue_msg> video_streamer(g, flow::serial,
+    // stream: Writes images to a stream
+    flow::function_node<Ptr<Mat>, flow::continue_msg> stream(g, flow::serial,
         [](const Ptr<Mat> input) {
             // TODO: stream these results somewhere
             // this should plug into the GStreamer stuff somehow...
@@ -132,12 +154,12 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
         }
     );
     
-    // tick_counter: Calculates the speed that the program is running at by moving average.
+    // monitor: Calculates the speed that the program is running at by moving average.
     int frame_count = 0;
     const int AVG_SIZE = 10;
     tbb::tick_count ticks[AVG_SIZE] = {tbb::tick_count::now()};
     
-    flow::function_node<flow::continue_msg, flow::continue_msg> tick_counter(g, flow::serial,
+    flow::function_node<flow::continue_msg, flow::continue_msg> monitor(g, flow::serial,
         [&frame_count, &ticks, AVG_SIZE](flow::continue_msg) {
             std::cout << "START TICK COUNTER" << std::endl;
             
@@ -153,13 +175,13 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     );
         
     // Setup flow dependencis
-    flow::make_edge(src,            frame_limiter);
-    flow::make_edge(frame_limiter,  n_detector);
-    flow::make_edge(n_detector,     n_tracker);
-    flow::make_edge(n_tracker,      drawer);
-    flow::make_edge(drawer,         video_streamer);
-    flow::make_edge(video_streamer, tick_counter);
-    flow::make_edge(tick_counter,   frame_limiter.decrement);
+    flow::make_edge(src,      throttle);
+    flow::make_edge(throttle, detect);
+    flow::make_edge(detect,   track);
+    flow::make_edge(track,    render);
+    flow::make_edge(render,   stream);
+    flow::make_edge(stream,   monitor);
+    flow::make_edge(monitor,  throttle.decrement);
     
     // Begin running stuff
     src.activate();

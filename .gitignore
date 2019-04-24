@@ -3,6 +3,8 @@ build
 
 # binary files
 bin
+*.o
+src/buscount
 
 # IDE files
 .idea/*
