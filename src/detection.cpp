@@ -5,19 +5,22 @@
 #include "opencv2/imgproc.hpp"
 #include <iostream>
 
+//  ----------- DETECTION ---------------
 
 Detection::Detection(const cv::Rect2d& box, float confidence):
     box(box), confidence(confidence)
 {}
 
-void Detection::draw(cv::Mat& frame) const
+void Detection::draw(cv::Mat& display) const
 {
-    cv::rectangle(frame, this->box, cv::Scalar(0, 0, this->confidence*255), 3);
+    cv::rectangle(display, this->box, cv::Scalar(0, 0, this->confidence*255), 3);
 }
 
 
+//  ----------- DETECTIONS ---------------
+
 Detections::Detections(const cv::Ptr<cv::Mat>& frame, const std::vector<Detection> &detections):
-    frame(frame), detections(detections), display(cv::Ptr<cv::Mat>())
+    frame(frame), detections(detections)
 {
 }
 
@@ -31,23 +34,14 @@ std::vector<Detection> Detections::get_detections() const
     return this->detections;
 }
 
-cv::Ptr<cv::Mat> Detections::get_display() const
+void Detections::draw(cv::Mat& display) const
 {
-    return this->display;
-}
-
-void Detections::draw()
-{
-    cv::Mat* mat = new cv::Mat();
-    this->frame->copyTo(*mat);
     for (Detection d : this->detections)
-    {
-        d.draw(*mat);
-    }
-    this->display = cv::Ptr<cv::Mat>(mat);
+        d.draw(display);
 }
 
 
+//  ----------- DETECTOR ---------------
 
 Detector::Detector(const NetConfigIR &config):
         clazz(config.clazz), thresh(config.thresh), size(config.size), 

@@ -1,24 +1,13 @@
 #include "tracker.hpp"
 
+
+//  ----------- TRACK ---------------
+
 Track::Track(const cv::Rect2d &box, float conf, int index):
       box(box),
       confidence(conf),
       index(index)
 {
-}
-
-void Track::draw(cv::Mat &img) const {
-    cv::Scalar clr(0, confidence*255, 0);
-    cv::rectangle(img, box, clr, 1);
-    
-    int x = box.x + box.width/2;
-    int y = box.y + box.height/4;
-    cv::Point p(x, y);
-    cv::circle(img, p, 3, clr, 2);
-    
-    std::string txt = std::to_string(index);
-    cv::Point txt_loc(box.x+5, box.y+15);
-    cv::putText(img, txt, txt_loc, cv::FONT_HERSHEY_SIMPLEX, 0.5, clr, 2);
 }
 
 bool Track::update(const WorldConfig &config, WorldState &world)
@@ -71,8 +60,25 @@ bool Track::update(const WorldConfig &config, WorldState &world)
     return confidence > 0.2;
 }
 
+void Track::draw(cv::Mat &img) const {
+    cv::Scalar clr(0, confidence*255, 0);
+    cv::rectangle(img, box, clr, 1);
+    
+    int x = box.x + box.width/2;
+    int y = box.y + box.height/4;
+    cv::Point p(x, y);
+    cv::circle(img, p, 3, clr, 2);
+    
+    std::string txt = std::to_string(index);
+    cv::Point txt_loc(box.x+5, box.y+15);
+    cv::putText(img, txt, txt_loc, cv::FONT_HERSHEY_SIMPLEX, 0.5, clr, 2);
+}
+
+
+//  -----------  TRACKER ---------------
+
 Tracker::Tracker(WorldConfig config):
-    config(config), state(WorldState(0, 0, cv::Ptr<cv::Mat>())), index_count(0)
+    config(config), state(WorldState(0, 0)), index_count(0)
 {
 }
 
@@ -97,8 +103,6 @@ WorldState Tracker::process(const Detections &detections)
     
     merge(detections);
     update();
-    
-    state.display = detections.get_display();
     
     return state;
 }

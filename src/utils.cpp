@@ -1,5 +1,7 @@
 #include "utils.hpp"
 
+//  ----------- LINE ---------------
+
 Line::Line(const cv::Point &a, const cv::Point &b): 
     a(a), b(b)
 {
@@ -28,6 +30,8 @@ bool Line::side(const cv::Point &p) const {
     return ((p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x)) < 0;
 }
 
+
+//  ----------- HELPER METHODS ---------------
 
 float IoU(const cv::Rect2d &a, const cv::Rect2d &b) {
   int i_x1 = std::max(a.x, b.x);

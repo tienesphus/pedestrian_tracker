@@ -16,7 +16,8 @@
 /**
  * Builds and runs a graph with the the given configeration options
  */
-void run_graph(const std::string& input, const NetConfigIR &net_config, const WorldConfig world_config, bool draw) {
+void run_graph(const std::string& input, const NetConfigIR &net_config, const WorldConfig world_config, bool draw)
+{
     
     namespace flow = tbb::flow;
     using namespace cv;
@@ -24,36 +25,30 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     /*
      * This code below produces the following flow graph:
      * 
-     * TODO pipe src, detect and track into render so all the drawing code is together
-     * 
      *            src
      *             | Ptr<Mat>
      *             v
-     *   +-->   throttle
-     *   |         | Ptr<Mat>
-     *   |         v
-     *   |    pre_detect
-     *   |         | Ptr<Mat>
-     *   |         v
-     *   |       detect
-     *   |         | Ptr<Mat>
-     *   |         v
-     *   |    post_detect
-     *   |         | Ptr<Detections>
-     *   |         v
-     *   |       track
-     *   |         | Ptr<WorldState>
-     *   |         v
-     *   |       render
-     *   |         | Ptr<Mat>
-     *   |         V
-     *   |      stream
-     *   |         | continue_msg
-     *   |         V
-     *   |      monitor
-     *   |         | continue_msg
-     *   +---------+
-     *
+     *   +--> throttle
+     *   |       | Ptr<Mat>
+     *   |       v
+     *   |   pre_detect (TODO)
+     *   |       | Ptr<Mat>
+     *   |       v
+     *   |     detect
+     *   |       | Ptr<Mat>
+     *   |       v
+     *   |   post_detect (TODO)
+     *   |       | Ptr<Detections>
+     *   |       v
+     *   |  track_n_draw
+     *   |       | Ptr<Mat>
+     *   |       v
+     *   |     stream              
+     *   |       | continue_msg
+     *   |       v
+     *   |     monitor
+     *   |       | continue_msg
+     *   +-------+
     */            
     
     // shared variables
@@ -102,8 +97,6 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
         [&detector, draw](const Ptr<Mat> input) -> Ptr<Detections> {
             std::cout << "START DETECTIONS" << std::endl;
             auto detections = detector.process(input);
-            if (draw)
-                detections->draw();
             std::cout << "END DETECTIONS" << std::endl;
             return detections;
         }
@@ -115,40 +108,49 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     
     // track: Tracks detections
     Tracker tracker(world_config);
-    flow::function_node<Ptr<Detections>, Ptr<WorldState>> track(g, flow::serial,
-        [&tracker, draw](const Ptr<Detections> detections) -> Ptr<WorldState> {
+    flow::function_node<Ptr<Detections>, flow::tuple<Ptr<WorldState>, Ptr<Mat>>> track_n_draw(g, flow::serial,
+        [&tracker, draw, &world_config, &display_queue](const Ptr<Detections> detections) -> flow::tuple<Ptr<WorldState>, Ptr<Mat>>
+        {
             std::cout << "START TRACK" << std::endl;
-            WorldState s_state = tracker.process(*detections);
-            Ptr<WorldState> state = Ptr<WorldState>(new WorldState(s_state));
-            if (draw)
-                tracker.draw(*(state->display));
+            Ptr<WorldState> state = Ptr<WorldState>(new WorldState(tracker.process(*detections)));
             std::cout << "END TRACK" << std::endl;
-            return state;
-        }
-    );
-    
-    // render: Draws the state of the world to a Mat. Also Passes the
-    //         drawing to display_queue to be displayed
-    flow::function_node<Ptr<WorldState>, Ptr<Mat>> render(g, flow::serial,
-        [&world_config, draw, &display_queue](Ptr<WorldState> world) -> Ptr<Mat> {
-            std::cout << "START DRAWER" << std::endl;
+            
+            std::cout << "START RENDER" << std::endl;
+            // TODO figure out how to put this into it's own node
+            // Trouble is that Tracker's data is temporary, so, if Tracker::draw()
+            // is called latter, it may or may not be okay.
+            Ptr<Mat> display;
             if (draw)
             {
-                world->draw();
-                world_config.draw(*(world->display));
-                display_queue.push(world->display);
+                display = Ptr<Mat>(new cv::Mat());
+                detections->get_frame()->copyTo(*display);
+                
+                detections->draw(*display);
+                tracker.draw(*display);
+                state->draw(*display);
+                world_config.draw(*display);
+                
+                display_queue.push(display);
+                
             }
-            std::cout << "END DRAWER" << std::endl;
-            return world->display;
+            std::cout << "END RENDER" << std::endl;
+            
+            return std::make_tuple(state, display);
         }
     );
     
     // stream: Writes images to a stream
-    flow::function_node<Ptr<Mat>, flow::continue_msg> stream(g, flow::serial,
-        [](const Ptr<Mat> input) {
+    flow::function_node<flow::tuple<Ptr<WorldState>, Ptr<Mat>>, flow::continue_msg> stream(g, flow::serial,
+        [](const flow::tuple<Ptr<WorldState>, Ptr<Mat>> input)
+        {
+            std::cout << "START STREAM" << std::endl;
+            
+            Ptr<WorldState> state = std::get<0>(input);
+            Ptr<Mat> display      = std::get<1>(input);
+            
             // TODO: stream these results somewhere
             // this should plug into the GStreamer stuff somehow...
-            std::cout << "START STREAM" << std::endl;
+            
             std::cout << "END STREAM" << std::endl;
             return flow::continue_msg();
         }
@@ -160,7 +162,8 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     tbb::tick_count ticks[AVG_SIZE] = {tbb::tick_count::now()};
     
     flow::function_node<flow::continue_msg, flow::continue_msg> monitor(g, flow::serial,
-        [&frame_count, &ticks, AVG_SIZE](flow::continue_msg) {
+        [&frame_count, &ticks, AVG_SIZE](flow::continue_msg)
+        {
             std::cout << "START TICK COUNTER" << std::endl;
             
             frame_count++;
@@ -175,13 +178,12 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     );
         
     // Setup flow dependencis
-    flow::make_edge(src,      throttle);
-    flow::make_edge(throttle, detect);
-    flow::make_edge(detect,   track);
-    flow::make_edge(track,    render);
-    flow::make_edge(render,   stream);
-    flow::make_edge(stream,   monitor);
-    flow::make_edge(monitor,  throttle.decrement);
+    flow::make_edge(src,          throttle);
+    flow::make_edge(throttle,     detect);
+    flow::make_edge(detect,       track_n_draw);
+    flow::make_edge(track_n_draw, stream);
+    flow::make_edge(stream,       monitor);
+    flow::make_edge(monitor,      throttle.decrement);
     
     // Begin running stuff
     src.activate();

@@ -1,7 +1,6 @@
 #ifndef WORLD_H
 #define WORLD_H
 
-#include "opencv2/core/cvstd.hpp"
 #include "opencv2/core/mat.hpp"
 #include "utils.hpp"
 
@@ -12,21 +11,17 @@ struct WorldState {
     int in_count;
     int out_count;
     
-    // Image to display. null if not drawing
-    cv::Ptr<cv::Mat> display;
-    
     /**
      * Constructs the world state.
      * @param in the current in count
      * @param out the current out count
-     * @param display an image to show the results. empty ptr if drawing
      */
-    WorldState(int in, int out, const cv::Ptr<cv::Mat>& display);
+    WorldState(int in, int out);
     
     /**
      * Draws the state to the display
      */
-    void draw() const;
+    void draw(cv::Mat& display) const;
 };
 
 /**

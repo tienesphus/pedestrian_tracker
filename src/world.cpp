@@ -1,22 +1,24 @@
 #include "world.hpp"
 
-WorldState::WorldState(int in, int out, const cv::Ptr<cv::Mat>& display):
-    in_count(in), out_count(out), display(display)
+//  ----------- WORLD STATE ---------------
+
+WorldState::WorldState(int in, int out):
+    in_count(in), out_count(out)
 {
 }
 
-void WorldState::draw() const
+void WorldState::draw(cv::Mat& display) const
 {
-    cv::Mat &img = *(this->display);
-    
     // TODO remove magic numbers
     std::string txt = 
             "IN: " + std::to_string(this->in_count) + "; " +
             "OUT:" + std::to_string(this->out_count);
-    cv::putText(img, txt, 
+    cv::putText(display, txt, 
             cv::Point(5, 5), cv::FONT_HERSHEY_SIMPLEX, 0.6, 
             cv::Scalar(255, 255, 255), 2);
 }
+
+//  ----------- WORLD CONFIG ---------------
 
 WorldConfig::WorldConfig(const Line &inside, const Line &outside, 
         const Line &inner_bounds_a, const Line &inner_bounds_b):
