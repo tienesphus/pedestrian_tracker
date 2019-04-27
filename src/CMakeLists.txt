@@ -16,7 +16,7 @@ pkg_check_modules(GSTRTSPSRV REQUIRED gstreamer-rtsp-server-1.0)
 
 # These need to be placed after TBB to be able to make use of them.
 find_package(OpenCV 4.0 REQUIRED)
-find_package(InferenceEngine 1.6 REQUIRED)
+find_package(InferenceEngine 1.5 REQUIRED)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
