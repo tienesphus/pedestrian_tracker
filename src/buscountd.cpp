@@ -24,22 +24,29 @@ int main (int argc, char *argv[])
    * any launch line works as long as it contains elements named pay%d. Each
    * element with pay%d names will be a stream */
   factory = gst_rtsp_media_factory_new ();
+  
+ /* //test pattern
   gst_rtsp_media_factory_set_launch (factory,
-      "( videotestsrc is-live=1 ! omxh264enc ! video/x-h264, profile=baseline ! rtph264pay name=pay0 pt=96 )");
-  // ( videotestsrc is-live=1 ! video/x-raw,width=800,height=600 ! clockoverlay ! queue ! omxh264enc ! queue ! video/x-h264, profile=baseline ! rtph264pay name=pay0 pt=96 )
-
+      "( videotestsrc is-live=1 ! clockoverlay ! omxh264enc ! video/x-h264, profile=baseline ! rtph264pay name=pay0 pt=96 )");
   gst_rtsp_media_factory_set_shared (factory, TRUE);
-
-  /* attach the test factory to the /test url */
+  // attach the test factory to the /test url
+  gst_rtsp_mount_points_add_factory (mounts, "/test", factory);
+ */ 
+ 
+  //live video
+  gst_rtsp_media_factory_set_launch (factory,
+      "( v4l2src ! clockoverlay ! omxh264enc ! video/x-h264, profile=baseline ! rtph264pay name=pay0 pt=96 )");
+  gst_rtsp_media_factory_set_shared (factory, TRUE);
+  // attach the test factory to the /test url 
   gst_rtsp_mount_points_add_factory (mounts, "/test", factory);
 
-  /* don't need the ref to the mapper anymore */
+  // don't need the ref to the mapper anymore
   g_object_unref (mounts);
 
-  /* attach the server to the default maincontext */
+  // attach the server to the default maincontext
   gst_rtsp_server_attach (server, NULL);
 
-  /* start serving */
+  // start serving
   g_print ("stream ready at rtsp://127.0.0.1:8554/test\n");
   g_main_loop_run (loop);
 
