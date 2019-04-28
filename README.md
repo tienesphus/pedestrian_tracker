@@ -31,6 +31,14 @@ cd ..
 git clone https://gitlab.com/buspassengercount/samplevideos.git
 ```
 
+### External dependancies
+There are other dependancies that are also required, these can be installed using apt get
+```
+sudo apt-get install libgstrtspserver-1.0-dev
+sudo apt-get install gstreamer1.0-omx-rpi
+sudo apt-get install gstreamer1.0-plugins-base
+```
+
 ### Building
 ```
 git clone https://gitlab.com/buspassengercount/dnn_counting.git
