@@ -16,7 +16,7 @@ void WorldState::draw(cv::Mat& display) const
             "IN: " + std::to_string(this->in_count) + "; " +
             "OUT:" + std::to_string(this->out_count);
     cv::putText(display, txt, 
-            cv::Point(5, 5), cv::FONT_HERSHEY_SIMPLEX, 0.6, 
+            cv::Point(4, 24), cv::FONT_HERSHEY_SIMPLEX, 0.6, 
             cv::Scalar(255, 255, 255), 2);
 }
 
