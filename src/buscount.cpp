@@ -246,14 +246,15 @@ int main() {
         cv::Size(300, 300), // size
         2/255.0,            // scale
         cv::Scalar(127.5, 127.5, 127.5),     // mean
-        "/home/cv/code/cpp_counting/models/MobileNetSSD_IE/MobileNetSSD.xml", // xml
-        "/home/cv/code/cpp_counting/models/MobileNetSSD_IE/MobileNetSSD.bin"  // bin
+        "../models/MobileNetSSD_IE/MobileNetSSD.xml", // xml
+        "../models/MobileNetSSD_IE/MobileNetSSD.bin"  // bin
     };
     
-    WorldConfig world_config = WorldConfig::from_file("/home/cv/code/cpp_counting/config.csv");
+    WorldConfig world_config = WorldConfig::from_file("../config.csv");
     
-    std::string input = "/home/cv/code/samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    std::string input = "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
     
+    std::cout << input << std::endl;
     
     
     run_graph(input, net_config, world_config, true);
