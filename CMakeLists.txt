@@ -1,12 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
-project(bus_count_top)
+project(bus_count)
 
-set (CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 
 add_subdirectory(src)
-
-#ADD_EXECUTABLE(bus_count bus_count.cpp detection.cpp)
-# TARGET_LINK_LIBRARIES(bus_count ${OpenCV_LIBS})
-#TARGET_LINK_LIBRARIES(bus_count "detection.cpp")
-#TARGET_LINK_LIBRARIES(bus_count "detection.hpp")
-
