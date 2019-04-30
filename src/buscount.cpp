@@ -14,9 +14,9 @@
 #include "utils.hpp"
 
 /**
- * Builds and runs a graph with the the given configeration options
+ * Builds and runs a flow graph with the the given configeration options
  */
-void run_graph(const std::string& input, const NetConfigIR &net_config, const WorldConfig world_config, bool draw)
+void run_parallel(const std::string& input, const NetConfigIR &net_config, const WorldConfig world_config, bool draw)
 {
     
     namespace flow = tbb::flow;
@@ -58,9 +58,12 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     tbb::concurrent_queue<Ptr<Mat>> display_queue;
     bool quit = false;
     
+    std::cout << "Initialise Video" << std::endl;
+    
     // src: Reads images from the input stream.
     //      It will continuously try to push more images down the stream
     VideoCapture cap(input);
+    std::cout << "Video inited" << std::endl;
     flow::source_node<Ptr<Mat>> src(g,
         [&cap, &quit](Ptr<Mat> &v) -> bool {
             std::cout << "START SRC" << std::endl;
@@ -81,6 +84,8 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
             }
         }, false);
     
+    std::cout << "Init limiter" << std::endl;
+    
     // throttle: by default, infinite frames can be in the graph at one.
     //           This node will limit the graph so that only MAX_FRAMES
     //           will be processed at once. Without limiting, runnaway
@@ -88,17 +93,20 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     const int MAX_FRAMES = 2;
     flow::limiter_node<Ptr<Mat>> throttle(g, MAX_FRAMES);
     
+    std::cout << "Init detector" << std::endl;
+    
     // The detect nodes all world together through the Detector object.
     // Note that the detect node is the bottle-neck in the pipeline, thus,
     // as much as possible should be moved into pre_detect or post_detect.
     Detector detector(net_config);
+    dnn::Net net = net_config.make_network();
     
     // pre_detect: Preprocesses the image into a 'blob' so it is ready 
     //             to feed into a detection algorithm
     flow::function_node<Ptr<Mat>, flow::continue_msg> pre_detect(g, flow::serial,
-        [&detector](const Ptr<Mat> input) -> flow::continue_msg {
+        [&detector, &net](const Ptr<Mat> input) -> flow::continue_msg {
             std::cout << "START PRE DETECT" << std::endl;
-            detector.pre_process(*input);
+            detector.pre_process(*input, net);
             std::cout << "END PRE DETECT" << std::endl;
             return flow::continue_msg();
         }
@@ -106,9 +114,9 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     
     // detect: Takes the preprocessed blob
     flow::function_node<flow::continue_msg, Ptr<Mat>> detect(g, flow::serial,
-        [&detector](flow::continue_msg _) -> Ptr<Mat> {
+        [&detector, &net](flow::continue_msg _) -> Ptr<Mat> {
             std::cout << "START DETECT" << std::endl;
-            auto detections = detector.process();
+            auto detections = detector.process(net);
             std::cout << "END DETECT" << std::endl;
             return detections;
         }
@@ -130,6 +138,8 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
             return detections;
         }
     );
+    
+    std::cout << "Init tracker" << std::endl;
     
     // track: Tracks detections
     Tracker tracker(world_config);
@@ -164,6 +174,8 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
         }
     );
     
+    std::cout << "Init writter" << std::endl;
+    
     // stream: Writes images to a stream
     flow::function_node<flow::tuple<Ptr<WorldState>, Ptr<Mat>>, flow::continue_msg> stream(g, flow::serial,
         [](const flow::tuple<Ptr<WorldState>, Ptr<Mat>> input)
@@ -180,6 +192,8 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
             return flow::continue_msg();
         }
     );
+    
+    std::cout << "Init frame count" << std::endl;
     
     // monitor: Calculates the speed that the program is running at by moving average.
     int frame_count = 0;
@@ -202,6 +216,8 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
         }
     );
         
+    std::cout << "making edges" << std::endl;
+        
     // Setup flow dependencis
     flow::make_edge(src,          throttle);
     flow::make_edge(throttle,     pre_detect);
@@ -215,7 +231,9 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     flow::make_edge(monitor,      throttle.decrement);
     
     // Begin running stuff
+    std::cout << "Starting video" << std::endl;
     src.activate();
+    std::cout << "Video started" << std::endl;
     
     // The display code _must_ be run on the main thread. Thus, we pass
     // display frames here through a queue
@@ -238,6 +256,83 @@ void run_graph(const std::string& input, const NetConfigIR &net_config, const Wo
     g.wait_for_all();
 }
 
+/**
+ * A single threaded version of run_parallel. Useful for debugging.
+ */
+void run_series(const std::string& input, const NetConfigIR &net_config, const WorldConfig world_config, bool draw)
+{
+    
+    using namespace cv;
+    
+    bool quit = false;
+    
+    std::cout << "Initialise Video" << std::endl;
+    VideoCapture cap(input);
+    
+    std::cout << "Init detector" << std::endl;
+    Detector detector(net_config);
+    cv::dnn::Net net = net_config.make_network();
+    
+    std::cout << "Init tracker" << std::endl;
+    Tracker tracker(world_config);
+    
+    std::cout << "Init frame count" << std::endl;
+    int frame_count = 0;
+    const int AVG_SIZE = 10;
+    tbb::tick_count ticks[AVG_SIZE] = {tbb::tick_count::now()};
+    
+    while (!quit) {
+    
+        std::cout << "SOURCE START" << std::endl;
+        Ptr<Mat> frame = Ptr<Mat>(new Mat());
+        // read three times so that we effectively are running real time
+        bool res = cap.read(*frame) 
+                    && cap.read(*frame) 
+                    && cap.read(*frame);
+        std::cout << "SOURCE END" << std::endl;
+    
+        std::cout << "START PRE DETECT" << std::endl;
+        detector.pre_process(*frame, net);
+        std::cout << "END PRE DETECT" << std::endl;
+
+        std::cout << "START DETECT" << std::endl;
+        auto detections_raw = detector.process(net);
+        std::cout << "END DETECT" << std::endl;
+        
+        std::cout << "START POST DETECT" << std::endl;
+        auto detections = detector.post_process(frame, *detections_raw);
+        std::cout << "END POST DETECT" << std::endl;
+    
+        std::cout << "START TRACK" << std::endl;
+        Ptr<WorldState> state = Ptr<WorldState>(new WorldState(tracker.process(*detections)));
+        std::cout << "END TRACK" << std::endl;
+        
+        std::cout << "START RENDER" << std::endl;
+        Mat display;
+        frame->copyTo(display);
+        detections->draw(display);
+        tracker.draw(display);
+        state->draw(display);
+        world_config.draw(display);
+        std::cout << "END RENDER" << std::endl;
+        
+        std::cout << "START DISPLAY" << std::endl;
+        imshow("output", display);
+        int key = waitKey(20);
+        if (key =='q')
+            quit = true;
+        std::cout << "END DISPLAY" << std::endl;        
+        
+        std::cout << "START TICK COUNTER" << std::endl;            
+        frame_count++;
+        tbb::tick_count now = tbb::tick_count::now();
+        tbb::tick_count prev = ticks[frame_count % AVG_SIZE];
+        ticks[frame_count % AVG_SIZE] = now;
+        float fps = AVG_SIZE/(now-prev).seconds();
+        std::cout << ("END TICK  frame: " + std::to_string(frame_count) + " fps: " + std::to_string(fps)) << std::endl;
+    }
+}
+
 int main() {
     
     NetConfigIR net_config {
@@ -257,7 +352,8 @@ int main() {
     std::cout << input << std::endl;
     
     
-    run_graph(input, net_config, world_config, true);
+    run_parallel(input, net_config, world_config, true);
+    //run_series(input, net_config, world_config, true);
     
     return 0;
 } 

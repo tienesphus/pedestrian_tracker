@@ -59,6 +59,17 @@ struct NetConfigIR {
     cv::Scalar mean;
     std::string xml;
     std::string bin;
+    
+    /**
+     * Constructs a network object.
+     * IMPORTANT NOTE:
+     *  There seems to be a strange bug with Pi/OpenVino that requires
+     *  the network to created in a specific way. I used to the Net 
+     *  stored as a field in Detector, but calling net.setPreferableTarget 
+     *  would cause seg fault. This only occurs on the Pi. Maybe has to
+     *  do with the object getting copied??
+     */
+    cv::dnn::Net make_network() const;
 };
 
 /**
@@ -77,13 +88,13 @@ public:
     /**
      * Preprocesses an image and loads it into the graph
      */
-    void pre_process(const cv::Mat &frame);
+    void pre_process(const cv::Mat &frame, cv::dnn::Net& net);
     
     /**
      * Processes the loaded image
      * @return some unintelligent raw output
      */
-    cv::Ptr<cv::Mat> process();
+    cv::Ptr<cv::Mat> process(cv::dnn::Net& net);
     
     /**
      * Takes raw processing output and makes sense of them
@@ -92,7 +103,6 @@ public:
     cv::Ptr<Detections> post_process(const cv::Ptr<cv::Mat>& original, cv::Mat &results) const;
     
 private:
-    cv::dnn::Net net;
     float thresh;
     int clazz;
     cv::Size networkSize;

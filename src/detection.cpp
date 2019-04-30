@@ -49,24 +49,18 @@ Detector::Detector(const NetConfigIR &config):
         clazz(config.clazz), thresh(config.thresh), networkSize(config.networkSize), 
         scale(config.scale), mean(config.mean)
 {
-    // Use the OpenVino (must set prefered backend to Inference Engine. Works on Pi with NCS) 
-    this->net = cv::dnn::readNetFromModelOptimizer(config.xml, config.bin);
-    
-    // use the optimised OpenVino implementation
-    this->net.setPreferableBackend(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE);
-    this->net.setPreferableTarget(cv::dnn::DNN_TARGET_MYRIAD);
 }
 
 
-void Detector::pre_process(const cv::Mat &image)
+void Detector::pre_process(const cv::Mat &image, cv::dnn::Net& net)
 {
     cv::Mat blob;
     cv::dnn::blobFromImage(image, blob, this->scale, this->networkSize, this->mean);
     //result.convertTo(result, CV_32F, 1/127.5, -1);
-    this->net.setInput(blob);
+    net.setInput(blob);
 }
 
-cv::Ptr<cv::Mat> Detector::process() {
+cv::Ptr<cv::Mat> Detector::process(cv::dnn::Net& net) {
     // pass the network
     cv::Ptr<cv::Mat> results(new cv::Mat());
     net.forward(*results);
@@ -112,4 +106,18 @@ cv::Ptr<Detections> Detector::post_process(const cv::Ptr<cv::Mat>& original, cv:
     }
     
     return cv::Ptr<Detections>(new Detections(original, results));
+}
+
+
+
+//  ----------- NET CONFIG ---------------
+cv::dnn::Net NetConfigIR::make_network() const
+{
+    cv::dnn::Net net = cv::dnn::readNetFromModelOptimizer(this->xml, this->bin);
+    
+    // use the optimised OpenVino implementation
+    net.setPreferableBackend(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE);
+    net.setPreferableTarget(cv::dnn::DNN_TARGET_MYRIAD);
+    
+    return net;
 }
