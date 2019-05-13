@@ -20,30 +20,33 @@ find_package(InferenceEngine 1.5 REQUIRED)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_executable(buscount
-	buscount.cpp
+add_library(buscount SHARED
+	libbuscount.cpp
 	detection.cpp
 	tracker.cpp
 	utils.cpp
 	world.cpp
 )
-add_executable(buscountd
-	buscountd.cpp
-)
 
-target_include_directories(buscount PRIVATE
+add_executable(buscountcli buscountcli.cpp)
+add_executable(buscountd   buscountd.cpp)
+
+target_include_directories(buscount PUBLIC
 	${OpenCV_INCLUDE_DIRS}
 	${InferenceEngine_INCLUDE_DIRS}
 )
+
 target_include_directories(buscountd PRIVATE
 	${GSTRTSPSRV_INCLUDE_DIRS}
 )
 
-target_link_libraries(buscount
+target_link_libraries(buscount INTERFACE
 	${OpenCV_LIBRARIES}
 	${TBB_LIBRARIES}
 	${InferenceEngine_LIBRARIES}
 )
+
+target_link_libraries(buscountcli buscount)
 target_link_libraries(buscountd
 	${GSTRTSPSRV_LIBRARIES}
 )
