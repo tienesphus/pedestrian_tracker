@@ -20,6 +20,8 @@ find_package(InferenceEngine 1.5 REQUIRED)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+add_definitions(-Wfatal-errors)
+
 add_library(buscount SHARED
 	libbuscount.cpp
 	detection.cpp
@@ -30,6 +32,7 @@ add_library(buscount SHARED
 
 add_executable(buscountcli buscountcli.cpp)
 add_executable(buscountd   buscountd.cpp)
+
 
 target_include_directories(buscount PUBLIC
 	${OpenCV_INCLUDE_DIRS}

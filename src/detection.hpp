@@ -84,6 +84,12 @@ public:
      */
      // TODO allow other models types to be constructed
     Detector(const NetConfigIR &config);
+
+    /**
+     * Constructs a network object.
+     * Note: This simply calls make_network from the internal NetConfigIR object.
+     */
+    cv::dnn::Net make_network() const;
     
     /**
      * Preprocesses an image and loads it into the graph
@@ -103,11 +109,7 @@ public:
     cv::Ptr<Detections> post_process(const cv::Ptr<cv::Mat>& original, cv::Mat &results) const;
     
 private:
-    float thresh;
-    int clazz;
-    cv::Size networkSize;
-    float scale;
-    cv::Scalar mean;
+    NetConfigIR config;
 };
 
 #endif

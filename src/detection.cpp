@@ -46,11 +46,14 @@ void Detections::draw(cv::Mat& display) const
 //  ----------- DETECTOR ---------------
 
 Detector::Detector(const NetConfigIR &config):
-        clazz(config.clazz), thresh(config.thresh), networkSize(config.networkSize), 
-        scale(config.scale), mean(config.mean)
+        config(config)  
 {
 }
 
+cv::dnn::Net Detector::make_network() const
+{
+    return config.make_network();
+}
 
 void Detector::pre_process(const cv::Mat &image, cv::dnn::Net& net)
 {
