@@ -7,7 +7,3 @@ bin
 # IDE files
 .idea/*
 cmake-build-debug/*
-
-# Submodules
-models/*
-!models/.keep
