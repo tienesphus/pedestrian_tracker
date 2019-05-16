@@ -12,8 +12,61 @@
 using namespace std;
 using namespace tbb;
 
-BusCounter::BusCounter(NetConfigIR config, BusCounter::src_cb_t src, BusCounter::dest_cb_t dest)
-: _detector(config), _src(src), _dest(dest)
+class TickCounter
+{
+    static constexpr int AVG_SIZE = 10;
+
+    float s_per_frame[AVG_SIZE];
+
+    long frame_count;
+    tbb::tick_count prev;
+
+public:
+    TickCounter(): frame_count(0), prev(tbb::tick_count::now())
+    {
+        // Reset ms_per_frame. Default to 1 second...because that's a sensibly large value.
+        for(auto i = 0; i < AVG_SIZE; i++)
+            s_per_frame[i] = 1.0;
+    }
+    
+    TickCounter(const TickCounter &other)
+    {
+        (*this) = other;
+    }
+
+    void operator=(const TickCounter &other)
+    {
+        this->prev = other.prev;
+        this->frame_count = other.frame_count;
+        memcpy(this->s_per_frame, other.s_per_frame, sizeof(s_per_frame));
+    }
+
+    void operator()(tbb::flow::continue_msg)
+    {
+        // This is called once per frame, so we only need to calculate the time between
+        // this frame and the previous frame. No need to save the absolute time of every
+        // frame.
+
+        std::cout << "START TICK COUNTER" << std::endl;
+        
+        tbb::tick_count now = tbb::tick_count::now();
+        s_per_frame[frame_count % AVG_SIZE] = (now - prev).seconds();
+
+        frame_count++;
+        prev = now;
+
+        float secs = 0;
+        for(auto i = 0; i < AVG_SIZE; i++)
+            secs += s_per_frame[i];
+        
+        float fps = AVG_SIZE / secs;
+        
+        std::cout << "END TICK  frame: " << frame_count << " fps: " << fps << std::endl;
+    }
+};
+
+BusCounter::BusCounter(NetConfigIR nconf, WorldConfig wconf, std::function<BusCounter::src_cb_t> src, std::function<BusCounter::dest_cb_t> dest)
+: _detector(nconf), _world_config(wconf), _tracker(wconf), _src(src), _dest(dest)
 {
     std::cout << "Init detector" << std::endl;
     _net = _detector.make_network();
@@ -25,13 +78,11 @@ BusCounter::BusCounter(NetConfigIR config, BusCounter::src_cb_t src, BusCounter:
 
 // pre_detect: Preprocesses the image into a 'blob' so it is ready 
 //             to feed into a detection algorithm
-flow::continue_msg BusCounter::pre_detect(const cv::Ptr<cv::Mat> input)
+void BusCounter::pre_detect(const cv::Ptr<cv::Mat> input)
 {
     cout << "START PRE DETECT" << endl;
     _detector.pre_process(*input, _net);
     cout << "END PRE DETECT" << endl;
-
-    return flow::continue_msg();
 }
 
 cv::Ptr<cv::Mat> BusCounter::detect()
@@ -55,258 +106,53 @@ cv::Ptr<Detections> BusCounter::post_detect(const flow::tuple<cv::Ptr<cv::Mat>, 
     return detections;
 }
 
-std::tuple<cv::Ptr<WorldState>, cv::Ptr<cv::Mat>> BusCounter::track(const cv::Ptr<Detections> detections)
+std::tuple<cv::Ptr<WorldState>, cv::Ptr<Detections>> BusCounter::track(const cv::Ptr<Detections> input)
 {
     std::cout << "START TRACK" << std::endl;
-    cv::Ptr<WorldState> state = cv::Ptr<WorldState>(new WorldState(tracker.process(*detections)));
+    cv::Ptr<WorldState> state = cv::makePtr<WorldState>(_tracker.process(*input));
     std::cout << "END TRACK" << std::endl;
     
+    return std::tuple<cv::Ptr<WorldState>, cv::Ptr<Detections>>(state, input);
+}
+
+cv::Ptr<cv::Mat> BusCounter::draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<Detections>> input)
+{
     std::cout << "START RENDER" << std::endl;
-    // TODO figure out how to put this into it's own node
-    // Trouble is that Tracker's data is temporary, so, if Tracker::draw()
-    // is called latter, it may or may not be okay.
-    cv::Ptr<cv::Mat> display;
-    if (draw)
-    {
-        /*
-        display = cv::Ptr<cv::Mat>(new cv::Mat());
-        detections->get_frame()->copyTo(*display);
-        
-        detections->draw(*display);
-        tracker.draw(*display);
-        state->draw(*display);
-        world_config.draw(*display);
-        
-        display_queue.push(display);
-        */
-        
-    }
+
+    cv::Ptr<WorldState> state = std::get<0>(input);
+    cv::Ptr<Detections> detections = std::get<1>(input);
+
+    cv::Ptr<cv::Mat> frame = detections->get_frame();
+    
+    detections->draw(*frame);
+    _tracker.draw(*frame);
+    state->draw(*frame);
+    _world_config.draw(*frame);
+    
     std::cout << "END RENDER" << std::endl;
-    
-    return std::make_tuple(state, display);
+
+    return frame;
 }
 
-flow::continue_msg BusCounter::monitor()
+cv::Ptr<cv::Mat> BusCounter::no_draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<Detections>> input)
 {
-    std::cout << "START TICK COUNTER" << std::endl;
-    
-    frame_count++;
-    tbb::tick_count now = tbb::tick_count::now();
-    tbb::tick_count prev = ticks[frame_count % AVG_SIZE];
-    ticks[frame_count % AVG_SIZE] = now;
-    float fps = AVG_SIZE/(now-prev).seconds();
-    
-    std::cout << "END TICK  frame: " << frame_count << " fps: " << fps << std::endl;
-
-    return flow::continue_msg();
+    return std::get<1>(input)->get_frame();
 }
 
-void BusCounter::run(const NetConfigIR &net_config, const WorldConfig world_config)
+
+void BusCounter::run(RunStyle style, bool draw)
 {
-    
-    /*
-    namespace flow = tbb::flow;
-    using namespace cv;
-    
-    //
-    // This code below produces the following flow graph:
-    // 
-    //            src
-    //             | Ptr<cv::Mat>
-    //             v
-    //   +-->-- throttle
-    //   |         | Ptr<cv::Mat>
-    //   |         |
-    //   |         +-------> pre_detect
-    //   |         |            | continue_msg
-    //   |         |            v
-    //   |         |          detect
-    //   |         v            | Ptr<cv::Mat>
-    //   |       joint  <-------+
-    //   |         | tuple<cv::Mat, cv::Mat>
-    //   |         v
-    //   |    post_detect
-    //   |         | Ptr<Detections>
-    //   |         v
-    //   |       track
-    //   |         | Ptr<WorldState>
-    //   |         v
-    //   |       draw              
-    //   |         | continue_msg
-    //   |         v
-    //   |       monitor
-    //   |         | continue_msg
-    //   +---------+
-    //            
-    
-    // shared variables
-    flow::graph g;
-    tbb::concurrent_queue<Ptr<cv::Mat>> display_queue;
-    bool quit = false;
-    
-    // src: Reads images from the input stream.
-    //      It will continuously try to push more images down the stream
-    VideoCapture cap(input);
-    flow::source_node<Ptr<cv::Mat>> src(g,
-        [&cap, &quit](Ptr<cv::Mat> &v) -> bool {
-            std::cout << "START SRC" << std::endl;
-            if (quit) {
-                return false;
-            }
-            cv::Mat* frame = new cv::Mat();
-            // read three times so that we effectively are running real time
-            bool res = cap.read(*frame) 
-                        && cap.read(*frame) 
-                        && cap.read(*frame);
-            if (res) {
-                v = Ptr<cv::Mat>(frame);
-                std::cout << "SOURCE END" << std::endl;
-                return true;
-            } else {
-                return false;
-            }
-        }, false);
-    
-    // throttle: by default, infinite frames can be in the graph at one.
-    //           This node will limit the graph so that only MAX_FRAMES
-    //           will be processed at once. Without limiting, runnaway
-    //           occurs (src will keep producing into an unlimited buffer)
-    const int MAX_FRAMES = 2;
-    flow::limiter_node<Ptr<cv::Mat>> throttle(g, MAX_FRAMES);
-    
-    // The detect nodes all world together through the Detector object.
-    // Note that the detect node is the bottle-neck in the pipeline, thus,
-    // as much as possible should be moved into pre_detect or post_detect.
-    Detector detector(net_config);
-    
-    // detect: Takes the preprocessed blob
-    flow::function_node<flow::continue_msg, Ptr<cv::Mat>> detect(g, flow::serial,
-        [&detector](flow::continue_msg _) -> Ptr<cv::Mat> {
-            std::cout << "START DETECT" << std::endl;
-            auto detections = detector.process();
-            std::cout << "END DETECT" << std::endl;
-            return detections;
-        }
-    );
-    
-    // joint: combines the results from the original image and the detection data
-    flow::join_node<flow::tuple<Ptr<cv::Mat>, Ptr<cv::Mat>>> joint(g);
-    
-    // post_detect: Takes the raw detection output, interperets it, and
-    //              produces some meaningful results
-    flow::function_node<flow::tuple<Ptr<cv::Mat>, Ptr<cv::Mat>>, Ptr<Detections>> post_detect(g, flow::serial,
-        [&detector](const flow::tuple<Ptr<cv::Mat>, Ptr<cv::Mat>> input) -> Ptr<Detections> {
-            std::cout << "START POST DETECT" << std::endl;
-            Ptr<cv::Mat> original = std::get<0>(input);
-            Ptr<cv::Mat> results  = std::get<1>(input);
-            
-            auto detections = detector.post_process(original, *results);
-            std::cout << "END POST DETECT" << std::endl;
-            return detections;
-        }
-    );
-    
-    // track: Tracks detections
-    Tracker tracker(world_config);
-    flow::function_node<Ptr<Detections>, flow::tuple<Ptr<WorldState>>> track(g, flow::serial,
-        [&tracker, &world_config](const Ptr<Detections> detections) -> Ptr<WorldState>
-        {
-            std::cout << "START TRACK" << std::endl;
-            Ptr<WorldState> state = Ptr<WorldState>(new WorldState(tracker.process(*detections)));
-            std::cout << "END TRACK" << std::endl;
-            
-            std::cout << "START RENDER" << std::endl;
-
-	    return state;
-	}
-     );
-
-     flow::function_node<Ptr<flow::tuple<Ptr<WorldState>>, flow::tuple<Ptr<WorldState>, Ptr<cv::Mat>>> draw(g, flow::serial,
-        [&tracker, &world_config, &display_queue](const Ptr<WorldState> state) -> flow::tuple<Ptr<WorldState>, Ptr<cv::Mat>>
-	{
-            // TODO figure out how to put this into it's own node
-            // Trouble is that Tracker's data is temporary, so, if Tracker::draw()
-            // is called latter, it may or may not be okay.
-            Ptr<cv::Mat> display;
-	    display = Ptr<cv::Mat>(new cv::Mat());
-	    detections->get_frame()->copyTo(*display);
-	    
-	    detections->draw(*display);
-	    tracker.draw(*display);
-	    state->draw(*display);
-	    world_config.draw(*display);
-	    
-	    display_queue.push(display);
-                
-            std::cout << "END RENDER" << std::endl;
-            
-            return flow::continue_msg()
-        }
-    );
-    
-    // monitor: Calculates the speed that the program is running at by moving average.
-    int frame_count = 0;
-    const int AVG_SIZE = 10;
-    tbb::tick_count ticks[AVG_SIZE] = {tbb::tick_count::now()};
-    
-    flow::function_node<flow::continue_msg, flow::continue_msg> monitor(g, flow::serial,
-        [&frame_count, &ticks, AVG_SIZE](flow::continue_msg)
-        {
-            std::cout << "START TICK COUNTER" << std::endl;
-            
-            frame_count++;
-            tbb::tick_count now = tbb::tick_count::now();
-            tbb::tick_count prev = ticks[frame_count % AVG_SIZE];
-            ticks[frame_count % AVG_SIZE] = now;
-            float fps = AVG_SIZE/(now-prev).seconds();
-            
-            std::cout << ("END TICK  frame: " + std::to_string(frame_count) + " fps: " + std::to_string(fps)) << std::endl;
-            return flow::continue_msg();
-        }
-    );
-        
-    // Setup flow dependencis
-    flow::make_edge(src,          throttle);
-    flow::make_edge(throttle,     pre_detect);
-    flow::make_edge(pre_detect,   detect);
-    flow::make_edge(throttle,     flow::input_port<0>(joint));
-    flow::make_edge(detect,       flow::input_port<1>(joint));
-    flow::make_edge(joint,        post_detect);
-    flow::make_edge(post_detect,  track);
-    flow::make_edge(track,        draw);
-    flow::make_edge(draw,         monitor);
-    flow::make_edge(monitor,      throttle.decrement);
-    
-    // Begin running stuff
-    src.activate();
-    
-    // The display code _must_ be run on the main thread. Thus, we pass
-    // display frames here through a queue
-    Ptr<cv::Mat> display_img;
-    while (!quit && draw) {
-        if (display_queue.try_pop(display_img))
-        {
-            std::cout << "imshow()" << std::endl;
-            imshow("output", *display_img);
-            std::cout << "waitkey()" << std::endl;
-        }
-        // TODO test if waitKey allows tbb to use this core
-        int key = waitKey(20);
-        if (key =='q')
-            quit = true;
-    }
-    
-    // Allow the last few frames to pass through
-    // If this is not done, invalid memory can occurs
-    g.wait_for_all();
-    */
+    if(style == RUN_PARALLEL)
+        run_parallel(draw);
+    else
+        run_serial(draw);
 }
 
 
 //
 // Builds and runs a flow graph with the the given configeration options
 //
-void BusCounter::run_parallel(const NetConfigIR &net_config, const WorldConfig world_config)
+void BusCounter::run_parallel(bool draw)
 {
     /*
     namespace flow = tbb::flow;
@@ -550,22 +396,23 @@ void BusCounter::run_parallel(const NetConfigIR &net_config, const WorldConfig w
 //
 // A single threaded version of run_parallel. Useful for debugging.
 //
-void run_series(const std::string& input, const NetConfigIR &net_config, const WorldConfig world_config, bool draw)
+void BusCounter::run_serial(bool draw)
 {
     
     using namespace cv;
     
     bool quit = false;
     
+    /*
     std::cout << "Initialise Video" << std::endl;
-    VideoCapture cap(input);
+    //VideoCapture cap(input);
     
     std::cout << "Init detector" << std::endl;
-    Detector detector(net_config);
+    //Detector detector(net_config);
     cv::dnn::Net net = net_config.make_network();
     
     std::cout << "Init tracker" << std::endl;
-    Tracker tracker(world_config);
+    //Tracker tracker(world_config);
     
     std::cout << "Init frame count" << std::endl;
     int frame_count = 0;
@@ -622,4 +469,5 @@ void run_series(const std::string& input, const NetConfigIR &net_config, const W
         float fps = AVG_SIZE/(now-prev).seconds();
         std::cout << ("END TICK  frame: " + std::to_string(frame_count) + " fps: " + std::to_string(fps)) << std::endl;
     }
+    */
 }

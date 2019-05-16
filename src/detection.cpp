@@ -58,7 +58,7 @@ cv::dnn::Net Detector::make_network() const
 void Detector::pre_process(const cv::Mat &image, cv::dnn::Net& net)
 {
     cv::Mat blob;
-    cv::dnn::blobFromImage(image, blob, this->scale, this->networkSize, this->mean);
+    cv::dnn::blobFromImage(image, blob, this->config.scale, this->config.networkSize, this->config.mean);
     //result.convertTo(result, CV_32F, 1/127.5, -1);
     net.setInput(blob);
 }
@@ -94,7 +94,7 @@ cv::Ptr<Detections> Detector::post_process(const cv::Ptr<cv::Mat>& original, cv:
     
     for (int i = 0; i < detections.size[0]; i++) {
         float confidence = detections.at<float>(i, 2);
-        if (confidence > this->thresh) {
+        if (confidence > this->config.thresh) {
             int id = int(detections.at<float>(i, 1));
             int x1 = int(detections.at<float>(i, 3) * w);
             int y1 = int(detections.at<float>(i, 4) * h);
@@ -103,7 +103,7 @@ cv::Ptr<Detections> Detector::post_process(const cv::Ptr<cv::Mat>& original, cv:
             cv::Rect2d r(cv::Point2d(x1, y1), cv::Point2d(x2, y2));
             
             std::cout << "    Found: " << id << "(" << confidence << "%) - " << r << std::endl;
-            if (id == this->clazz)
+            if (id == this->config.clazz)
                 results.push_back(Detection(r, confidence));
         }
     }
