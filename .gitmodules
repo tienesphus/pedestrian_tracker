@@ -1,0 +1,8 @@
+[submodule "MobileNetSSD_caffe"]
+	path = models/MobileNetSSD_caffe
+	url = https://gitlab.com/buspassengercount/networks
+	branch = MobileNetSSD_caffe
+[submodule "MobileNetSSD_IE"]
+	path = models/MobileNetSSD_IE
+	url = https://gitlab.com/buspassengercount/networks
+	branch = MobileNetSSD_IE
