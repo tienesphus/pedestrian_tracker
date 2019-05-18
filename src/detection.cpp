@@ -46,16 +46,25 @@ void Detections::draw(cv::Mat& display) const
 //  ----------- DETECTOR ---------------
 
 Detector::Detector(const NetConfigIR &config):
-        config(config)  
+        config(config),
+        net(cv::dnn::readNet(config.model, config.meta))
 {
+    std::cout << "Init detector" << std::endl;
+
+    /**
+     * IMPORTANT NOTE:
+     *  There seems to be a strange bug with Pi/OpenVino that requires
+     *  the network to never be copied. If the network is copied, calling
+     *  net.setPreferableTarget will cause a segfault. Apparently this
+     *  only occurs on the Pi. By extension, this means Detector should
+     *  never be copied. Perhaps replacing Net with Ptr<Net> is an option.
+     */
+
+    net.setPreferableBackend(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE);
+    net.setPreferableTarget(cv::dnn::DNN_TARGET_MYRIAD);
 }
 
-cv::dnn::Net Detector::make_network() const
-{
-    return config.make_network();
-}
-
-void Detector::pre_process(const cv::Mat &image, cv::dnn::Net& net)
+void Detector::pre_process(const cv::Mat &image)
 {
     cv::Mat blob;
     cv::dnn::blobFromImage(image, blob, this->config.scale, this->config.networkSize, this->config.mean);
@@ -63,7 +72,7 @@ void Detector::pre_process(const cv::Mat &image, cv::dnn::Net& net)
     net.setInput(blob);
 }
 
-cv::Ptr<cv::Mat> Detector::process(cv::dnn::Net& net) {
+cv::Ptr<cv::Mat> Detector::process() {
     // pass the network
     cv::Ptr<cv::Mat> results(new cv::Mat());
     net.forward(*results);
@@ -109,18 +118,4 @@ cv::Ptr<Detections> Detector::post_process(const cv::Ptr<cv::Mat>& original, cv:
     }
     
     return cv::Ptr<Detections>(new Detections(original, results));
-}
-
-
-
-//  ----------- NET CONFIG ---------------
-cv::dnn::Net NetConfigIR::make_network() const
-{
-    cv::dnn::Net net = cv::dnn::readNetFromModelOptimizer(this->xml, this->bin);
-    
-    // use the optimised OpenVino implementation
-    net.setPreferableBackend(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE);
-    net.setPreferableTarget(cv::dnn::DNN_TARGET_MYRIAD);
-    
-    return net;
 }

@@ -20,9 +20,7 @@ find_package(InferenceEngine 1.5 REQUIRED)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_definitions(-Wfatal-errors)
-
-add_library(buscount SHARED
+add_library(buscount OBJECT
 	libbuscount.cpp
 	detection.cpp
 	tracker.cpp
@@ -30,26 +28,38 @@ add_library(buscount SHARED
 	world.cpp
 )
 
-add_executable(buscountcli buscountcli.cpp)
-add_executable(buscountd   buscountd.cpp)
-
+target_compile_options(buscount PRIVATE
+    $<$<CONFIG:Debug>:-Wfatal-errors>
+)
+target_compile_definitions(buscount PUBLIC
+    $<$<CONFIG:Debug>:TBB_USE_DEBUG=1>
+)
 
 target_include_directories(buscount PUBLIC
 	${OpenCV_INCLUDE_DIRS}
 	${InferenceEngine_INCLUDE_DIRS}
 )
 
-target_include_directories(buscountd PRIVATE
-	${GSTRTSPSRV_INCLUDE_DIRS}
-)
+add_library(buscount_static STATIC $<TARGET_OBJECTS:buscount>)
 
-target_link_libraries(buscount INTERFACE
+# Might be helpful in the future, but for now we'll just leave this be
+#add_library(buscount_shared SHARED $<TARGET_OBJECTS:buscount>)
+
+target_link_libraries(buscount_static INTERFACE
 	${OpenCV_LIBRARIES}
 	${TBB_LIBRARIES}
 	${InferenceEngine_LIBRARIES}
 )
 
-target_link_libraries(buscountcli buscount)
+
+add_executable(buscountcli buscountcli.cpp)
+add_executable(buscountd   buscountd.cpp)
+
+target_include_directories(buscountd PRIVATE
+	${GSTRTSPSRV_INCLUDE_DIRS}
+)
+
+target_link_libraries(buscountcli buscount_static)
 target_link_libraries(buscountd
 	${GSTRTSPSRV_LIBRARIES}
 )
