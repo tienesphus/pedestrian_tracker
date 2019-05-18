@@ -2,6 +2,8 @@
 #include <tuple>
 #include <vector>
 
+#include <opencv2/videoio.hpp>
+
 #include "libbuscount.hpp"
 #include "detection.hpp"
 #include "world.hpp"
@@ -56,12 +58,11 @@ int main() {
     function<BusCounter::test_exit_t> test_exit = []() -> bool
     {
         // GUI stuff, so probably needs to be handled on the main thread as well
-        //std::cout << "waitkey()" << std::endl;
         return cv::waitKey(20) == 'q';
     };
 
     BusCounter counter(net_config, world_config, src, dest, test_exit);
-    counter.run(BusCounter::RUN_PARALLEL, true);
+    counter.run(BusCounter::RUN_SERIAL, cap.get(cv::CAP_PROP_FPS), true);
 
     return 0;
 }

@@ -17,21 +17,27 @@ class TickCounter
     cv::Ptr<float> s_per_frame;
     size_t avg_size = 10;
 
+    float fps;
     long frame_count;
     tbb::tick_count prev;
 
 public:
-    TickCounter(const size_t avg_size): frame_count(0), prev(tbb::tick_count::now())
+    TickCounter(const size_t avg_size): fps(30.0), frame_count(0), prev(tbb::tick_count::now())
     {
         // Reset ms_per_frame. Default to 1 second...because that's a sensibly large value.
         s_per_frame = cv::Ptr<float>(new float[avg_size]);
         for(auto i = 0; i < avg_size; i++)
-            *((float*)s_per_frame+i) = 1.0;
+            *((float*)s_per_frame+i) = 1.0 / 30.0;
     }
     
     TickCounter(const TickCounter &other)
     {
         (*this) = other;
+    }
+
+    float getFps() const
+    {
+        return fps;
     }
 
     void operator=(const TickCounter &other)
@@ -56,11 +62,11 @@ public:
         frame_count++;
         prev = now;
 
-        float secs = 0;
+        double secs = 0;
         for(auto i = 0; i < avg_size; i++)
             secs += s_per_frame[i];
         
-        float fps = avg_size / secs;
+        fps = avg_size / secs;
         
         std::cout << "END TICK  frame: " << frame_count << " fps: " << fps << std::endl;
     }
@@ -150,19 +156,19 @@ cv::Ptr<cv::Mat> BusCounter::no_draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<Det
 }
 
 
-void BusCounter::run(RunStyle style, bool draw)
+void BusCounter::run(RunStyle style, double src_fps, bool draw)
 {
     if(style == RUN_PARALLEL)
-        run_parallel(draw);
+        run_parallel(src_fps, draw);
     else
-        run_serial(draw);
+        run_serial(src_fps, draw);
 }
 
 
 //
 // Builds and runs a flow graph with the the given configeration options
 //
-void BusCounter::run_parallel(bool draw)
+void BusCounter::run_parallel(double src_fps, bool draw)
 {
     namespace flow = tbb::flow;
     using namespace cv;
@@ -333,78 +339,54 @@ void BusCounter::run_parallel(bool draw)
 //
 // A single threaded version of run_parallel. Useful for debugging.
 //
-void BusCounter::run_serial(bool draw)
+void BusCounter::run_serial(double src_fps, bool do_draw)
 {
     
     using namespace cv;
     
-    bool quit = false;
+    cout << "Init tracker" << endl;
     
-    /*
-    std::cout << "Initialise Video" << std::endl;
-    //VideoCapture cap(input);
+    cout << "Init frame count" << endl;
+    TickCounter tickCounter(10);
     
-    std::cout << "Init detector" << std::endl;
-    //Detector detector(net_config);
-    cv::dnn::Net net = net_config.make_network();
-    
-    std::cout << "Init tracker" << std::endl;
-    //Tracker tracker(world_config);
-    
-    std::cout << "Init frame count" << std::endl;
-    int frame_count = 0;
-    const int AVG_SIZE = 10;
-    tbb::tick_count ticks[AVG_SIZE] = {tbb::tick_count::now()};
-    
-    while (!quit) {
-    
-        std::cout << "SOURCE START" << std::endl;
-        Ptr<cv::Mat> frame = Ptr<cv::Mat>(new cv::Mat());
-        // read three times so that we effectively are running real time
-        bool res = cap.read(*frame) 
-                    && cap.read(*frame) 
-                    && cap.read(*frame);
-        std::cout << "SOURCE END" << std::endl;
-    
-        std::cout << "START PRE DETECT" << std::endl;
-        detector.pre_process(*frame, net);
-        std::cout << "END PRE DETECT" << std::endl;
+    while (true) {
 
-        std::cout << "START DETECT" << std::endl;
-        auto detections_raw = detector.process(net);
-        std::cout << "END DETECT" << std::endl;
-        
-        std::cout << "START POST DETECT" << std::endl;
-        auto detections = detector.post_process(frame, *detections_raw);
-        std::cout << "END POST DETECT" << std::endl;
+        Ptr<Mat> frame = makePtr<Mat>();
+
+        // Read at least once. Skip if source FPS is different from target FPS
+        bool got_frame = true;
+        int skip = src_fps / tickCounter.getFps();
+        for (int i = 0; i <= skip; i++)
+        {
+            got_frame =  _src(frame);
+        }
+
+        if (!got_frame) break;
     
-        std::cout << "START TRACK" << std::endl;
-        Ptr<WorldState> state = Ptr<WorldState>(new WorldState(tracker.process(*detections)));
-        std::cout << "END TRACK" << std::endl;
+        pre_detect(frame);
+
+        auto detection = detect(flow::continue_msg());
+        auto detections = post_detect(std::tuple<Ptr<Mat>&, Ptr<Mat>&>(frame, detection));
+        auto state = track(detections);
         
-        std::cout << "START RENDER" << std::endl;
-        cv::Mat display;
-        frame->copyTo(display);
-        detections->draw(display);
-        tracker.draw(display);
-        state->draw(display);
-        world_config.draw(display);
-        std::cout << "END RENDER" << std::endl;
+        if (do_draw)
+        {
+            frame = draw(state);
+        }
+        else
+        {
+            frame = no_draw(state);
+        }
         
-        std::cout << "START DISPLAY" << std::endl;
-        imshow("output", display);
-        int key = waitKey(20);
-        if (key =='q')
-            quit = true;
-        std::cout << "END DISPLAY" << std::endl;        
-        
-        std::cout << "START TICK COUNTER" << std::endl;            
-        frame_count++;
-        tbb::tick_count now = tbb::tick_count::now();
-        tbb::tick_count prev = ticks[frame_count % AVG_SIZE];
-        ticks[frame_count % AVG_SIZE] = now;
-        float fps = AVG_SIZE/(now-prev).seconds();
-        std::cout << ("END TICK  frame: " + std::to_string(frame_count) + " fps: " + std::to_string(fps)) << std::endl;
+        cout << "START DISPLAY" << endl;
+        _dest(frame);
+        cout << "END DISPLAY" << endl;
+
+        tickCounter(flow::continue_msg());
+
+        if (_test_exit())
+        {
+            break;
+        }
     }
-    */
 }

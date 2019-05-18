@@ -42,8 +42,8 @@ private:
     cv::Ptr<cv::Mat> no_draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<Detections>>);
 
     // How to execute the pipeline.
-    void run_parallel(bool draw);
-    void run_serial(bool draw);
+    void run_parallel(double src_fps, bool draw);
+    void run_serial(double src_fps, bool draw);
 
 public:
     BusCounter(
@@ -53,7 +53,7 @@ public:
             std::function<BusCounter::dest_cb_t> dest,
             std::function<BusCounter::test_exit_t> test_exit
     );
-    void run(RunStyle style, bool draw);
+    void run(RunStyle style, double src_fps, bool draw);
 };
 
 #endif
