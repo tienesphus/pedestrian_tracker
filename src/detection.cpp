@@ -21,14 +21,9 @@ void Detection::draw(cv::Mat& display) const
 
 //  ----------- DETECTIONS ---------------
 
-Detections::Detections(const cv::Ptr<cv::Mat>& frame, const std::vector<Detection> &detections):
-    frame(frame), detections(detections)
+Detections::Detections(const std::vector<Detection> &detections):
+    detections(detections)
 {
-}
-
-cv::Ptr<cv::Mat> Detections::get_frame() const
-{
-    return frame;
 }
 
 std::vector<Detection> Detections::get_detections() const
@@ -64,22 +59,24 @@ Detector::Detector(const NetConfigIR &config):
     net.setPreferableTarget(cv::dnn::DNN_TARGET_MYRIAD);
 }
 
-void Detector::pre_process(const cv::Mat &image)
+cv::Ptr<cv::Mat> Detector::pre_process(const cv::Mat &image)
 {
-    cv::Mat blob;
-    cv::dnn::blobFromImage(image, blob, this->config.scale, this->config.networkSize, this->config.mean);
-    //result.convertTo(result, CV_32F, 1/127.5, -1);
-    net.setInput(blob);
+    cv::Ptr<cv::Mat> blob(cv::makePtr<cv::Mat>());
+    cv::dnn::blobFromImage(image, *blob, this->config.scale, this->config.networkSize, this->config.mean);
+    return blob;
 }
 
-cv::Ptr<cv::Mat> Detector::process() {
+cv::Ptr<cv::Mat> Detector::process(const cv::Mat &blob) {
     // pass the network
-    cv::Ptr<cv::Mat> results(new cv::Mat());
-    net.forward(*results);
-    return results;
+    cv::Ptr<cv::Mat> result(cv::makePtr<cv::Mat>());
+
+    net.setInput(blob);
+    net.forward(*result);
+
+    return result;
 }
 
-cv::Ptr<Detections> Detector::post_process(const cv::Ptr<cv::Mat>& original, cv::Mat& data) const
+cv::Ptr<Detections> Detector::post_process(const cv::Mat &original, const cv::Mat &data) const
 {   
     // result is of size [nimages, nchannels, a, b]
     // nimages = 1 (as only one image at a time)
@@ -95,11 +92,11 @@ cv::Ptr<Detections> Detector::post_process(const cv::Ptr<cv::Mat>& original, cv:
     //  6 - y2
     
     // Therefore, we discard first two dimensions to only have the data
-    cv::Mat detections(data.size[2], data.size[3], CV_32F, data.ptr<float>());
+    cv::Mat detections(data.size[2], data.size[3], CV_32F, (void*)data.ptr<float>());
 
     std::vector<Detection> results;
-    int w = original->cols;
-    int h = original->rows;
+    int w = original.cols;
+    int h = original.rows;
     
     for (int i = 0; i < detections.size[0]; i++) {
         float confidence = detections.at<float>(i, 2);
@@ -117,5 +114,5 @@ cv::Ptr<Detections> Detector::post_process(const cv::Ptr<cv::Mat>& original, cv:
         }
     }
     
-    return cv::Ptr<Detections>(new Detections(original, results));
+    return cv::Ptr<Detections>(cv::makePtr<Detections>(results));
 }

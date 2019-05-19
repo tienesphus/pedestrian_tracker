@@ -28,9 +28,6 @@ add_library(buscount OBJECT
 	world.cpp
 )
 
-target_compile_options(buscount PRIVATE
-    $<$<CONFIG:Debug>:-Wfatal-errors>
-)
 target_compile_definitions(buscount PUBLIC
     $<$<CONFIG:Debug>:TBB_USE_DEBUG=1>
 )

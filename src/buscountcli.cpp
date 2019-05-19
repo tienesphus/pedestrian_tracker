@@ -10,10 +10,6 @@
 
 using namespace std;
 
-tuple<cv::Ptr<WorldState>, cv::Ptr<cv::Mat>> dest(const cv::Ptr<WorldState>)
-{
-}
-
 int main() {
     
     NetConfigIR net_config {
@@ -62,7 +58,7 @@ int main() {
     };
 
     BusCounter counter(net_config, world_config, src, dest, test_exit);
-    counter.run(BusCounter::RUN_SERIAL, cap.get(cv::CAP_PROP_FPS), true);
+    counter.run(BusCounter::RUN_PARALLEL, cap.get(cv::CAP_PROP_FPS), true);
 
     return 0;
 }

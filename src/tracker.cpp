@@ -120,7 +120,7 @@ void Tracker::merge(const Detections &detections)
         float best_merginess = 0;
         Track* merge_track;
 
-        for (int i = 0; i < tracks.size(); i++)
+        for (size_t i = 0; i < tracks.size(); i++)
         {
             Track* track = tracks[i];
             float iou = IoU(track->box, detection.box);

@@ -30,16 +30,15 @@ private:
     // Internal data structures
     Detector _detector;
     WorldConfig _world_config;
-    cv::dnn::Net _net;
     Tracker _tracker;
 
     // Functions within the pipeline
-    void pre_detect(const cv::Ptr<cv::Mat>);
-    cv::Ptr<cv::Mat> detect(tbb::flow::continue_msg);
-    cv::Ptr<Detections> post_detect(const std::tuple<cv::Ptr<cv::Mat>, cv::Ptr<cv::Mat>>);
-    std::tuple<cv::Ptr<WorldState>, cv::Ptr<Detections>> track(const cv::Ptr<Detections>);
-    cv::Ptr<cv::Mat> draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<Detections>>);
-    cv::Ptr<cv::Mat> no_draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<Detections>>);
+    cv::Ptr<cv::Mat> pre_detect(const cv::Ptr<cv::Mat>);
+    cv::Ptr<cv::Mat> detect(const cv::Ptr<cv::Mat>);
+    std::tuple<cv::Ptr<cv::Mat>, cv::Ptr<Detections>> post_detect(const std::tuple<cv::Ptr<cv::Mat>, cv::Ptr<cv::Mat>>);
+    std::tuple<cv::Ptr<WorldState>, cv::Ptr<cv::Mat>, cv::Ptr<Detections>> track(std::tuple<cv::Ptr<cv::Mat> , cv::Ptr<Detections>> input);
+    cv::Ptr<cv::Mat> draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<cv::Mat>, cv::Ptr<Detections>>);
+    cv::Ptr<cv::Mat> no_draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<cv::Mat>, cv::Ptr<Detections>>);
 
     // How to execute the pipeline.
     void run_parallel(double src_fps, bool draw);
