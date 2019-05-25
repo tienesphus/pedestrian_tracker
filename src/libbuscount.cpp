@@ -291,7 +291,7 @@ void BusCounter::run_parallel(double src_fps, bool do_draw)
     //           This node will limit the graph so that only MAX_FRAMES
     //           will be processed at once. Without limiting, runnaway
     //           occurs (src will keep producing into an unlimited buffer)
-    const int MAX_FRAMES = 20;
+    const int MAX_FRAMES = 2;
     flow::limiter_node<Ptr<cv::Mat>> throttle_node(g, MAX_FRAMES);
     
     std::cout << "Init detector" << std::endl;
