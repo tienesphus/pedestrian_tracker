@@ -56,7 +56,7 @@ bool Track::update(const WorldConfig &config, WorldState &world)
     }
 
     // decrease the confidence (will increase when merging with a detection)
-    confidence -= 0.05;
+    confidence -= 0.1;
     return confidence > 0.2;
 }
 
