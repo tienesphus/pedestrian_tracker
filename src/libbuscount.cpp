@@ -110,7 +110,7 @@ public:
 };
 
 BusCounter::BusCounter(
-        NetConfigIR &nconf,
+        std::unique_ptr<Detector> detector,
         WorldConfig &wconf,
         std::function<BusCounter::src_cb_t> src,
         std::function<BusCounter::dest_cb_t> dest,
@@ -119,7 +119,7 @@ BusCounter::BusCounter(
         _src(src),
         _dest(dest),
         _test_exit(test_exit),
-        _detector(nconf),
+        _detector(std::move(detector)),
         _world_config(wconf),
         _tracker(wconf)
 {
@@ -134,7 +134,7 @@ BusCounter::BusCounter(
 cv::Ptr<cv::Mat> BusCounter::pre_detect(const cv::Ptr<cv::Mat> frame)
 {
     cout << "START PRE DETECT" << endl;
-    auto blob = _detector.pre_process(*frame);
+    auto blob = _detector->pre_process(*frame);
     cout << "END PRE DETECT" << endl;
 
     return blob;
@@ -143,7 +143,7 @@ cv::Ptr<cv::Mat> BusCounter::pre_detect(const cv::Ptr<cv::Mat> frame)
 cv::Ptr<cv::Mat> BusCounter::detect(const cv::Ptr<cv::Mat> blob)
 {
     std::cout << "START DETECT" << std::endl;
-    auto results = _detector.process(*blob);
+    auto results = _detector->process(*blob);
     std::cout << "END DETECT" << std::endl;
 
     return results;
@@ -155,7 +155,7 @@ std::tuple<cv::Ptr<cv::Mat>, cv::Ptr<Detections>> BusCounter::post_detect(const 
     cv::Ptr<cv::Mat> original = std::get<0>(input);
     cv::Ptr<cv::Mat> results  = std::get<1>(input);
     
-    auto detections = _detector.post_process(*original, *results);
+    auto detections = _detector->post_process(*original, *results);
     std::cout << "END POST DETECT" << std::endl;
 
     return std::tuple<cv::Ptr<cv::Mat>, cv::Ptr<Detections>>(original, detections);

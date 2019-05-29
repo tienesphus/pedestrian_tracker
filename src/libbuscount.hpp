@@ -28,7 +28,7 @@ private:
     std::function<test_exit_t> _test_exit;
 
     // Internal data structures
-    Detector _detector;
+    std::unique_ptr<Detector> _detector;
     WorldConfig _world_config;
     Tracker _tracker;
 
@@ -46,7 +46,7 @@ private:
 
 public:
     BusCounter(
-            NetConfigIR &nconf,
+            std::unique_ptr<Detector> detector,
             WorldConfig &wconf,
             std::function<BusCounter::src_cb_t> src,
             std::function<BusCounter::dest_cb_t> dest,

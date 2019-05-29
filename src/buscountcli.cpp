@@ -12,7 +12,7 @@ using namespace std;
 
 int main() {
     
-    NetConfigIR net_config {
+    NetConfigOpenCV net_config {
         0.5f,               // thresh
         15,                 // clazz
         cv::Size(300, 300), // size
@@ -21,8 +21,11 @@ int main() {
         //"../models/MobileNetSSD_IE/MobileNetSSD.xml", // config
         //"../models/MobileNetSSD_IE/MobileNetSSD.bin"  // model
         "../models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
-        "../models/MobileNetSSD_caffe/MobileNetSSD.caffemodel"  // model
+        "../models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
+        cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // prefered backend
+        cv::dnn::DNN_TARGET_MYRIAD,  // prefered device
     };
+    std::unique_ptr<Detector> detector = std::make_unique<OpenCVDetector>(net_config);
     
     WorldConfig world_config = WorldConfig::from_file("../config.csv");
     
@@ -57,7 +60,7 @@ int main() {
         return cv::waitKey(20) == 'q';
     };
 
-    BusCounter counter(net_config, world_config, src, dest, test_exit);
+    BusCounter counter(std::move(detector), world_config, src, dest, test_exit);
     counter.run(BusCounter::RUN_PARALLEL, cap.get(cv::CAP_PROP_FPS), true);
 
     return 0;

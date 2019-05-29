@@ -40,7 +40,7 @@ void Detections::draw(cv::Mat& display) const
 
 //  ----------- DETECTOR ---------------
 
-Detector::Detector(const NetConfigIR &config):
+OpenCVDetector::OpenCVDetector(const NetConfigOpenCV &config):
         config(config),
         net(cv::dnn::readNet(config.model, config.meta))
 {
@@ -55,18 +55,19 @@ Detector::Detector(const NetConfigIR &config):
      *  never be copied. Perhaps replacing Net with Ptr<Net> is an option.
      */
 
-    net.setPreferableBackend(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE);
-    net.setPreferableTarget(cv::dnn::DNN_TARGET_MYRIAD);
+    net.setPreferableBackend(config.preferableBackend);
+    net.setPreferableTarget(config.preferableTarget);
 }
 
-cv::Ptr<cv::Mat> Detector::pre_process(const cv::Mat &image)
+cv::Ptr<cv::Mat> OpenCVDetector::pre_process(const cv::Mat &image) 
 {
     cv::Ptr<cv::Mat> blob(cv::makePtr<cv::Mat>());
     cv::dnn::blobFromImage(image, *blob, this->config.scale, this->config.networkSize, this->config.mean);
     return blob;
 }
 
-cv::Ptr<cv::Mat> Detector::process(const cv::Mat &blob) {
+cv::Ptr<cv::Mat> OpenCVDetector::process(const cv::Mat &blob)
+{
     // pass the network
     cv::Ptr<cv::Mat> result(cv::makePtr<cv::Mat>());
 
@@ -76,7 +77,7 @@ cv::Ptr<cv::Mat> Detector::process(const cv::Mat &blob) {
     return result;
 }
 
-cv::Ptr<Detections> Detector::post_process(const cv::Mat &original, const cv::Mat &data) const
+cv::Ptr<Detections> OpenCVDetector::post_process(const cv::Mat &original, const cv::Mat &data) const
 {   
     // result is of size [nimages, nchannels, a, b]
     // nimages = 1 (as only one image at a time)
