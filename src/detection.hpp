@@ -32,11 +32,6 @@ public:
     Detections(const std::vector<Detection> &detections);
     
     /**
-     * Gets the image that these detections are for
-     */
-    cv::Ptr<cv::Mat> get_frame() const;
-    
-    /**
      * Get the detections that occured
      */
     std::vector<Detection> get_detections() const;
