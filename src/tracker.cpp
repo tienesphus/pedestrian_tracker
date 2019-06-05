@@ -142,10 +142,10 @@ void Tracker::merge(const Detections &detection_results)
                 Point(detection.box.x + detection.box.width/2,  detection.box.y + detection.box.height/4)
             );
             cout << " d" << i << " x t" << track->index << ": " << difference << endl;
-            confidences.push_back(std::tuple<int, int, Track*>(difference, i, track));
+            confidences.emplace_back(difference, i, track);
         }
       
-        // initialse 'delt_with' to false
+        // initialise 'delt_with' to false
         detection_delt_with.push_back(false);
     }  
 	

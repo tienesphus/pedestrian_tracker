@@ -1,3 +1,6 @@
+#include "libbuscount.hpp"
+#include "tick_counter.hpp"
+
 #include <iostream>
 #include <vector>
 
@@ -8,194 +11,37 @@
 
 #include <opencv2/highgui.hpp>
 
-#include "libbuscount.hpp"
-
 using namespace std;
 using namespace tbb;
 
-class TickCounterImpl
-{
-    size_t avg_size;
-    cv::Ptr<float> s_per_frame;
+template <class Func>
+auto log_lambda(const string& name, Func f) {
+    return [=](auto ... args) {
+        struct Logger {
+            Logger() { std::cout << "START " << name << std::endl; }
+            ~Logger() { std::cout << "STOP " << name << std::endl; }
+        } log;
 
-    float fps;
-    long frame_count;
-    tick_count prev;
-
-    tbb::mutex fps_mutex;
-
-public:
-    TickCounterImpl(const size_t avg_size):
-        avg_size(avg_size),
-        s_per_frame(cv::Ptr<float>(new float[avg_size])),
-        fps(30.0),
-        frame_count(0),
-        prev(tick_count::now())
-    {
-        // Reset ms_per_frame. Default to 1 second...because that's a sensibly large value.
-        for(size_t i = 0; i < avg_size; i++)
-            *((float*)s_per_frame+i) = 1.0 / 30.0;
-    }
-    
-    TickCounterImpl(const TickCounterImpl &other)
-    {
-        (*this) = other;
-    }
-
-    float getFps()
-    {
-        tbb::mutex::scoped_lock lock(fps_mutex);
-        return fps;
-    }
-
-    TickCounterImpl& operator=(const TickCounterImpl &other)
-    {
-        this->prev = other.prev;
-        this->frame_count = other.frame_count;
-        this->avg_size = other.avg_size;
-        this->s_per_frame = other.s_per_frame; 
-
-        return *this;
-    }
-
-    void operator()(flow::continue_msg)
-    {
-        // This is called once per frame, so we only need to calculate the time between
-        // this frame and the previous frame. No need to save the absolute time of every
-        // frame.
-
-        std::cout << "START TICK COUNTER" << std::endl;
-        
-        tick_count now = tick_count::now();
-        s_per_frame[frame_count % avg_size] = (now - prev).seconds();
-
-        frame_count++;
-        prev = now;
-
-        double secs = 0;
-        for(size_t i = 0; i < avg_size; i++)
-            secs += s_per_frame[i];
-        
-        {
-            tbb::mutex::scoped_lock lock(fps_mutex);
-            fps = avg_size / secs;
-        }
-
-        std::cout << "END TICK  frame: " << frame_count << " fps: " << fps << std::endl;
-    }
-};
-
-class TickCounter
-{
-    cv::Ptr<TickCounterImpl> impl;
-public:
-    TickCounter(const size_t avg_size): impl(cv::makePtr<TickCounterImpl>(avg_size))
-    {
-    }
-
-    TickCounter(const TickCounter &other)
-    {
-        (*this) = other;
-    }
-
-    float getFps() const
-    {
-        return impl->getFps();
-    }
-
-    void operator()(flow::continue_msg _)
-    {
-        (*impl)(_);
-    }
-};
+        return f(args...);
+    };
+}
 
 BusCounter::BusCounter(
         std::unique_ptr<Detector> detector,
+        std::unique_ptr<Tracker> tracker,
         WorldConfig &wconf,
         std::function<BusCounter::src_cb_t> src,
         std::function<BusCounter::dest_cb_t> dest,
         std::function<BusCounter::test_exit_t> test_exit
     ) :
-        _src(src),
-        _dest(dest),
-        _test_exit(test_exit),
+        _src(std::move(src)),
+        _dest(std::move(dest)),
+        _test_exit(std::move(test_exit)),
         _detector(std::move(detector)),
-        _world_config(wconf),
-        _tracker(wconf)
+        _tracker(std::move(tracker)),
+        _world_config(wconf)
 {
 }
-
-//
-// Builds and runs a graph with the the given configeration options
-//
-
-// pre_detect: Preprocesses the image into a 'blob' so it is ready 
-//             to feed into a detection algorithm
-cv::Ptr<cv::Mat> BusCounter::pre_detect(const cv::Ptr<cv::Mat> frame)
-{
-    cout << "START PRE DETECT" << endl;
-    auto blob = _detector->pre_process(*frame);
-    cout << "END PRE DETECT" << endl;
-
-    return blob;
-}
-
-cv::Ptr<cv::Mat> BusCounter::detect(const cv::Ptr<cv::Mat> blob)
-{
-    std::cout << "START DETECT" << std::endl;
-    auto results = _detector->process(*blob);
-    std::cout << "END DETECT" << std::endl;
-
-    return results;
-}
-
-std::tuple<cv::Ptr<cv::Mat>, cv::Ptr<Detections>> BusCounter::post_detect(const std::tuple<cv::Ptr<cv::Mat>, cv::Ptr<cv::Mat>> input)
-{
-    std::cout << "START POST DETECT" << std::endl;
-    cv::Ptr<cv::Mat> original = std::get<0>(input);
-    cv::Ptr<cv::Mat> results  = std::get<1>(input);
-    
-    auto detections = _detector->post_process(*original, *results);
-    std::cout << "END POST DETECT" << std::endl;
-
-    return std::tuple<cv::Ptr<cv::Mat>, cv::Ptr<Detections>>(original, detections);
-}
-
-std::tuple<cv::Ptr<WorldState>, cv::Ptr<cv::Mat>, cv::Ptr<Detections>> BusCounter::track(std::tuple<cv::Ptr<cv::Mat> , cv::Ptr<Detections>> input)
-{
-    std::cout << "START TRACK" << std::endl;
-    cv::Ptr<cv::Mat> frame = std::get<0>(input);
-    cv::Ptr<Detections> detections  = std::get<1>(input);
-
-    cv::Ptr<WorldState> state = cv::makePtr<WorldState>(_tracker.process(*detections));
-    std::cout << "END TRACK" << std::endl;
-    
-    return std::tuple<cv::Ptr<WorldState>, cv::Ptr<cv::Mat>, cv::Ptr<Detections>>(state, frame, detections);
-}
-
-cv::Ptr<cv::Mat> BusCounter::draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<cv::Mat>, cv::Ptr<Detections>> input)
-{
-    std::cout << "START DRAW" << std::endl;
-
-    cv::Ptr<WorldState> state = std::get<0>(input);
-    cv::Ptr<cv::Mat> frame = std::get<1>(input);
-    cv::Ptr<Detections> detections = std::get<2>(input);
-
-    detections->draw(*frame);
-    _tracker.draw(*frame);
-    state->draw(*frame);
-    _world_config.draw(*frame);
-    
-    std::cout << "END DRAW" << std::endl;
-
-    return frame;
-}
-
-cv::Ptr<cv::Mat> BusCounter::no_draw(std::tuple<cv::Ptr<WorldState>, cv::Ptr<cv::Mat>, cv::Ptr<Detections>> input)
-{
-    return std::get<1>(input);
-}
-
 
 void BusCounter::run(RunStyle style, double src_fps, bool draw)
 {
@@ -255,7 +101,7 @@ void BusCounter::run_parallel(double src_fps, bool do_draw)
     
     // shared variables
     flow::graph g;
-    TickCounter tickCounter(10);
+    TickCounter<10> tickCounter;
     tbb::mutex quit_mutex;
     bool quit = false;
     
@@ -302,39 +148,43 @@ void BusCounter::run_parallel(double src_fps, bool do_draw)
     
     // pre_detect: Preprocesses the image into a 'blob' so it is ready 
     //             to feed into a detection algorithm
-    flow::function_node<Ptr<cv::Mat>, Ptr<cv::Mat>>
-        pre_detect_node(g, flow::serial, bind(&BusCounter::pre_detect, this, placeholders::_1));
+    flow::function_node<PtrMat, ProcessType>
+            pre_detect_node(g, flow::serial, log_lambda("PRE PROCESS",
+                    [&detector](PtrMat mat, ProcessType ) {
+                            return detector.pre_detect(mat);
+                    }
+    );
     
     // detect: Takes the preprocessed blob
-    flow::function_node<Ptr<cv::Mat>, cv::Ptr<cv::Mat>>
+    flow::function_node<ProcessType, PtrMat>
         detect_node(g, flow::serial, bind(&BusCounter::detect, this, placeholders::_1));
     
     // joint: combines the results from the original image and the detection data
-    flow::join_node<std::tuple<Ptr<cv::Mat>, Ptr<cv::Mat>>> joint_node(g);
+    flow::join_node<std::tuple<PtrMat, PtrMat>> joint_node(g);
     
     // post_detect: Takes the raw detection output, interperets it, and
     //              produces some meaningful results
-    flow::function_node<tuple<Ptr<Mat>, Ptr<Mat>>, tuple<Ptr<Mat>, Ptr<Detections>>>
+    flow::function_node<tuple<PtrMat, PtrMat>, tuple<PtrMat, Ptr<Detections>>>
         post_detect_node(g, flow::serial, bind(&BusCounter::post_detect, this, placeholders::_1));
     
     std::cout << "Init tracker" << std::endl;
     
     // track: Tracks detections
-    flow::function_node<tuple<Ptr<Mat>, Ptr<Detections>>, tuple<Ptr<WorldState>, Ptr<Mat>, Ptr<Detections>>>
+    flow::function_node<tuple<PtrMat, Ptr<Detections>>, tuple<Ptr<WorldState>, PtrMat, Ptr<Detections>>>
         track_node(g, flow::serial, bind(&BusCounter::track, this, placeholders::_1));
 
-    flow::function_node<std::tuple<Ptr<WorldState>, Ptr<Mat>, Ptr<Detections>>, Ptr<Mat>>
+    flow::function_node<std::tuple<Ptr<WorldState>, PtrMat, Ptr<Detections>>, PtrMat>
         draw_node(g, flow::serial, bind(&BusCounter::draw, this, placeholders::_1));
 
-    flow::function_node<std::tuple<Ptr<WorldState>, Ptr<Mat>, Ptr<Detections>>, Ptr<cv::Mat>>
+    flow::function_node<std::tuple<Ptr<WorldState>, PtrMat, Ptr<Detections>>, PtrMat>
         no_draw_node(g, flow::serial, bind(&BusCounter::no_draw, this, placeholders::_1));
 
     std::cout << "Init writter" << std::endl;
     
     // stream: Writes images to a stream
-    concurrent_queue<Ptr<cv::Mat>> display_queue;
-    flow::function_node<Ptr<cv::Mat>> stream_node(g, flow::serial,
-        [&display_queue](Ptr<cv::Mat> input) -> void
+    concurrent_queue<PtrMat> display_queue;
+    flow::function_node<PtrMat> stream_node(g, flow::serial,
+        [&display_queue](PtrMat input) -> void
         {
             display_queue.push(input);
             cout << "Pushed to queue" << endl;
@@ -348,7 +198,7 @@ void BusCounter::run_parallel(double src_fps, bool do_draw)
         
     std::cout << "making edges" << std::endl;
         
-    // Setup flow dependencis
+    // Setup flow dependencies
     flow::make_edge(src_node,         throttle_node);
     flow::make_edge(throttle_node,    pre_detect_node);
     flow::make_edge(pre_detect_node,  detect_node);
@@ -383,7 +233,7 @@ void BusCounter::run_parallel(double src_fps, bool do_draw)
     // display frames here through a queue
     while (!quit)
     {
-        Ptr<cv::Mat> display_img;
+        PtrMat display_img;
         if (display_queue.try_pop(display_img))
         {
             // Calling try_put manually seems to double framerate. Will
@@ -410,7 +260,8 @@ void BusCounter::run_parallel(double src_fps, bool do_draw)
 //
 // A single threaded version of run_parallel. Useful for debugging non-threading related issues.
 //
-void BusCounter::run_serial(double src_fps, bool do_draw)
+template <class Detect, class ProcessType>
+void BusCounter<Detect, ProcessType>::run_serial(double src_fps, bool do_draw)
 {
     
     using namespace cv;
@@ -419,6 +270,7 @@ void BusCounter::run_serial(double src_fps, bool do_draw)
     
     cout << "Init frame count" << endl;
     TickCounter tickCounter(10);
+    tickCounter.
     
     while (true) {
 
