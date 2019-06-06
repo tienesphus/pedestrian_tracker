@@ -2,26 +2,26 @@
 #include <opencv2/dnn.hpp>
 #include <iostream>
 
-Detector::Detector(float thresh, int clazz)
-    :thresh(thresh), clazz(clazz)
+Detector::Detector(float thresh, int clazz, cv::Size size)
+    :thresh(thresh), clazz(clazz), input_size(std::move(size))
 {
 }
 
-// TODO can Detector::run_async be merged with Detector::process and suffer threading penalty?
+// TODO can Detector::start_async be merged with Detector::wait_async and suffer threading penalty?
 
-std::future<cv::Mat> Detector::run_async(const cv::Mat &frame)
+std::shared_future<cv::Mat> Detector::start_async(const cv::Mat &frame)
 {
     return std::async(
             [&]() { return this->run(frame); }
     );
 }
 
-cv::Mat Detector::process(std::future<cv::Mat> &request) const
+cv::Mat Detector::wait_async(const std::shared_future<cv::Mat> &request) const
 {
     return request.get();
 }
 
-cv::Ptr<Detections> Detector::post_process(const cv::Mat &original, const cv::Mat &data) const
+Detections Detector::post_process(const cv::Mat &data) const
 {
     // result is of size [nimages, nchannels, a, b]
     // nimages = 1 (as only one image at a time)
@@ -40,8 +40,8 @@ cv::Ptr<Detections> Detector::post_process(const cv::Mat &original, const cv::Ma
     cv::Mat detections(data.size[2], data.size[3], CV_32F, (void*)data.ptr<float>());
 
     std::vector<Detection> results;
-    int w = original.cols;
-    int h = original.rows;
+    int w = input_size.width;
+    int h = input_size.height;
 
     for (int i = 0; i < detections.size[0]; i++) {
         float confidence = detections.at<float>(i, 2);
@@ -51,7 +51,7 @@ cv::Ptr<Detections> Detector::post_process(const cv::Mat &original, const cv::Ma
             int y1 = int(detections.at<float>(i, 4) * h);
             int x2 = int(detections.at<float>(i, 5) * w);
             int y2 = int(detections.at<float>(i, 6) * h);
-            cv::Rect2d r(cv::Point2d(x1, y1), cv::Point2d(x2, y2));
+            cv::Rect r(cv::Point(x1, y1), cv::Point(x2, y2));
 
             std::cout << "    Found: " << id << "(" << confidence << "%) - " << r << std::endl;
             if (id == this->clazz)
@@ -59,9 +59,9 @@ cv::Ptr<Detections> Detector::post_process(const cv::Mat &original, const cv::Ma
         }
     }
 
-    return cv::Ptr<Detections>(cv::makePtr<Detections>(results));
+    return Detections(results);
 }
 
-cv::Ptr<Detections> Detector::process(const cv::Mat &frame) {
-    return post_process(frame, run(frame));
+Detections Detector::process(const cv::Mat &frame) {
+    return post_process(run(frame));
 }

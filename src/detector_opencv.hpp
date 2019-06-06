@@ -23,12 +23,16 @@ public:
     /**
      * Constructs a detector from the given NetConfig
      */
-    explicit OpenCVDetector(const NetConfigOpenCV &config);
+    OpenCVDetector(const NetConfigOpenCV &config, const cv::Size& size);
 
     cv::Mat run(const cv::Mat &frame) override;
 
 
 private:
+    // disallow copying
+    OpenCVDetector(const OpenCVDetector&);
+    OpenCVDetector& operator=(const OpenCVDetector&);
+
     NetConfigOpenCV config;
     cv::dnn::Net net;
     std::mutex lock;

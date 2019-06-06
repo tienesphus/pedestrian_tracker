@@ -7,8 +7,8 @@
 #include "libbuscount.hpp"
 #include "detection.hpp"
 #include "world.hpp"
-
 #include "detector_opencv.hpp"
+#include "video_sync.hpp"
 
 using namespace std;
 
@@ -24,46 +24,24 @@ int main() {
         //"../models/MobileNetSSD_IE/MobileNetSSD.bin"  // model
         "../models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
         "../models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
-        cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // prefered backend
-        cv::dnn::DNN_TARGET_MYRIAD,  // prefered device
+        cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // preferred backend
+        cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
     };
-    OpenCVDetector detector = OpenCVDetector(net_config);
-    
+
+    //TODO I don't want to pass in the frame size
+    OpenCVDetector detector(net_config, cv::Size(50, 50));
     WorldConfig world_config = WorldConfig::from_file("../config.csv");
-    
+    Tracker tracker(world_config);
+
     string input = "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
-    cout << input << endl;
+    VideoSync cap(input);
 
-    cv::VideoCapture cap(input);
-    function<BusCounter::src_cb_t> src = [&cap](cv::Ptr<cv::Mat> &frame) -> bool
-    {
-        cout << "START SRC" << endl;
-
-        frame = cv::makePtr<cv::Mat>();
-
-        // Probably no need to drop frames explicitly. Frames will be dropped through the pipeline
-        // if the next stage has not used the relevant frame... (I think???)
-        bool res = cap.read(*frame);
-        cout << "END SRC (" << (res ? "true" : "false") << ")" << endl;
-
-        return res;
-    };
-
-    // This callback is always run from whichever thread BusCounter.run is called on.
-    function<BusCounter::dest_cb_t> dest = [](cv::Ptr<cv::Mat> frame) -> void
-    {
-        std::cout << "imshow()" << std::endl;
-        imshow("output", *frame);
-    };
-
-    function<BusCounter::test_exit_t> test_exit = []() -> bool
-    {
-        // GUI stuff, so probably needs to be handled on the main thread as well
-        return cv::waitKey(20) == 'q';
-    };
-
-    BusCounter counter(std::move(detector), world_config, src, dest, test_exit);
-    counter.run(BusCounter::RUN_SERIAL, cap.get(cv::CAP_PROP_FPS), true);
+    BusCounter counter(detector, tracker, world_config,
+            [&cap]() -> std::optional<cv::Mat> { return cap.read(); },
+            [](const cv::Mat& frame) { imshow("output", frame); },
+            []() { return cv::waitKey(20) == 'q'; }
+    );
+    counter.run(BusCounter::RUN_SERIAL, true);
 
     return 0;
 }

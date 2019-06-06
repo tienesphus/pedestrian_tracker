@@ -4,8 +4,8 @@
 #include <iostream>
 
 
-OpenCVDetector::OpenCVDetector(const NetConfigOpenCV &config):
-        Detector(config.thresh, config.clazz),
+OpenCVDetector::OpenCVDetector(const NetConfigOpenCV &config, const cv::Size& size):
+        Detector(config.thresh, config.clazz, size),
         net(cv::dnn::readNet(config.model, config.meta))
 {
     std::cout << "Init detector" << std::endl;

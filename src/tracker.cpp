@@ -1,10 +1,12 @@
+#include <utility>
+
 #include "tracker.hpp"
 
 
 //  ----------- TRACK ---------------
 
-Track::Track(const cv::Rect2d &box, float conf, int index):
-      box(box),
+Track::Track(cv::Rect box, float conf, int index):
+      box(std::move(box)),
       confidence(conf),
       index(index)
 {
@@ -78,18 +80,8 @@ void Track::draw(cv::Mat &img) const {
 //  -----------  TRACKER ---------------
 
 Tracker::Tracker(WorldConfig config):
-    config(config), state(WorldState(0, 0)), index_count(0)
+    config(std::move(config)), state(WorldState(0, 0)), index_count(0)
 {
-}
-
-Tracker::Tracker(const Tracker& tracker):
-    config(tracker.config), state(tracker.state), index_count(tracker.index_count)
-{
-    // duplicate each of the track references
-    this->tracks.reserve(tracker.tracks.size());
-    for (Track* track : tracker.tracks) {
-        tracks.push_back(new Track(*track));
-    }
 }
 
 Tracker::~Tracker()
@@ -98,9 +90,11 @@ Tracker::~Tracker()
         delete track;
 }
 
-WorldState Tracker::process(const Detections &detections) 
+WorldState Tracker::process(const Detections &detections, const cv::Mat&)
 {
-    
+    // Note: 'frame' is currently unused, but included as it will be used in the future
+    // Note 2: World State is purposely copied out so it is a snapshot
+
     merge(detections);
     update();
     
@@ -108,7 +102,7 @@ WorldState Tracker::process(const Detections &detections)
 }
 
 // Gets the square of the distance between two boxes.
-int _difference(cv::Point center_a, cv::Point center_b) {
+int _difference(const cv::Point& center_a, const cv::Point& center_b) {
     int dx = center_a.x - center_b.x;
     int dy = center_a.y - center_b.y;
     

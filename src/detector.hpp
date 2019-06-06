@@ -11,42 +11,47 @@
  */
 class Detector {
 public:
-    Detector(float thresh, int clazz);
+    Detector(float thresh, int clazz, cv::Size size);
 
     /**
      * Runs detection for this frame
-     * @param frame
-     * @return
+     * @param frame the RGB input image
+     * @return some data (should be passed to Detector::post_process)
      */
     virtual cv::Mat run(const cv::Mat &frame) = 0;
 
     /**
      * Pre-processes an image and starts the inference on it.
      */
-    std::future<cv::Mat> run_async(const cv::Mat &frame);
+    std::shared_future<cv::Mat> start_async(const cv::Mat &frame);
 
     /**
      * Waits for the process to complete
      * @return some unintelligent raw output
      */
-    cv::Mat process(std::future<cv::Mat> &request) const;
+    cv::Mat wait_async(const std::shared_future<cv::Mat> &request) const;
 
     /**
      * Takes raw processing output from 'process' and makes sense of it
      * @return the detected things
      */
-    cv::Ptr<Detections> post_process(const cv::Mat &original, const cv::Mat &data) const;
+    Detections post_process(const cv::Mat &data) const;
 
     /**
      * Runs the inference from start to end. Does no multi-threading.
      * @param frame the input frame
      * @return the the final detections
      */
-    cv::Ptr<Detections> process(const cv::Mat &frame);
+    Detections process(const cv::Mat &frame);
 
 private:
+    // disallow copying
+    Detector(const Detector&);
+    Detector& operator=(const Detector&);
+
     const float thresh;
     const int clazz;
+    const cv::Size input_size;
 };
 
 

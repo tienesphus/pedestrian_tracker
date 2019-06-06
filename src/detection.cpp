@@ -10,7 +10,7 @@
 
 //  ----------- DETECTION ---------------
 
-Detection::Detection(cv::Rect2d  box, float confidence):
+Detection::Detection(cv::Rect  box, float confidence):
     box(std::move(box)), confidence(confidence)
 {}
 

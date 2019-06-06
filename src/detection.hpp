@@ -8,10 +8,10 @@
  * Represents a single detection output
  */
 struct Detection {
-    cv::Rect2d box;
+    cv::Rect box;
     float confidence;
 
-    Detection(cv::Rect2d  box, float confidence);
+    Detection(cv::Rect  box, float confidence);
     
     /**
      * Draws this detection onto the image
@@ -29,7 +29,7 @@ public:
      * @param frame the image the detections were made on
      * @param detections a list of detections that were made
      */
-    Detections(std::vector<Detection> detections);
+    explicit Detections(std::vector<Detection> detections);
     
     /**
      * Get the detections that occured

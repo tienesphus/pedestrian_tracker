@@ -21,13 +21,14 @@ find_package(InferenceEngine 1.5 REQUIRED)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_library(buscount OBJECT
+	libbuscount.cpp
 	detection.cpp
 	tracker.cpp
 	utils.cpp
 	world.cpp
 	detector.cpp
 	detector_opencv.cpp
-	libbuscount.cpp)
+	video_sync.cpp)
 
 target_compile_definitions(buscount PUBLIC
     $<$<CONFIG:Debug>:TBB_USE_DEBUG=1>

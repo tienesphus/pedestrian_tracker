@@ -6,6 +6,7 @@
 #include <atomic>
 #include <mutex>
 #include <thread>
+#include <optional>
 
 /**
  * A basic tick counter for counting the FPS of something.
@@ -18,17 +19,18 @@ class TickCounter
     typedef std::chrono::milliseconds ms;
 
 public:
-    TickCounter(): fps(1.0f)
+    TickCounter(): fps(-1)
     {
     }
 
     /**
      * Processes a tick
-     * @return the new FPS
+     * @return the new FPS. Note that the first couple frames can't have the FPS calculated, so std::nullopt is returned
      */
-    float process_tick()
+    std::optional<float> process_tick()
     {
         // ensure two threads can safely call process_tick at the same time
+        // must be locked to ensure the times list is not corrupted
         std::lock_guard<std::mutex> scoped(this->lock);
 
         // push the current time
@@ -38,7 +40,7 @@ public:
         if (times.size() <= 1) {
             // impossible to calculate FPS (yet)
             // Must wait until we have two ticks.
-            return this->fps = 1.0f;
+            return std::nullopt;
         }
 
         // Get the average duration
@@ -62,7 +64,9 @@ public:
      * Gets the current FPS of this tick counter
      * @return the current FPS
      */
-    float getFps() const {
+    std::optional<float> getFps() const {
+        if (fps < 0)
+            return std::nullopt;
         return this->fps;
     }
 
