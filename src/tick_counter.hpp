@@ -51,7 +51,7 @@ public:
         // Minus 1 because we measure from the END of the first frame, thus, it's duration
         // does not count.
         long frames = times.size() - 1;
-        this->fps = (float)millis.count()/(frames*1000);
+        this->fps = (frames*1000.0f)/millis.count();
 
         // don't let the list get too big
         if (times.size() > size)
