@@ -18,8 +18,6 @@ pkg_check_modules(GSTRTSPSRV REQUIRED gstreamer-rtsp-server-1.0)
 find_package(OpenCV 4.0 REQUIRED)
 find_package(InferenceEngine 1.5 REQUIRED)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
 add_library(buscount OBJECT
 	libbuscount.cpp
 	detection.cpp
@@ -62,4 +60,5 @@ target_link_libraries(buscountcli buscount_static)
 target_link_libraries(buscountd
 	${GSTRTSPSRV_LIBRARIES}
 )
+
 

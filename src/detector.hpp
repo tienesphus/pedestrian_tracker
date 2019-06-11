@@ -54,5 +54,7 @@ private:
     const cv::Size input_size;
 };
 
+Detections static_post_process(const cv::Mat &data, int clazz, float thresh, const cv::Size &image_size);
+
 
 #endif //BUS_COUNT_DETECTOR_HPP

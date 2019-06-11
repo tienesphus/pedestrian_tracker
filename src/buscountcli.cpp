@@ -29,6 +29,7 @@ int main() {
     };
 
     //TODO I don't want to pass in the frame size
+    // Also, it is not 50x50
     OpenCVDetector detector(net_config, cv::Size(50, 50));
     WorldConfig world_config = WorldConfig::from_file("../config.csv");
     Tracker tracker(world_config);
