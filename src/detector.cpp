@@ -12,7 +12,9 @@ Detector::Detector(float thresh, int clazz, cv::Size size)
 std::shared_future<cv::Mat> Detector::start_async(const cv::Mat &frame)
 {
     return std::async(
-            [&]() { return this->run(frame); }
+            [=]() -> auto {
+                return this->run(frame);
+            }
     );
 }
 
