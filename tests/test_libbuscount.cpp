@@ -24,5 +24,4 @@ TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
     );
 
     counter.run(BusCounter::RUN_SERIAL, false);
-    // TODO actually test something here
 }

@@ -3,7 +3,9 @@ add_executable(tests
         tests_main.cpp
         test_detection.cpp
         test_detector_opencv.cpp
-        tick_counter.cpp)
+        test_tick_counter.cpp
+        test_libbuscount.cpp
+        test_video_sync.cpp)
 
 target_compile_definitions(tests PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
 

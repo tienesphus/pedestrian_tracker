@@ -2,8 +2,6 @@
 #include <tuple>
 #include <vector>
 
-#include <opencv2/videoio.hpp>
-
 #include "libbuscount.hpp"
 #include "detection.hpp"
 #include "world.hpp"
@@ -28,21 +26,26 @@ int main() {
         cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
     };
 
-    //TODO I don't want to pass in the frame size
-    // Also, it is not 50x50
-    OpenCVDetector detector(net_config, cv::Size(50, 50));
+    string input = "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
+
+    //TODO get detector to automagically figure this out
+    cv::Size size;
+    {
+        cv::Mat first_frame = *cap.next();
+        size = cv::Size(first_frame.cols, first_frame.rows);
+    }
+
+    OpenCVDetector detector(net_config, size);
     WorldConfig world_config = WorldConfig::from_file("../config.csv");
     Tracker tracker(world_config);
 
-    string input = "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
-    VideoSync cap(input);
-
     BusCounter counter(detector, tracker, world_config,
-            [&cap]() -> std::optional<cv::Mat> { return cap.read(); },
+            [&cap]() -> std::optional<cv::Mat> { return cap.next(); },
             [](const cv::Mat& frame) { imshow("output", frame); },
             []() { return cv::waitKey(20) == 'q'; }
     );
-    counter.run(BusCounter::RUN_SERIAL, true);
+    counter.run(BusCounter::RUN_PARALLEL, true);
 
     return 0;
 }
