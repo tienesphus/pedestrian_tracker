@@ -12,19 +12,21 @@
 
 #include <opencv2/highgui.hpp>
 
-template <class Func>
-auto log_lambda(const std::string& name, Func f) {
-    return [name, f](auto ... args) -> decltype(f(args...)) {
-        struct Logger {
-            const std::string* name;
-            explicit Logger(const std::string* name):name(name) { std::cout << "START " << name << std::endl; }
-            ~Logger() { std::cout << "STOP " << name << std::endl; }
-        };
-        Logger log(&name);
+/**
+ * A simple logging class that logs when it is created and when it is destroyed.
+ */
+class ScopeLog {
+public:
+    ScopeLog(std::string tag):tag(tag) {
+        std::cout << "START " << this->tag << std::endl;
+    }
+    ~ScopeLog() {
+        std::cout << "END " << this->tag << std::endl;
+    }
 
-        return f(args...);
-    };
-}
+private:
+    std::string tag;
+};
 
 BusCounter::BusCounter(
         Detector& detector,
@@ -110,16 +112,17 @@ void BusCounter::run_parallel(bool do_draw)
 
     std::cout << "Init functions" << std::endl;
 
-    flow::source_node<PtrMat> src_node(g, log_lambda("SRC",
-             [this, &stop](PtrMat &frame) -> bool {
-                 std::optional<Mat> got_frame = this->_src();
-                 if (got_frame.has_value()) {
-                     frame = cv::makePtr<Mat>(*got_frame);
-                 } else {
-                     stop = true;
-                 }
-                 return !stop;
-             }), false // false; don't start until we call src_node.activate below
+    flow::source_node<PtrMat> src_node(g,
+            [this, &stop](PtrMat &frame) -> bool {
+                ScopeLog log("SRC");
+                std::optional<Mat> got_frame = this->_src();
+                if (got_frame.has_value()) {
+                    frame = cv::makePtr<Mat>(*got_frame);
+                } else {
+                    stop = true;
+                }
+                return !stop;
+            }, false // false; don't start until we call src_node.activate below
     );
 
 
@@ -139,26 +142,29 @@ void BusCounter::run_parallel(bool do_draw)
     
     // pre_detect: Preprocesses the image into a 'blob' so it is ready 
     //             to feed into a detection algorithm
-    flow::function_node<PtrMat, std::shared_future<Mat>> start_detection(g, flow::serial, log_lambda("START DETECTION",
+    flow::function_node<PtrMat, std::shared_future<Mat>> start_detection(g, flow::serial,
             [this](PtrMat mat) -> auto {
+                ScopeLog log("DETECTION");
                 return this->_detector.start_async(*mat);
             }
-    ));
+    );
 
     // detect: Takes the preprocessed blob
-    flow::function_node<std::shared_future<Mat>, PtrMat> wait_detection(g, flow::serial, log_lambda("WAIT DETECTION",
+    flow::function_node<std::shared_future<Mat>, PtrMat> wait_detection(g, flow::serial,
             [this](std::shared_future<Mat> request) -> PtrMat {
+                ScopeLog log("WAIT DETECTION");
                 return cv::makePtr<Mat>(this->_detector.wait_async(request));
             }
-    ));
+    );
 
     // post_detect: Takes the raw detection output, interprets it, and
     //              produces some meaningful results
-    flow::function_node<PtrMat, ptr<Detections>> post_detection(g, flow::serial, log_lambda("POST DETECT",
+    flow::function_node<PtrMat, ptr<Detections>> post_detection(g, flow::serial,
             [this](PtrMat input) -> auto {
+                ScopeLog log("POST DETECT");
                 return std::make_shared<Detections>(this->_detector.post_process(*input));
             }
-    ));
+    );
 
 
     // joint: combines the results from the original image and the detection data
@@ -167,17 +173,18 @@ void BusCounter::run_parallel(bool do_draw)
 
     // track: Tracks detections
     typedef std::tuple<PtrMat, ptr<Detections>, ptr<WorldState>> track_output;
-    flow::function_node<joint_output, track_output> track_node(g, flow::serial, log_lambda("TRACK",
+    flow::function_node<joint_output, track_output> track_node(g, flow::serial,
             [this](joint_output input) -> auto {
+                ScopeLog log("TRACK");
                 const auto& [frame, detections] = input;
                 return std::make_tuple(frame, detections, std::make_shared<WorldState>(this->_tracker.process(*detections, *frame)));
             }
-    ));
+    );
 
-    flow::function_node<track_output, PtrMat> draw_node(g, flow::serial, log_lambda("DRAW",
+    flow::function_node<track_output, PtrMat> draw_node(g, flow::serial,
             [this](track_output input) -> auto {
+                ScopeLog log("DRAW");
                 auto& [frame, detections, state] = input;
-
                 detections->draw(*frame);
                 state->draw(*frame);
                 // TODO possible concurrency issue of tracker updating before getting drawn
@@ -186,28 +193,31 @@ void BusCounter::run_parallel(bool do_draw)
 
                 return frame;
             }
-    ));
+    );
 
-    flow::function_node<track_output, PtrMat> no_draw_node(g, flow::serial, log_lambda("NO DRAW",
+    flow::function_node<track_output, PtrMat> no_draw_node(g, flow::serial,
             [](track_output input) -> auto {
+                ScopeLog log("NO DRAW");
                 return std::get<0>(input);
             }
-    ));
+    );
 
     // stream: Writes images to a stream
-    flow::function_node<PtrMat> stream_node(g, flow::serial, log_lambda("DISPLAY",
+    flow::function_node<PtrMat> stream_node(g, flow::serial,
             [&display_queue](PtrMat input) -> void {
+                ScopeLog log("DISPLAY");
                 display_queue.push(input);
             }
-    ));
+    );
 
     // stream: Writes images to a stream
-    flow::function_node<flow::continue_msg> fps_node(g, flow::serial, log_lambda("TICK",
-             [&counter](flow::continue_msg) -> void {
-                 auto fps = counter.process_tick();
-                 std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
-             }
-    ));
+    flow::function_node<flow::continue_msg> fps_node(g, flow::serial,
+            [&counter](flow::continue_msg) -> void {
+                ScopeLog log("TICK");
+                auto fps = counter.process_tick();
+                std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
+            }
+    );
     
     std::cout << "making edges" << std::endl;
 
