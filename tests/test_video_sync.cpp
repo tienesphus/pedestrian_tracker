@@ -1,11 +1,10 @@
+#include <unistd.h>
+
 #include <video_sync.hpp>
-#include <iostream>
 
 #include "catch.hpp"
 
-#include "tick_counter.hpp"
-
-TEST_CASE( "Video Sync skips the correct number of frames", "[tick_counter]" ) {
+TEST_CASE( "Video Sync skips the correct number of frames", "[video_sync]" ) {
 
     namespace ch = std::chrono;
     typedef ch::high_resolution_clock Time;
@@ -43,5 +42,25 @@ TEST_CASE( "Video Sync skips the correct number of frames", "[tick_counter]" ) {
         REQUIRE(offset >= -1);
         REQUIRE(offset <= 1);
     }
+
+}
+
+TEST_CASE( "Video Sync does not segfault with video", "[video_sync]" ) {
+
+    VideoSync<cv::Mat> sync = VideoSync<cv::Mat>::from_video(
+            std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4");
+
+    std::optional<cv::Mat> frame;
+    frame = sync.next();
+    REQUIRE(frame.has_value());
+    REQUIRE(!(*frame).empty());
+
+    usleep(1000*100);
+
+    frame = sync.next();
+    REQUIRE(frame.has_value());
+    REQUIRE(!(*frame).empty());
+
+    // Really, this test case is just to make sure it doesn't crash
 
 }

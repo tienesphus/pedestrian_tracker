@@ -1,10 +1,9 @@
-#include <cmath>
-
 #ifndef BUS_COUNT_VIDEO_SYNC_HPP
 #define BUS_COUNT_VIDEO_SYNC_HPP
 
 #include <optional>
 #include <functional>
+#include <cmath>
 
 #include <opencv2/videoio.hpp>
 #include <iostream>
@@ -81,11 +80,11 @@ public:
      * @return the syncronised video
      */
     static VideoSync<cv::Mat, averaging> from_video(const std::string& filename) {
-        cv::VideoCapture cap(filename);
-        int src_fps = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
-        return VideoSync([&]() -> auto {
+        std::shared_ptr<cv::VideoCapture> cap = std::make_shared<cv::VideoCapture>(filename);
+        int src_fps = static_cast<int>(cap->get(cv::CAP_PROP_FPS));
+        return VideoSync([cap]() -> auto {
             cv::Mat frame;
-            bool result = cap.read(frame);
+            bool result = cap->read(frame);
             return result ? std::optional(frame) : std::nullopt;
         }, src_fps);
     }
