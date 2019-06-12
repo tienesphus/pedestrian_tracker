@@ -11,14 +11,7 @@
  */
 class Detector {
 public:
-    Detector(float thresh, int clazz, cv::Size size);
-
-    /**
-     * Runs detection for this frame
-     * @param frame the RGB input image
-     * @return some data (should be passed to Detector::post_process)
-     */
-    virtual cv::Mat run(const cv::Mat &frame) = 0;
+    Detector(float thresh, int clazz);
 
     /**
      * Pre-processes an image and starts the inference on it.
@@ -44,6 +37,14 @@ public:
      */
     Detections process(const cv::Mat &frame);
 
+protected:
+    /**
+     * Runs detection for this frame
+     * @param frame the RGB input image
+     * @return some data (should be passed to Detector::post_process)
+     */
+    virtual cv::Mat run(const cv::Mat &frame) = 0;
+
 private:
     // disallow copying
     Detector(const Detector&);
@@ -51,7 +52,7 @@ private:
 
     const float thresh;
     const int clazz;
-    const cv::Size input_size;
+    cv::Size input_size;
 };
 
 Detections static_post_process(const cv::Mat &data, int clazz, float thresh, const cv::Size &image_size);

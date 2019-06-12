@@ -23,8 +23,9 @@ public:
     /**
      * Constructs a detector from the given NetConfig
      */
-    OpenCVDetector(const NetConfigOpenCV &config, cv::Size size);
+    explicit OpenCVDetector(const NetConfigOpenCV &config);
 
+protected:
     cv::Mat run(const cv::Mat &frame) override;
 
 private:

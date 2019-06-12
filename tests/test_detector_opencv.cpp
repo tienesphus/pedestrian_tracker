@@ -33,7 +33,7 @@ TEST_CASE( "Basic detection with Detector", "[detector_opencv]" ) {
 
     cv::Mat image = load_test_image();
     NetConfigOpenCV net_config = load_test_config(cv::dnn::DNN_BACKEND_OPENCV, cv::dnn::DNN_TARGET_CPU);
-    OpenCVDetector detector(net_config, cv::Size(image.cols, image.rows));
+    OpenCVDetector detector(net_config);
 
     Detections results = detector.process(image);
 
@@ -46,7 +46,7 @@ TEST_CASE( "Basic detection with Detector on Myraid", "[detector_opencv]" ) {
 
     cv::Mat image = load_test_image();
     NetConfigOpenCV net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
-    OpenCVDetector detector(net_config, cv::Size(image.cols, image.rows));
+    OpenCVDetector detector(net_config);
 
     Detections results = detector.process(image);
 
@@ -57,7 +57,7 @@ TEST_CASE( "Detection with aysnc and myraid", "[detector_opencv]" ) {
 
     cv::Mat image = load_test_image();
     NetConfigOpenCV net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
-    OpenCVDetector detector(net_config, cv::Size(image.cols, image.rows));
+    OpenCVDetector detector(net_config);
 
     Detections results = detector.post_process(detector.wait_async(detector.start_async(image)));
 
@@ -67,13 +67,7 @@ TEST_CASE( "Detection with aysnc and myraid", "[detector_opencv]" ) {
 TEST_CASE( "Multiprocessing with async and Myraid", "[detector_opencv]" ) {
 
     NetConfigOpenCV net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
-    cv::Size image_size;
-    {
-        // separate scope so I don't accidentally reuse the input image in the loops below
-        cv::Mat image = load_test_image();
-        image_size = cv::Size(image.cols, image.rows);
-    }
-    OpenCVDetector detector(net_config, image_size);
+    OpenCVDetector detector(net_config);
 
     const int iterations = 10;
     std::vector<std::shared_future<Detections>> futures;

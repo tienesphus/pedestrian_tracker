@@ -29,14 +29,7 @@ int main() {
     string input = "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
     VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
 
-    //TODO get detector to automagically figure this out
-    cv::Size size;
-    {
-        cv::Mat first_frame = *cap.next();
-        size = cv::Size(first_frame.cols, first_frame.rows);
-    }
-
-    OpenCVDetector detector(net_config, size);
+    OpenCVDetector detector(net_config);
     WorldConfig world_config = WorldConfig::from_file("../config.csv");
     Tracker tracker(world_config);
 

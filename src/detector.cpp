@@ -2,8 +2,8 @@
 #include <opencv2/dnn.hpp>
 #include <iostream>
 
-Detector::Detector(float thresh, int clazz, cv::Size size)
-    :thresh(thresh), clazz(clazz), input_size(std::move(size))
+Detector::Detector(float thresh, int clazz)
+    :thresh(thresh), clazz(clazz)
 {
 }
 
@@ -11,6 +11,7 @@ Detector::Detector(float thresh, int clazz, cv::Size size)
 
 std::shared_future<cv::Mat> Detector::start_async(const cv::Mat &frame)
 {
+    this->input_size = cv::Size(frame.cols, frame.rows);
     return std::async(
             [=]() -> auto {
                 return this->run(frame);
@@ -29,6 +30,7 @@ Detections Detector::post_process(const cv::Mat &data) const
 }
 
 Detections Detector::process(const cv::Mat &frame) {
+    this->input_size = cv::Size(frame.cols, frame.rows);
     return post_process(run(frame));
 }
 
