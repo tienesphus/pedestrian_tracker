@@ -12,7 +12,7 @@
  * A basic tick counter for counting the FPS of something.
  * @tparam size the number of elements to store in the moving average calculation
  */
-template<size_t size>
+template<size_t size = 10>
 class TickCounter
 {
     typedef std::chrono::high_resolution_clock Time;

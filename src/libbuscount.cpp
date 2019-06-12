@@ -106,6 +106,7 @@ void BusCounter::run_parallel(bool do_draw)
     flow::graph g;
     std::atomic_bool stop = false;
     tbb::concurrent_queue<PtrMat> display_queue;
+    TickCounter counter;
 
     std::cout << "Init functions" << std::endl;
 
@@ -199,6 +200,14 @@ void BusCounter::run_parallel(bool do_draw)
                 display_queue.push(input);
             }
     ));
+
+    // stream: Writes images to a stream
+    flow::function_node<flow::continue_msg> fps_node(g, flow::serial, log_lambda("TICK",
+             [&counter](flow::continue_msg) -> void {
+                 auto fps = counter.process_tick();
+                 std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
+             }
+    ));
     
     std::cout << "making edges" << std::endl;
 
@@ -221,8 +230,8 @@ void BusCounter::run_parallel(bool do_draw)
         flow::make_edge(track_node, no_draw_node);
         flow::make_edge(no_draw_node, stream_node);
     }
-
-    flow::make_edge(stream_node, throttle_node.decrement);
+    flow::make_edge(stream_node,  fps_node);
+    flow::make_edge(fps_node,     throttle_node.decrement);
     
     // Begin running stuff
     std::cout << "Starting video" << std::endl;
@@ -257,6 +266,8 @@ void BusCounter::run_parallel(bool do_draw)
 //
 void BusCounter::run_serial(bool do_draw)
 {
+
+    TickCounter counter;
     while (true) {
 
         // Read at least once. Skip if source FPS is different from target FPS
@@ -274,6 +285,9 @@ void BusCounter::run_serial(bool do_draw)
             state.draw(frame);
             _world_config.draw(frame);
         }
+
+        auto fps = counter.process_tick();
+        std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
 
         _dest(frame);
         if (_test_exit())
