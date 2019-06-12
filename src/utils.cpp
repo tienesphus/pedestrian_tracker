@@ -33,7 +33,7 @@ bool Line::side(const cv::Point &p) const {
 
 //  ----------- HELPER METHODS ---------------
 
-float IoU(const cv::Rect2d &a, const cv::Rect2d &b) {
+float IoU(const cv::Rect &a, const cv::Rect &b) {
   int i_x1 = std::max(a.x, b.x);
   int i_y1 = std::max(a.y, b.y);
   int i_x2 = std::min(a.x+a.width,  b.x+b.width);
@@ -43,9 +43,9 @@ float IoU(const cv::Rect2d &a, const cv::Rect2d &b) {
     return 0;
   }
   
-  cv::Rect2d intersect(
-      cv::Point2d(i_x1, i_y1),
-      cv::Point2d(i_x2, i_y2)
+  cv::Rect intersect(
+      cv::Point(i_x1, i_y1),
+      cv::Point(i_x2, i_y2)
   );
   
   float i_area = intersect.area();
