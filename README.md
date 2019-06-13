@@ -60,7 +60,7 @@ make
 From within the build directory:
 
 ```
-./bin/bus_count
+./bin/buscountcli
 ```
 
 To run the daemon (currently only a simple RTSP server):
