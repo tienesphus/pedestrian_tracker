@@ -6,6 +6,7 @@
 #include "detection.hpp"
 #include "world.hpp"
 #include "detector_openvino.hpp"
+#include "detector_opencv.hpp"
 #include "video_sync.hpp"
 
 using namespace std;
@@ -16,8 +17,8 @@ int main() {
         0.5f,               // thresh
         15,                 // clazz
         cv::Size(300, 300), // size
-        2/255.0,            // scale
-        cv::Scalar(127.5, 127.5, 127.5),     // mean
+        1, //2/255.0,            // scale
+        cv::Scalar(1,1,1),//cv::Scalar(127.5, 127.5, 127.5),     // mean
         "../models/MobileNetSSD_IE/MobileNetSSD.xml", // config
         "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
         //"../models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config

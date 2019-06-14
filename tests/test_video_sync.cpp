@@ -39,8 +39,8 @@ TEST_CASE( "Video Sync skips the correct number of frames", "[video_sync]" ) {
         if (offset > use_every_n_frames/2)
             offset -= use_every_n_frames;
         // allow +-1 frame error
-        REQUIRE(offset >= -1);
-        REQUIRE(offset <= 1);
+        REQUIRE(offset >= -1.01);
+        REQUIRE(offset <= 1.01);
     }
 
 }

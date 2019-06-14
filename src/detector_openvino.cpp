@@ -2,49 +2,58 @@
 #include "detector_openvino.hpp"
 
 #include <iostream>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/cvstd.hpp>
+#include <iomanip>
 
 #include <opencv2/imgproc.hpp>
+#include <opencv2/dnn.hpp>
+
 #include <inference_engine.hpp>
-#include <iomanip>
 
 using namespace InferenceEngine;
 
 /**
- * @brief Wraps data stored inside of a passed cv::Mat object by new Blob pointer.
- * @note: No memory allocation is happened. The blob just points to already existing
- *        cv::Mat data.
- * @param mat - given cv::Mat object with an image data.
- * @return resulting Blob pointer.
- */
-static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
-    size_t channels = mat.channels();
-    size_t height = mat.size().height;
-    size_t width = mat.size().width;
+* @brief Sets image data stored in cv::Mat object to a given Blob object.
+* @param orig_image - given cv::Mat object with an image data.
+* @param blob - Blob object which to be filled by an image data.
+* @param batchIndex - batch index of an image inside of the blob.
+*/
+template <typename T>
+void matU8ToBlob(const cv::Mat& orig_image, InferenceEngine::Blob::Ptr& blob, const NetConfig &config, int batchIndex = 0) {
 
-    size_t strideH = mat.step.buf[0];
-    size_t strideW = mat.step.buf[1];
+    InferenceEngine::SizeVector blobSize = blob->getTensorDesc().getDims();
+    const size_t width = blobSize[3];
+    const size_t height = blobSize[2];
+    const size_t channels = blobSize[1];
+    T* blob_data = blob->buffer().as<T*>();
 
-    bool is_dense =
-            strideW == channels &&
-            strideH == channels * width;
+    //cv::Mat blobbed = cv::dnn::blobFromImage(orig_image, config.scale, config.networkSize, config.mean, false, false, CV_8U);
 
-    if (!is_dense) THROW_IE_EXCEPTION
-                << "Doesn't support conversion from not dense cv::Mat";
+    cv::Mat resized_image(orig_image);
+    if (width != orig_image.size().width || height!= orig_image.size().height) {
+        cv::resize(orig_image, resized_image, cv::Size(width, height));
+    }
 
-    InferenceEngine::TensorDesc tDesc(InferenceEngine::Precision::U8,
-                                      {1, channels, height, width},
-                                      InferenceEngine::Layout::NHWC);
+    int batchOffset = batchIndex * width * height * channels;
 
-    return InferenceEngine::make_shared_blob<uint8_t>(tDesc, mat.data);
+    for (size_t c = 0; c < channels; c++) {
+        for (size_t  h = 0; h < height; h++) {
+            for (size_t w = 0; w < width; w++) {
+                blob_data[batchOffset + c * width * height + h * width + w] =
+                        resized_image.at<cv::Vec3b>(h, w)[c];
+            }
+        }
+    }
 }
 
 void frameToBlob(const cv::Mat& frame,
                  InferRequest::Ptr& inferRequest,
-                 const std::string& inputName)
+                 const std::string& inputName,
+                 const NetConfig &config)
 {
-    inferRequest->SetBlob(inputName, wrapMat2Blob(frame));
+    Blob::Ptr frameBlob = inferRequest->GetBlob(inputName);
+    matU8ToBlob<uint8_t>(frame, frameBlob, config);
+
+
 }
 
 DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
@@ -71,7 +80,6 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
     this->inputName = inputInfo.begin()->first;
     InputInfo::Ptr& input = inputInfo.begin()->second;
     input->setPrecision(Precision::U8);
-    input->getPreProcess().setResizeAlgorithm(ResizeAlgorithm::RESIZE_BILINEAR);
     input->getInputData()->setLayout(Layout::NCHW);
     
     std::cout << "Configure Output Layer" << std::endl;
@@ -103,7 +111,7 @@ Detections DetectorOpenVino::process(const cv::Mat &frame)
 {
     std::cout << "Starting inference request" << std::endl;
     InferRequest::Ptr request = this->network.CreateInferRequestPtr();
-    frameToBlob(frame, request, this->inputName);
+    frameToBlob(frame, request, this->inputName, this->config);
     request->StartAsync();
 
     std::cout << "Waiting for inference request" << std::endl;
@@ -112,12 +120,12 @@ Detections DetectorOpenVino::process(const cv::Mat &frame)
     int width = frame.cols;
     int height = frame.rows;
 
+    std::cout << "Interpreting results" << std::endl;
     std::vector<Detection> results;
-
     const float *detections = request->GetBlob(outputName)->buffer().as<PrecisionTrait<Precision::FP32>::value_type*>();
     for (size_t i = 0; i < maxProposalCount; i++) {
         float id  = detections[i * objectSize + 0];
-        //float lbl = detections[i * objectSize + 1];
+        float lbl = detections[i * objectSize + 1];
         float con = detections[i * objectSize + 2];
         float x1  = detections[i * objectSize + 3] * width;
         float y1  = detections[i * objectSize + 4] * height;
@@ -125,19 +133,16 @@ Detections DetectorOpenVino::process(const cv::Mat &frame)
         float y2  = detections[i * objectSize + 6] * height;
 
         if (id < 0) {
-            std::cout << "Found " << i << " proposals found" << std::endl;
+            // negative id signifies end of valid proposals
             break;
         }
 
         cv::Rect r(cv::Point(x1, y1), cv::Point(x2, y2));
 
-        std::cout << "    Found: " << id << "(" << con << "%) - " << r << std::endl;
-
-        // TODO These comments are correct, but, at the moment, the conf and clazz are always ~0
-        //  so I've disabled them so I can at least see what's going on.
-        //if (id == config.clazz && con > config.thresh) {
+        if (lbl == config.clazz && con > config.thresh) {
+            std::cout << "    Found: " << id << " " << lbl << "(" << con*100 << "%) - " << r << std::endl;
             results.emplace_back(r, 1);
-        //}
+        }
     }
 
     return Detections(results);
