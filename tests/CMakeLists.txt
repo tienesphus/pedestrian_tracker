@@ -2,6 +2,7 @@ add_executable(tests
         testing_utils.cpp
         tests_main.cpp
         test_detection.cpp
+        test_detector_openvino.cpp
         test_detector_opencv.cpp
         test_tick_counter.cpp
         test_libbuscount.cpp

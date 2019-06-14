@@ -5,25 +5,26 @@
 #include <opencv2/highgui.hpp>
 
 cv::Mat load_test_image() {
-cv::Mat image = cv::imread(std::string(SOURCE_DIR)+"/tests/skier.jpg");
-REQUIRE(!image.empty());
-return image;
+    cv::Mat image = cv::imread(std::string(SOURCE_DIR)+"/tests/skier.jpg");
+    REQUIRE(!image.empty());
+    return image;
 }
 
-NetConfigOpenCV load_test_config(int preferred_backend, int preferred_target) {
-    return NetConfigOpenCV {
+NetConfig load_test_config(int preferred_backend, int preferred_target) {
+    return NetConfig {
             0.5f,               // thresh
             15,                 // clazz
             cv::Size(300, 300), // size
             2/255.0,            // scale
             cv::Scalar(127.5, 127.5, 127.5),     // mean
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
+            std::string(SOURCE_DIR)+"/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+            std::string(SOURCE_DIR)+"/models/MobileNetSSD_IE/MobileNetSSD.bin",  // model
+            //std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
+            //std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
             preferred_backend,  // preferred backend
             preferred_target,   // preferred device
     };
 }
-
 
 bool require_detections_in_spec(const Detections &result) {
     std::vector<Detection> detections = result.get_detections();

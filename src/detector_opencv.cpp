@@ -4,7 +4,7 @@
 #include <iostream>
 
 
-OpenCVDetector::OpenCVDetector(const NetConfigOpenCV &config):
+OpenCVDetector::OpenCVDetector(const NetConfig &config):
         Detector(config.thresh, config.clazz),
         config(config),
         net(cv::dnn::readNet(config.model, config.meta))

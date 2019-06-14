@@ -6,12 +6,27 @@
 
 #include "detection.hpp"
 
+struct NetConfig {
+    float thresh;           // confidence tothreshold positive detections at
+    int clazz;              // class number of people
+    cv::Size networkSize;   // The size to rescale the frame to when running inference
+    float scale;            // how to scale input pixels (between 0-255) to. E.g.
+    cv::Scalar mean;        // paramiter specific to how the model was trained
+    std::string meta;       // path to the meta file (.prototxt, .xml)
+    std::string model;      // path to the model file (.caffemodel, .bin)
+    int preferableBackend;  // The prefered backend for inference (e.g. cv::dnn::DNN_BACKEND_INFERENCE_ENGINE)
+    int preferableTarget;   // The prefered inference target (e.g. cv::dnn::DNN_TARGET_MYRIAD)
+};
+
 /**
  * A class that handles detection of things
  */
 class Detector {
 public:
     Detector(float thresh, int clazz);
+
+    // TODO it seems kinda strange to split this up into three steps.
+    //  Are you sure it's not possible to do the entire process in one step?
 
     /**
      * Pre-processes an image and starts the inference on it.
@@ -28,7 +43,7 @@ public:
      * Takes raw processing output from 'process' and makes sense of it
      * @return the detected things
      */
-    Detections post_process(const cv::Mat &data) const;
+    virtual Detections post_process(const cv::Mat &data) const;
 
     /**
      * Runs the inference from start to end. Does no multi-threading.

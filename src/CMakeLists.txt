@@ -25,7 +25,9 @@ add_library(buscount OBJECT
 	utils.cpp
 	world.cpp
 	detector.cpp
-	detector_opencv.cpp)
+	detector_opencv.cpp
+	detector_openvino.cpp
+)
 
 target_compile_definitions(buscount PUBLIC
     $<$<CONFIG:Debug>:TBB_USE_DEBUG=1>
