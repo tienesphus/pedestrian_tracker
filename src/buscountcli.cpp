@@ -13,7 +13,7 @@ using namespace std;
 int main() {
     
     NetConfig net_config {
-        0.0f,               // thresh
+        0.5f,               // thresh
         15,                 // clazz
         cv::Size(300, 300), // size
         2/255.0,            // scale

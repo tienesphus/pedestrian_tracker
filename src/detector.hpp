@@ -23,54 +23,34 @@ struct NetConfig {
  */
 class Detector {
 public:
-    Detector(float thresh, int clazz);
 
-    // TODO it seems kinda strange to split this up into three steps.
-    //  Are you sure it's not possible to do the entire process in one step?
+    typedef std::shared_future<Detections> intermediate;
+
+    Detector() = default;
 
     /**
-     * Pre-processes an image and starts the inference on it.
+     * Begins the process of running inference on an image.
      */
-    std::shared_future<cv::Mat> start_async(const cv::Mat &frame);
+    intermediate start_async(const cv::Mat &frame);
 
     /**
      * Waits for the process to complete
      * @return some unintelligent raw output
      */
-    cv::Mat wait_async(const std::shared_future<cv::Mat> &request) const;
+    Detections wait_async(const intermediate &request) const;
 
     /**
-     * Takes raw processing output from 'process' and makes sense of it
-     * @return the detected things
-     */
-    virtual Detections post_process(const cv::Mat &data) const;
-
-    /**
-     * Runs the inference from start to end. Does no multi-threading.
-     * @param frame the input frame
-     * @return the the final detections
-     */
-    Detections process(const cv::Mat &frame);
-
-protected:
-    /**
-     * Runs detection for this frame
+     * Runs detection for this frame and outputs the detected things.
      * @param frame the RGB input image
-     * @return some data (should be passed to Detector::post_process)
+     * @return the detections
      */
-    virtual cv::Mat run(const cv::Mat &frame) = 0;
+    virtual Detections process(const cv::Mat &frame) = 0;
 
 private:
     // disallow copying
     Detector(const Detector&);
     Detector& operator=(const Detector&);
-
-    const float thresh;
-    const int clazz;
-    cv::Size input_size;
 };
-
-Detections static_post_process(const cv::Mat &data, int clazz, float thresh, const cv::Size &image_size);
 
 
 #endif //BUS_COUNT_DETECTOR_HPP

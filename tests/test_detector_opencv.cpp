@@ -59,7 +59,7 @@ TEST_CASE( "Detection with aysnc and myraid", "[detector_opencv]" ) {
     NetConfig net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
     OpenCVDetector detector(net_config);
 
-    Detections results = detector.post_process(detector.wait_async(detector.start_async(image)));
+    Detections results = detector.wait_async(detector.start_async(image));
 
     require_detections_in_spec(results);
 }
@@ -70,23 +70,17 @@ TEST_CASE( "Multiprocessing with async and Myraid", "[detector_opencv]" ) {
     OpenCVDetector detector(net_config);
 
     const int iterations = 10;
-    std::vector<std::shared_future<Detections>> futures;
+    std::vector<Detector::intermediate> futures;
 
     for (int i = 0; i < iterations; i++) {
         cv::Mat image = load_test_image();
-        // note: the pass image by VALUE is very important
-        std::shared_future<Detections> a = std::async([image, &detector]() -> Detections {
-            auto async = detector.start_async(image);
-            auto intermediate = detector.wait_async(async);
-            return detector.post_process(intermediate);
-        });
-        futures.push_back(a);
+        futures.push_back(detector.start_async(image));
     }
 
     std::vector<Detections> results;
     for (int i = 0; i < iterations; i++) {
-        auto value = futures[i];
-        results.push_back(value.get());
+        Detector::intermediate value = futures[i];
+        results.push_back(detector.wait_async(value));
     }
 
     for (int i = 0; i < iterations; i++) {

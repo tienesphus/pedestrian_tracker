@@ -12,26 +12,6 @@
 #include "detector_openvino.hpp"
 
 
-TEST_CASE( "Sanity check - independent network detect openvino", "[detector_openvino]" ) {
-
-    // If this fails, either the config is wrong, or (more likely) you have not set up the libraries right
-
-    cv::Mat image = load_test_image();
-    auto config = load_test_config(cv::dnn::DNN_BACKEND_OPENCV, cv::dnn::DNN_TARGET_CPU);
-
-    cv::Mat blob = cv::dnn::blobFromImage(image, config.scale, config.networkSize, config.mean);
-    cv::dnn::Net net = cv::dnn::readNet(config.meta, config.model);
-    net.setPreferableBackend(config.preferableBackend);
-    net.setPreferableTarget(config.preferableTarget);
-
-    // pass the network
-    net.setInput(blob);
-    cv::Mat result = net.forward();
-
-    Detections results = static_post_process(result, config.clazz, config.thresh, cv::Size(image.cols, image.rows));
-    require_detections_in_spec(results);
-}
-
 TEST_CASE( "Basic detection with OpenVino", "[detector_openvino]" ) {
 
     cv::Mat image = load_test_image();

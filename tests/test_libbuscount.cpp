@@ -7,7 +7,7 @@
 TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
 
     NetConfig netConfig = load_test_config(cv::dnn::DNN_BACKEND_OPENCV, cv::dnn::DNN_TARGET_CPU);
-    OpenCVDetector detector(netConfig);
+    OpenCVDetector detector(<#initializer#>, netConfig);
 
     WorldConfig config = WorldConfig::from_file(std::string(SOURCE_DIR)+"/config.csv");
     Tracker tracker(config);

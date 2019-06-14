@@ -13,10 +13,7 @@ public:
      */
     explicit DetectorOpenVino(const NetConfig &config);
 
-    Detections post_process(const cv::Mat &data) const override;
-
-protected:
-    cv::Mat run(const cv::Mat &frame) override;
+    Detections process(const cv::Mat &frame) override;
 
 private:
     // disallow copying

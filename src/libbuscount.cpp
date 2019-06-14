@@ -1,3 +1,5 @@
+#include <utility>
+
 #include "libbuscount.hpp"
 #include "tick_counter.hpp"
 
@@ -17,7 +19,7 @@
  */
 class ScopeLog {
 public:
-    ScopeLog(std::string tag):tag(tag) {
+    ScopeLog(std::string tag):tag(std::move(tag)) {
         std::cout << "START " << this->tag << std::endl;
     }
     ~ScopeLog() {
@@ -62,7 +64,7 @@ using ptr = std::shared_ptr<T>;
 void BusCounter::run_parallel(bool do_draw)
 {
     typedef cv::Mat Mat;
-    typedef cv::Ptr<Mat> PtrMat;
+    typedef ptr<Mat> PtrMat;
     namespace flow = tbb::flow;
 
     /*
@@ -142,7 +144,7 @@ void BusCounter::run_parallel(bool do_draw)
     
     // pre_detect: Preprocesses the image into a 'blob' so it is ready 
     //             to feed into a detection algorithm
-    flow::function_node<PtrMat, std::shared_future<Mat>> start_detection(g, flow::serial,
+    flow::function_node<PtrMat, Detector::intermediate> start_detection(g, flow::serial,
             [this](PtrMat mat) -> auto {
                 ScopeLog log("DETECTION");
                 return this->_detector.start_async(*mat);
@@ -150,22 +152,12 @@ void BusCounter::run_parallel(bool do_draw)
     );
 
     // detect: Takes the preprocessed blob
-    flow::function_node<std::shared_future<Mat>, PtrMat> wait_detection(g, flow::serial,
-            [this](std::shared_future<Mat> request) -> PtrMat {
+    flow::function_node<Detector::intermediate, ptr<Detections>> wait_detection(g, flow::serial,
+            [this](Detector::intermediate request) -> ptr<Detections> {
                 ScopeLog log("WAIT DETECTION");
-                return cv::makePtr<Mat>(this->_detector.wait_async(request));
+                return cv::makePtr<Detections>(this->_detector.wait_async(request));
             }
     );
-
-    // post_detect: Takes the raw detection output, interprets it, and
-    //              produces some meaningful results
-    flow::function_node<PtrMat, ptr<Detections>> post_detection(g, flow::serial,
-            [this](PtrMat input) -> auto {
-                ScopeLog log("POST DETECT");
-                return std::make_shared<Detections>(this->_detector.post_process(*input));
-            }
-    );
-
 
     // joint: combines the results from the original image and the detection data
     typedef std::tuple<PtrMat, ptr<Detections>> joint_output;
@@ -225,9 +217,8 @@ void BusCounter::run_parallel(bool do_draw)
     flow::make_edge(src_node,         throttle_node);
     flow::make_edge(throttle_node,    start_detection);
     flow::make_edge(start_detection,  wait_detection);
-    flow::make_edge(wait_detection,   post_detection);
     flow::make_edge(throttle_node,    flow::input_port<0>(joint_node));
-    flow::make_edge(post_detection,   flow::input_port<1>(joint_node));
+    flow::make_edge(wait_detection,   flow::input_port<1>(joint_node));
     flow::make_edge(joint_node,       track_node);
 
     if (do_draw)

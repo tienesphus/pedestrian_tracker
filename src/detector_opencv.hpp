@@ -13,8 +13,7 @@ public:
      */
     explicit OpenCVDetector(const NetConfig &config);
 
-protected:
-    cv::Mat run(const cv::Mat &frame) override;
+    Detections process(const cv::Mat &frame) override;
 
 private:
     // disallow copying
@@ -26,5 +25,6 @@ private:
     std::mutex lock;
 };
 
+Detections static_post_process(const cv::Mat &data, int clazz, float thresh, const cv::Size &image_size);
 
 #endif //BUS_COUNT_DETECTOR_OPENCV_HPP

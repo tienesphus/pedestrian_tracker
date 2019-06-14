@@ -48,7 +48,7 @@ void frameToBlob(const cv::Mat& frame,
 }
 
 DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
-        Detector(config.thresh, config.clazz),
+        Detector(),
         config(config)
 {
 
@@ -94,74 +94,50 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
     output->setLayout(Layout::NCHW);
 
     std::cout << "Loading Model to Plugin" << std::endl;
-    ExecutableNetwork network = plugin.LoadNetwork(netReader.getNetwork(), {});
-    this->network = network;
+    this->network = plugin.LoadNetwork(netReader.getNetwork(), {});
 
     std::cout << "End Loading detector" << std::endl;
 }
 
-cv::Mat DetectorOpenVino::run(const cv::Mat &frame)
+Detections DetectorOpenVino::process(const cv::Mat &frame)
 {
     std::cout << "Starting inference request" << std::endl;
     InferRequest::Ptr request = this->network.CreateInferRequestPtr();
     frameToBlob(frame, request, this->inputName);
     request->StartAsync();
 
-    std::cout << "Waitiong for inference request" << std::endl;
+    std::cout << "Waiting for inference request" << std::endl;
     request->Wait(IInferRequest::WaitMode::RESULT_READY);
 
     int width = frame.cols;
     int height = frame.rows;
 
-    // Push the data into an Mat so it can be retrieved in post_process
-    // TODO find a way to get rid of this copying of data.
-    cv::Mat results(maxProposalCount, 7, CV_32FC1);
+    std::vector<Detection> results;
 
     const float *detections = request->GetBlob(outputName)->buffer().as<PrecisionTrait<Precision::FP32>::value_type*>();
     for (size_t i = 0; i < maxProposalCount; i++) {
-        float id, cf, x1, x2, y1, y2;
-        results.at<float>(i, 0) = id = detections[i * objectSize + 0];
-        results.at<float>(i, 0) =      detections[i * objectSize + 1];
-        results.at<float>(i, 0) = cf = detections[i * objectSize + 2];
-        results.at<float>(i, 0) = x1 = detections[i * objectSize + 3] * width;
-        results.at<float>(i, 0) = y1 = detections[i * objectSize + 4] * height;
-        results.at<float>(i, 0) = x2 = detections[i * objectSize + 5] * width;
-        results.at<float>(i, 0) = y2 = detections[i * objectSize + 6] * height;
+        float id  = detections[i * objectSize + 0];
+        //float lbl = detections[i * objectSize + 1];
+        float con = detections[i * objectSize + 2];
+        float x1  = detections[i * objectSize + 3] * width;
+        float y1  = detections[i * objectSize + 4] * height;
+        float x2  = detections[i * objectSize + 5] * width;
+        float y2  = detections[i * objectSize + 6] * height;
 
         if (id < 0) {
-            std::cout << "Only " << i << " proposals found" << std::endl;
+            std::cout << "Found " << i << " proposals found" << std::endl;
             break;
         }
 
-        std::cout << "[" << i << "," << id << "] element, prob = " << cf <<
-                  "    (" << x1 << "," << y1 << ")-(" << x2 << "," << y2 << ")"
-                  << ((cf > config.thresh) ? " WILL BE RENDERED!" : "") << std::endl;
-    }
+        cv::Rect r(cv::Point(x1, y1), cv::Point(x2, y2));
 
-    return results;
-}
+        std::cout << "    Found: " << id << "(" << con << "%) - " << r << std::endl;
 
-Detections DetectorOpenVino::post_process(const cv::Mat &data) const {
-
-    std::vector<Detection> results;
-
-    for (size_t i = 0; i < maxProposalCount; i++) {
-        float confidence = data.at<float>(i, 2);
-        if (confidence > config.thresh) {
-
-            float id = static_cast<int>(data.at<float>(i, 0));
-            float x1 = data.at<float>(i, 3);
-            float y1 = data.at<float>(i, 4);
-            float x2 = data.at<float>(i, 5);
-            float y2 = data.at<float>(i, 6);
-
-            cv::Rect r(cv::Point(x1, y1), cv::Point(x2, y2));
-
-            std::cout << "    Found: " << id << "(" << confidence << "%) - " << r << std::endl;
-
-            if (id == config.clazz)
-                results.emplace_back(r, 1);
-        }
+        // TODO These comments are correct, but, at the moment, the conf and clazz are always ~0
+        //  so I've disabled them so I can at least see what's going on.
+        //if (id == config.clazz && con > config.thresh) {
+            results.emplace_back(r, 1);
+        //}
     }
 
     return Detections(results);
