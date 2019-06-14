@@ -12,49 +12,34 @@
 using namespace InferenceEngine;
 
 /**
-* @brief Sets image data stored in cv::Mat object to a given Blob object.
-* @param orig_image - given cv::Mat object with an image data.
-* @param blob - Blob object which to be filled by an image data.
-* @param batchIndex - batch index of an image inside of the blob.
-*/
-template <typename T>
-void matU8ToBlob(const cv::Mat& orig_image, InferenceEngine::Blob::Ptr& blob, const NetConfig &config, int batchIndex = 0) {
+ * @brief Wraps data stored inside of a passed cv::Mat object by new Blob pointer.
+ * @note: No memory allocation is happened. The blob just points to already existing
+ *        cv::Mat data.
+ * @param mat - given cv::Mat object with an image data.
+ * @return resulting Blob pointer.
+ */
+static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
+    size_t channels = mat.channels();
+    size_t height = mat.size().height;
+    size_t width = mat.size().width;
 
-    InferenceEngine::SizeVector blobSize = blob->getTensorDesc().getDims();
-    const size_t width = blobSize[3];
-    const size_t height = blobSize[2];
-    const size_t channels = blobSize[1];
-    T* blob_data = blob->buffer().as<T*>();
+    size_t strideH = mat.step.buf[0];
+    size_t strideW = mat.step.buf[1];
 
-    //cv::Mat blobbed = cv::dnn::blobFromImage(orig_image, config.scale, config.networkSize, config.mean, false, false, CV_8U);
+    bool is_dense =
+            strideW == channels &&
+            strideH == channels * width;
 
-    cv::Mat resized_image(orig_image);
-    if (width != orig_image.size().width || height!= orig_image.size().height) {
-        cv::resize(orig_image, resized_image, cv::Size(width, height));
-    }
+    if (!is_dense)
+        throw "Detector doesn't support conversion from not dense cv::Mat";
 
-    int batchOffset = batchIndex * width * height * channels;
+    InferenceEngine::TensorDesc tDesc(InferenceEngine::Precision::U8,
+                                      {1, channels, height, width},
+                                      InferenceEngine::Layout::NHWC);
 
-    for (size_t c = 0; c < channels; c++) {
-        for (size_t  h = 0; h < height; h++) {
-            for (size_t w = 0; w < width; w++) {
-                blob_data[batchOffset + c * width * height + h * width + w] =
-                        resized_image.at<cv::Vec3b>(h, w)[c];
-            }
-        }
-    }
+    return InferenceEngine::make_shared_blob<uint8_t>(tDesc, mat.data);
 }
 
-void frameToBlob(const cv::Mat& frame,
-                 InferRequest::Ptr& inferRequest,
-                 const std::string& inputName,
-                 const NetConfig &config)
-{
-    Blob::Ptr frameBlob = inferRequest->GetBlob(inputName);
-    matU8ToBlob<uint8_t>(frame, frameBlob, config);
-
-
-}
 
 DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
         Detector(),
@@ -80,7 +65,8 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
     this->inputName = inputInfo.begin()->first;
     InputInfo::Ptr& input = inputInfo.begin()->second;
     input->setPrecision(Precision::U8);
-    input->getInputData()->setLayout(Layout::NCHW);
+    input->getPreProcess().setResizeAlgorithm(ResizeAlgorithm::RESIZE_BILINEAR);
+    input->getInputData()->setLayout(Layout::NHWC);
     
     std::cout << "Configure Output Layer" << std::endl;
     OutputsDataMap outputInfo(net.getOutputsInfo());
@@ -109,9 +95,11 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
 
 Detections DetectorOpenVino::process(const cv::Mat &frame)
 {
-    std::cout << "Starting inference request" << std::endl;
+    std::cout << "Preprocess" << std::endl;
     InferRequest::Ptr request = this->network.CreateInferRequestPtr();
-    frameToBlob(frame, request, this->inputName, this->config);
+    request->SetBlob(inputName, wrapMat2Blob(frame));
+
+    std::cout << "Starting inference request" << std::endl;
     request->StartAsync();
 
     std::cout << "Waiting for inference request" << std::endl;

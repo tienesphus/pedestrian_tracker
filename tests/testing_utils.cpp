@@ -11,35 +11,6 @@ cv::Mat load_test_image() {
     return image;
 }
 
-NetConfig load_test_config(int preferred_backend, int preferred_target) {
-    return NetConfig {
-            0.5f,               // thresh
-            15,                 // clazz
-            cv::Size(300, 300), // size
-            2/255.0,            // scale
-            cv::Scalar(127.5, 127.5, 127.5),     // mean
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
-            preferred_backend,  // preferred backend
-            preferred_target,   // preferred device
-    };
-}
-
-NetConfig load_test_config_ie() {
-    return NetConfig {
-            0.5f,               // thresh
-            15,                 // clazz
-            cv::Size(300, 300), // size
-            1,                  // scale
-            cv::Scalar(0, 0, 0),// mean
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_IE/MobileNetSSD.bin",  // model
-            cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // preferred backend
-            cv::dnn::DNN_TARGET_MYRIAD,   // preferred device
-    };
-}
-
-
 bool require_detections_in_spec(const Detections &result) {
     std::vector<Detection> detections = result.get_detections();
     REQUIRE(detections.size() == 1);
@@ -58,7 +29,7 @@ bool require_detections_in_spec(const Detections &result) {
     REQUIRE(conf <= 1.001); // slightly over one to allow floating point weirdness
     REQUIRE(box.x > 80);
     REQUIRE(box.x < 85);
-    REQUIRE(box.y > 109);
+    REQUIRE(box.y > 108);
     REQUIRE(box.y < 113);
     REQUIRE(box.width > 410);
     REQUIRE(box.y < 415);

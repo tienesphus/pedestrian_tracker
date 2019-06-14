@@ -8,6 +8,14 @@
 class DetectorOpenVino: public Detector {
 
 public:
+
+    struct NetConfig {
+        float thresh;           // confidence to threshold positive detections at (between 0-1)
+        int clazz;              // class number of people (normally 0, 1, or 15)
+        std::string meta;       // path to the meta file (.xml)
+        std::string model;      // path to the model file (.bin)
+    };
+
     /**
      * Constructs a detector from the given NetConfig
      */

@@ -11,13 +11,20 @@
 #include "testing_utils.hpp"
 #include "detector_openvino.hpp"
 
-
+DetectorOpenVino::NetConfig load_test_config_ie() {
+    return DetectorOpenVino::NetConfig {
+            0.5f,               // thresh
+            15,                 // clazz
+            std::string(SOURCE_DIR)+"/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+            std::string(SOURCE_DIR)+"/models/MobileNetSSD_IE/MobileNetSSD.bin",  // model
+    };
+}
 
 
 TEST_CASE( "Basic detection with OpenVino", "[detector_openvino]" ) {
 
     cv::Mat image = load_test_image();
-    NetConfig net_config = load_test_config_ie();
+    auto net_config = load_test_config_ie();
     DetectorOpenVino detector(net_config);
 
     Detections results = detector.process(image);
@@ -28,7 +35,7 @@ TEST_CASE( "Basic detection with OpenVino", "[detector_openvino]" ) {
 TEST_CASE( "Detection with aysnc", "[detector_openvino]" ) {
 
     cv::Mat image = load_test_image();
-    NetConfig net_config = load_test_config_ie();
+    auto net_config = load_test_config_ie();
     DetectorOpenVino detector(net_config);
 
     Detections results = detector.wait_async(detector.start_async(image));
@@ -38,7 +45,7 @@ TEST_CASE( "Detection with aysnc", "[detector_openvino]" ) {
 
 TEST_CASE( "Multiprocessing with async", "[detector_openvino]" ) {
 
-    NetConfig net_config = load_test_config_ie();
+    auto net_config = load_test_config_ie();
     DetectorOpenVino detector(net_config);
 
     const int iterations = 10;
@@ -49,13 +56,10 @@ TEST_CASE( "Multiprocessing with async", "[detector_openvino]" ) {
         futures.push_back(detector.start_async(image));
     }
 
-    std::vector<Detections> results;
     for (int i = 0; i < iterations; i++) {
         Detector::intermediate value = futures[i];
-        results.push_back(detector.wait_async(value));
-    }
+        Detections results = detector.wait_async(value);
 
-    for (int i = 0; i < iterations; i++) {
-        require_detections_in_spec(results[i]);
+        require_detections_in_spec(results);
     }
 }

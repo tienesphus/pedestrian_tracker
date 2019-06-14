@@ -12,8 +12,8 @@
 using namespace std;
 
 int main() {
-    
-    NetConfig net_config {
+
+    /*DetectorOpenCV::NetConfig net_config {
         0.5f,               // thresh
         15,                 // clazz
         cv::Size(300, 300), // size
@@ -25,6 +25,13 @@ int main() {
         //"../models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
         cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // preferred backend
         cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
+    };*/
+
+    DetectorOpenVino::NetConfig net_config {
+            0.5f,               // thresh
+            15,                 // clazz
+            "../models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+            "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
     };
 
     string input = "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";

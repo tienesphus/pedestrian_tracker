@@ -7,6 +7,19 @@
 #include "detector_opencv.hpp"
 #include "testing_utils.hpp"
 
+DetectorOpenCV::NetConfig load_test_config(int preferred_backend, int preferred_target) {
+    return DetectorOpenCV::NetConfig {
+            0.5f,               // thresh
+            15,                 // clazz
+            cv::Size(300, 300), // size
+            2/255.0,            // scale
+            cv::Scalar(127.5, 127.5, 127.5),     // mean
+            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
+            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
+            preferred_backend,  // preferred backend
+            preferred_target,   // preferred device
+    };
+}
 
 
 TEST_CASE( "Sanity check - independent network detect", "[detector_opencv]" ) {
@@ -32,8 +45,8 @@ TEST_CASE( "Sanity check - independent network detect", "[detector_opencv]" ) {
 TEST_CASE( "Basic detection with Detector", "[detector_opencv]" ) {
 
     cv::Mat image = load_test_image();
-    NetConfig net_config = load_test_config(cv::dnn::DNN_BACKEND_OPENCV, cv::dnn::DNN_TARGET_CPU);
-    OpenCVDetector detector(net_config);
+    auto net_config = load_test_config(cv::dnn::DNN_BACKEND_OPENCV, cv::dnn::DNN_TARGET_CPU);
+    DetectorOpenCV detector(net_config);
 
     Detections results = detector.process(image);
 
@@ -45,8 +58,8 @@ TEST_CASE( "Basic detection with Detector on Myraid", "[detector_opencv]" ) {
     // If this is crashing, make sure you have the NCS plugged in
 
     cv::Mat image = load_test_image();
-    NetConfig net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
-    OpenCVDetector detector(net_config);
+    auto net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
+    DetectorOpenCV detector(net_config);
 
     Detections results = detector.process(image);
 
@@ -56,8 +69,8 @@ TEST_CASE( "Basic detection with Detector on Myraid", "[detector_opencv]" ) {
 TEST_CASE( "Detection with aysnc and myraid", "[detector_opencv]" ) {
 
     cv::Mat image = load_test_image();
-    NetConfig net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
-    OpenCVDetector detector(net_config);
+    auto net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
+    DetectorOpenCV detector(net_config);
 
     Detections results = detector.wait_async(detector.start_async(image));
 
@@ -66,8 +79,8 @@ TEST_CASE( "Detection with aysnc and myraid", "[detector_opencv]" ) {
 
 TEST_CASE( "Multiprocessing with async and Myraid", "[detector_opencv]" ) {
 
-    NetConfig net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
-    OpenCVDetector detector(net_config);
+    auto net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
+    DetectorOpenCV detector(net_config);
 
     const int iterations = 10;
     std::vector<Detector::intermediate> futures;
@@ -77,13 +90,11 @@ TEST_CASE( "Multiprocessing with async and Myraid", "[detector_opencv]" ) {
         futures.push_back(detector.start_async(image));
     }
 
-    std::vector<Detections> results;
     for (int i = 0; i < iterations; i++) {
         Detector::intermediate value = futures[i];
-        results.push_back(detector.wait_async(value));
+        Detections results = detector.wait_async(value);
+
+        require_detections_in_spec(results);
     }
 
-    for (int i = 0; i < iterations; i++) {
-        require_detections_in_spec(results[i]);
-    }
 }

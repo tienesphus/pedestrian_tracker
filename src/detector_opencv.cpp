@@ -4,7 +4,7 @@
 #include <iostream>
 
 
-OpenCVDetector::OpenCVDetector(const NetConfig &config) :
+DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
         Detector(),
         config(config),
         net(cv::dnn::readNet(config.model, config.meta))
@@ -25,7 +25,7 @@ OpenCVDetector::OpenCVDetector(const NetConfig &config) :
     net.setPreferableTarget(config.preferableTarget);
 }
 
-Detections OpenCVDetector::process(const cv::Mat &frame) {
+Detections DetectorOpenCV::process(const cv::Mat &frame) {
     cv::Mat blob = cv::dnn::blobFromImage(frame, config.scale, config.networkSize, this->config.mean);
     cv::Size size(frame.cols, frame.rows);
 
