@@ -1,8 +1,7 @@
 # cmake files
 build
-
-# binary files
-bin
+release
+debug
 
 # IDE files
 .idea/*

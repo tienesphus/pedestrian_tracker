@@ -15,7 +15,7 @@ TEST_CASE( "Video Sync skips the correct number of frames", "[video_sync]" ) {
     float fps_call = 30;
 
     // Create a VideoSync from a continuous set of numbers
-    std::atomic_uint32_t frame_no(0);
+    std::atomic<uint32_t> frame_no(0);
     VideoSync<uint32_t, 10> sync([&frame_no]() -> uint32_t {
         return ++frame_no;
     }, fps_set);
