@@ -10,42 +10,7 @@
 /** 
  * A jumble of data that follows a detection result around 
  */
-class Track
-{
-    friend class Tracker;
-
-private:  
-    /**
-     * Initialises a Track
-     * @param box the bounding box of where the track is
-     * @param conf the confidence that the track still exists
-     * @param index a unique index for the track
-     */
-    Track(cv::Rect box, float conf, int index);
-
-
-    // Tracks cannot be copied
-    Track(Track& t);
-
-    /**
-     * Updates the status of this Track. Updates the world count.
-     */
-    bool update(const WorldConfig& config, WorldState& world);
-
-    /**
-     * Draws the Track onto the given image
-     */
-    void draw(cv::Mat &img) const;
-
-    cv::Rect box;
-    float confidence;
-    int index;
-    
-    bool been_inside = false;
-    bool been_outside = false;
-    bool counted_in = false;
-    bool counted_out = false;
-};
+class Track;
 
 /**
  * Persistent data needed to know how to track different objects across frames
