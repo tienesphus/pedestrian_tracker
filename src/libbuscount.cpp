@@ -19,7 +19,7 @@
  */
 class ScopeLog {
 public:
-    ScopeLog(std::string tag):tag(std::move(tag)) {
+    explicit ScopeLog(std::string tag):tag(std::move(tag)) {
         std::cout << "START " << this->tag << std::endl;
     }
     ~ScopeLog() {
@@ -108,16 +108,16 @@ void BusCounter::run_parallel(bool do_draw)
     
     // shared variables
     flow::graph g;
-    std::atomic_bool stop = false;
+    std::atomic_bool stop(false);
     tbb::concurrent_queue<PtrMat> display_queue;
-    TickCounter counter;
+    TickCounter<> counter;
 
     std::cout << "Init functions" << std::endl;
 
     flow::source_node<PtrMat> src_node(g,
             [this, &stop](PtrMat &frame) -> bool {
                 ScopeLog log("SRC");
-                std::optional<Mat> got_frame = this->_src();
+                nonstd::optional<Mat> got_frame = this->_src();
                 if (got_frame.has_value()) {
                     frame = cv::makePtr<Mat>(*got_frame);
                 } else {
@@ -168,7 +168,8 @@ void BusCounter::run_parallel(bool do_draw)
     flow::function_node<joint_output, track_output> track_node(g, flow::serial,
             [this](joint_output input) -> auto {
                 ScopeLog log("TRACK");
-                const auto& [frame, detections] = input;
+                auto frame = std::get<0>(input);
+                auto detections = std::get<1>(input);
                 return std::make_tuple(frame, detections, std::make_shared<WorldState>(this->_tracker.process(*detections, *frame)));
             }
     );
@@ -176,7 +177,9 @@ void BusCounter::run_parallel(bool do_draw)
     flow::function_node<track_output, PtrMat> draw_node(g, flow::serial,
             [this](track_output input) -> auto {
                 ScopeLog log("DRAW");
-                auto& [frame, detections, state] = input;
+                auto frame = std::get<0>(input);
+                auto detections = std::get<1>(input);
+                auto state = std::get<2>(input);
                 detections->draw(*frame);
                 state->draw(*frame);
                 // TODO possible concurrency issue of tracker updating before getting drawn
@@ -268,11 +271,11 @@ void BusCounter::run_parallel(bool do_draw)
 void BusCounter::run_serial(bool do_draw)
 {
 
-    TickCounter counter;
+    TickCounter<> counter;
     while (true) {
 
         // Read at least once. Skip if source FPS is different from target FPS
-        std::optional<cv::Mat> got_frame = _src();
+        nonstd::optional<cv::Mat> got_frame = _src();
         if (!got_frame)
             break;
 

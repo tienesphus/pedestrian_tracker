@@ -2,14 +2,16 @@
 #include <tuple>
 #include <vector>
 
+#include <opencv2/highgui.hpp>
+
 #include "libbuscount.hpp"
 #include "detection.hpp"
 #include "world.hpp"
 #include "detector_openvino.hpp"
 #include "detector_opencv.hpp"
 #include "video_sync.hpp"
+#include "optional.hpp"
 
-using namespace std;
 
 int main() {
 
@@ -34,7 +36,7 @@ int main() {
             "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
     };
 
-    string input = "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    std::string input = "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
     VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
 
     DetectorOpenVino detector(net_config);
@@ -42,8 +44,8 @@ int main() {
     Tracker tracker(world_config);
 
     BusCounter counter(detector, tracker, world_config,
-            [&cap]() -> std::optional<cv::Mat> { return cap.next(); },
-            [](const cv::Mat& frame) { imshow("output", frame); },
+            [&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
+            [](const cv::Mat& frame) { cv::imshow("output", frame); },
             []() { return cv::waitKey(20) == 'q'; }
     );
     counter.run(BusCounter::RUN_PARALLEL, true);

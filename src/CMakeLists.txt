@@ -23,6 +23,7 @@ add_library(buscount OBJECT
 	detection.cpp
 	tracker.cpp
 	utils.cpp
+	optional.hpp
 	world.cpp
 	detector.cpp
 	detector_opencv.cpp

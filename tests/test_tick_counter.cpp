@@ -18,7 +18,7 @@ TEST_CASE( "TickCounter calculates correctly", "[tick_counter]" ) {
         }
         REQUIRE(one_wait); // if this fails, then the computer cant keep up
 
-        std::optional<float> fps = counter.process_tick();
+        nonstd::optional<float> fps = counter.process_tick();
 
         if (calls > 1) { // allow a little startup time
             REQUIRE(fps.has_value());

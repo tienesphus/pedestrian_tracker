@@ -1,5 +1,7 @@
 #include "utils.hpp"
 
+#include <opencv2/imgproc.hpp>
+
 //  ----------- LINE ---------------
 
 Line::Line(const cv::Point &a, const cv::Point &b): 

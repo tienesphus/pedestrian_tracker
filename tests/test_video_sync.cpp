@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <atomic>
 
 #include <video_sync.hpp>
 
@@ -50,7 +51,7 @@ TEST_CASE( "Video Sync does not segfault with video", "[video_sync]" ) {
     VideoSync<cv::Mat> sync = VideoSync<cv::Mat>::from_video(
             std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4");
 
-    std::optional<cv::Mat> frame;
+    nonstd::optional<cv::Mat> frame;
     frame = sync.next();
     REQUIRE(frame.has_value());
     REQUIRE(!(*frame).empty());

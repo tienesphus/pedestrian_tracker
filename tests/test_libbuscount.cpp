@@ -21,7 +21,7 @@ TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
 
     int count = 50;
     BusCounter counter(detector, tracker, config,
-            []() -> std::optional<cv::Mat> {
+            []() -> nonstd::optional<cv::Mat> {
                 return load_test_image();
             },
             [](const cv::Mat&) {
@@ -46,7 +46,7 @@ TEST_CASE( "Bus Counter runs in parallel", "[libbuscount]" ) {
 
     int count = 50;
     BusCounter counter(detector, tracker, config,
-                       []() -> std::optional<cv::Mat> {
+                       []() -> nonstd::optional<cv::Mat> {
                            return load_test_image();
                        },
                        [](const cv::Mat&) {

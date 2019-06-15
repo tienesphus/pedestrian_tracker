@@ -1,14 +1,13 @@
 #ifndef BUS_COUNT_VIDEO_SYNC_HPP
 #define BUS_COUNT_VIDEO_SYNC_HPP
 
-#include <optional>
 #include <functional>
 #include <cmath>
-
-#include <opencv2/videoio.hpp>
 #include <iostream>
 
-#include "tick_counter.hpp"
+#include <opencv2/videoio.hpp>
+
+#include "optional.hpp"
 
 /**
  * Takes an input source and ensures that it runs in real time. Does so by measuring the time between calls and
@@ -24,7 +23,7 @@ class VideoSync {
 
 public:
 
-    using src_cb_t = std::optional<T>();
+    using src_cb_t = nonstd::optional<T>();
 
     /**
      * Constructs a VideoSync from the given lambda function
@@ -40,7 +39,7 @@ public:
     /**
      * Grabs the next frame from the stream. Drops frames if we are behind
      */
-    std::optional<T> next() {
+    nonstd::optional<T> next() {
 
         // Calculate how many frames we need to read to catch up
         int catchup = 1;
@@ -55,7 +54,7 @@ public:
         }
 
         // read a bunch of frames out
-        std::optional<T> frame;
+        nonstd::optional<T> frame;
         do {
             // current_frame_no will eventually overflow, but that's okay because we only ever
             // take a difference of values
@@ -85,7 +84,7 @@ public:
         return VideoSync([cap]() -> auto {
             cv::Mat frame;
             bool result = cap->read(frame);
-            return result ? std::optional(frame) : std::nullopt;
+            return result ? nonstd::optional<T>(frame) : nonstd::nullopt;
         }, src_fps);
     }
 

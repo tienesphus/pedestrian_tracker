@@ -1,6 +1,10 @@
+#include "tracker.hpp"
+
+#include <iostream>
 #include <utility>
 
-#include "tracker.hpp"
+#include <opencv2/imgproc.hpp>
+
 
 
 //  ----------- TRACK ---------------
@@ -115,16 +119,13 @@ int _difference(const cv::Point& center_a, const cv::Point& center_b) {
  */
 void Tracker::merge(const Detections &detection_results)
 {
-    using namespace std;
-    using namespace cv;
+    std::cout << "MERGING" << std::endl;
+    std::vector<Detection> detections = detection_results.get_detections();
     
-    cout << "MERGING" << endl;
-    vector<Detection> detections = detection_results.get_detections();
+    std::vector<std::tuple<int, int, Track*>> confidences; // vector<tuple<difference, detect_index, track>>
+    std::vector<bool> detection_delt_with;
     
-    vector<tuple<int, int, Track*>> confidences; // vector<tuple<difference, detect_index, track>>
-    vector<bool> detection_delt_with;
-    
-    cout << "Calculating differences" << endl; 
+    std::cout << "Calculating differences" << std::endl;
     // build a map of differences between all tracks and all detections 
     for (size_t i = 0; i < detections.size(); i++) {
         Detection detection = detections[i];
@@ -132,10 +133,10 @@ void Tracker::merge(const Detections &detection_results)
         // determine the similarity between this track and the others
         for (Track* track : this->tracks) {
             int difference = _difference(
-                Point(   track->box.x +    track->box.width/2,     track->box.y +    track->box.height/4),
-                Point(detection.box.x + detection.box.width/2,  detection.box.y + detection.box.height/4)
+                cv::Point(   track->box.x +    track->box.width/2,     track->box.y +    track->box.height/4),
+                cv::Point(detection.box.x + detection.box.width/2,  detection.box.y + detection.box.height/4)
             );
-            cout << " d" << i << " x t" << track->index << ": " << difference << endl;
+            std::cout << " d" << i << " x t" << track->index << ": " << difference << std::endl;
             confidences.emplace_back(difference, i, track);
         }
       
@@ -143,29 +144,29 @@ void Tracker::merge(const Detections &detection_results)
         detection_delt_with.push_back(false);
     }  
 	
-    cout << "Sorting differences" << endl; 
+    std::cout << "Sorting differences" << std::endl;
     // order confidences so that lowest difference is first
     // (sort works by default of the first element of the tuple)
     std::sort(confidences.begin(), confidences.end());
 
-    cout << "Finding merges" << endl; 
+    std::cout << "Finding merges" << std::endl;
     // iteratively merge the closest of the detection/track combinations
     for (size_t i = 0; i < confidences.size(); i++) {
-        tuple<int, int, Track*> data = confidences[i];
+        std::tuple<int, int, Track*> data = confidences[i];
         int difference = std::get<0>(data);
         int detection_index = std::get<1>(data);
         Track* track = std::get<2>(data);
 
         // threshold box's that are too far away (60px)
         if (difference > 60*60) {
-            cout << " Differences too high" << endl;
+            std::cout << " Differences too high" << std::endl;
             break;
         }
       
-        cout << "Merging d" << detection_index <<  " and t" << track->index << endl;  
+        std::cout << "Merging d" << detection_index <<  " and t" << track->index << std::endl;
         Detection d = detections[detection_index];
         track->box = d.box;
-        track->confidence = max(d.confidence, track->confidence);
+        track->confidence = std::max(d.confidence, track->confidence);
 
         // delete all values in the map with the same detection/track
         // (so we do not merge them twice accidentally)
@@ -183,15 +184,14 @@ void Tracker::merge(const Detections &detection_results)
         detection_delt_with[detection_index] = true;  
     }
 
-    cout << "Adding new tracks" << endl; 
+    std::cout << "Adding new tracks" << std::endl;
     // Make new tracks for detections that have not merged
     for (size_t i = 0; i < detection_delt_with.size(); i++) {
         bool delt_with = detection_delt_with[i];
         if (!delt_with) {
             Detection d = detections[i];
-            cout << "Making a new box for detection " << i << endl;
-            Track* t = new Track(d.box, d.confidence, index_count++);
-            this->tracks.push_back(t);
+            std::cout << "Making a new box for detection " << i << std::endl;
+            this->tracks.push_back(new Track(d.box, d.confidence, index_count++));
         }
     }
 }

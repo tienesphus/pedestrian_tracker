@@ -1,7 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/types.hpp>
 
 struct Line {
     cv::Point a;

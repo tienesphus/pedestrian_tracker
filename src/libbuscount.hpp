@@ -2,16 +2,16 @@
 #define LIBBUSCOUNT_HPP
 
 #include <functional>
-#include <optional>
 
 #include <opencv2/videoio.hpp>
 
 #include "tracker.hpp"
 #include "detector.hpp"
+#include "optional.hpp"
 
 class BusCounter {
 public:
-    using src_cb_t = std::optional<cv::Mat>();
+    using src_cb_t = nonstd::optional<cv::Mat>();
     using dest_cb_t = void(const cv::Mat&);
     using test_exit_t = bool();
 
