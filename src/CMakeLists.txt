@@ -17,6 +17,7 @@ pkg_check_modules(GSTRTSPSRV REQUIRED gstreamer-rtsp-server-1.0)
 # These need to be placed after TBB to be able to make use of them.
 find_package(OpenCV 4.0 REQUIRED)
 find_package(InferenceEngine 1.5 REQUIRED)
+find_package(Threads REQUIRED)
 
 add_library(buscount OBJECT
 	libbuscount.cpp
@@ -45,9 +46,10 @@ add_library(buscount_static STATIC $<TARGET_OBJECTS:buscount>)
 #add_library(buscount_shared SHARED $<TARGET_OBJECTS:buscount>)
 
 target_link_libraries(buscount_static INTERFACE
-	${OpenCV_LIBRARIES}
 	${TBB_LIBRARIES}
-	${InferenceEngine_LIBRARIES}
+    opencv_core opencv_dnn
+    IE::inference_engine
+    Threads::Threads
 )
 
 
@@ -58,9 +60,6 @@ target_include_directories(buscountd PRIVATE
 	${GSTRTSPSRV_INCLUDE_DIRS}
 )
 
-target_link_libraries(buscountcli buscount_static)
-target_link_libraries(buscountd
-	${GSTRTSPSRV_LIBRARIES}
-)
-
+target_link_libraries(buscountcli buscount_static opencv_highgui)
+target_link_libraries(buscountd ${GSTRTSPSRV_LIBRARIES})
 
