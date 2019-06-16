@@ -61,11 +61,6 @@ To build in debug mode, replace the cmake command with:
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 ```
 
-If building on the Raspberry Pi, you may need to add architecture type:
-```
-cmake -DCMAKE_CXX_FLAGS="-march=armv7-a" ..
-```
-
 ### Running
 From within the build directory:
 
