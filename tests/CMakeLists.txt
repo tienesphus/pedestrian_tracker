@@ -1,17 +1,21 @@
+find_package(OpenCV 4.0 REQUIRED)
+
 add_executable(tests
-        testing_utils.cpp
-        tests_main.cpp
-        test_detection.cpp
-        test_detector_openvino.cpp
-        test_detector_opencv.cpp
-        test_tick_counter.cpp
-        test_libbuscount.cpp
-        test_video_sync.cpp)
+    testing_utils.cpp
+    tests_main.cpp
+    test_detection.cpp
+    test_detector_openvino.cpp
+    test_detector_opencv.cpp
+    test_tick_counter.cpp
+    test_libbuscount.cpp
+    test_video_sync.cpp
+)
 
 target_compile_definitions(tests PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
 
-target_link_libraries(tests buscount_static)
+target_link_libraries(tests buscount_static opencv_videoio)
 
 target_include_directories(tests PUBLIC
-        ${bus_count_SOURCE_DIR}/src
-            ${bus_count_SOURCE_DIR}/include/catch2)
+    $<TARGET_PROPERTY:buscount_static,SOURCE_DIR>
+    ${bus_count_SOURCE_DIR}/include/catch2
+)
