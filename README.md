@@ -24,7 +24,7 @@ OpenCV should be installed automatically when OpenVino is installed, so you prob
 Only once, you will have to download the required Neural Network modules.
 
 ```
-git submodule update --init modules/<network>
+git submodule update --init models/<network>
 # replace <network> with the folder that needs initialising
 ```
 Note: All submodules are stored in private repos, hence will require logging in for each (git doesn't have any concept of gitlab groups, so can't share the same password for each repo). To circumvent this, we will probably need to modify the submodules to make use of SSH, which will allow us to use either `ssh-agent` or SSH public-private keys.
@@ -65,7 +65,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 From within the build directory:
 
 ```
-./bin/bus_count
+./bin/buscountcli
 ```
 
 To run the daemon (currently only a simple RTSP server):
