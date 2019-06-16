@@ -76,13 +76,10 @@ void BusCounter::run_parallel(bool do_draw)
      *   +-->---throttle
      *   |          | Ptr<Mat>
      *   |          |
-     *   |        +-+---> pre_detect
-     *   |        |           | continue_msg
+     *   |        +-+---> start_detection
+     *   |        |           | Detector::intermediate
      *   |        |           v
-     *   |        |         detect
-     *   |        |           | Ptr<Mat>
-     *   |        |           v
-     *   |        |        post_detect
+     *   |        |       wait_detection
      *   |        |           | Ptr<Detections>
      *   |        |   +-------+
      *   |        v   v
@@ -90,7 +87,7 @@ void BusCounter::run_parallel(bool do_draw)
      *   |          | tuple<Mat, Detections>
      *   |          v
      *   |        track
-     *   |          | tuple<Mat, Detectons, WorldState>
+     *   |          | tuple<Mat, Detections, WorldState>
      *   |       ...+....
      *   |       :      :
      *   |     draw    no_draw
