@@ -41,9 +41,9 @@ GstRTSPMediaFactory *create_live_factory()
     gst_rtsp_media_factory_set_launch(
         live_factory,
         "( "
-            "v4l2src ! clockoverlay ! "
-            "omxh264enc ! video/x-h264, profile=baseline ! "
-            "rtph264pay name=pay0 pt=96 "
+            "v4l2src ! buscountfilter ! clockoverlay ! videoconvert ! "
+            "video/x-raw, format=I420 ! omxh264enc ! "
+            "video/x-h264, profile=baseline ! rtph264pay name=pay0 pt=96 "
         ")"
     );
 
@@ -53,7 +53,7 @@ GstRTSPMediaFactory *create_live_factory()
     return live_factory;
 }
 
-int main (int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     // Initialise gstreamermm
     Gst::init(argc, argv);
@@ -79,11 +79,11 @@ int main (int argc, char *argv[])
             "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
     };*/
 
+    GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config);
+    //GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENVINO, &net_config);
 
     // Register the gstreamer buscount plugin
     GstBusCount::plugin_init_static();
-    //GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENVINO, &net_config);
-    GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config);
 
     // Create a main loop for the current thread
     Glib::RefPtr<Glib::MainLoop> loop = Glib::MainLoop::create();

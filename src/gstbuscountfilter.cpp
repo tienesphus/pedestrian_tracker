@@ -16,12 +16,13 @@ struct PixelFormat
 {
     Glib::ustring name;
     uint8_t size;
+    int cv_type;
 };
 
 static const PixelFormat format_descriptions[] = {
-    { "BGR",  3 },
-    { "BGRx", 4 },
-    { "BGRA", 4 }
+    { "BGR",  3, CV_8UC3 }//,
+//    { "BGRx", 4, CV_8UC4 },
+//    { "BGRA", 4, CV_8UC4 }
 };
 
 
@@ -96,19 +97,23 @@ void GstBusCountFilter::class_init(Gst::ElementClass<GstBusCountFilter> *klass)
 
 void GstBusCountFilter::detector_init(Detector::Type detector_type, void *config)
 {
-    switch (detector_type)
+    if (!detector)
     {
-        case Detector::DETECTOR_OPENCV:
-            detector = std::unique_ptr<DetectorOpenCV>(
-                new DetectorOpenCV(*static_cast<DetectorOpenCV::NetConfig*>(config))
-            );
-            break;
+        GST_INFO("Initializing detector");
+        switch (detector_type)
+        {
+            case Detector::DETECTOR_OPENCV:
+                detector = std::unique_ptr<DetectorOpenCV>(
+                    new DetectorOpenCV(*static_cast<DetectorOpenCV::NetConfig*>(config))
+                );
+                break;
 
-        case Detector::DETECTOR_OPENVINO:
-            detector = std::unique_ptr<DetectorOpenVino>(
-                new DetectorOpenVino(*static_cast<DetectorOpenVino::NetConfig*>(config))
-            );
-            break;
+            case Detector::DETECTOR_OPENVINO:
+                detector = std::unique_ptr<DetectorOpenVino>(
+                    new DetectorOpenVino(*static_cast<DetectorOpenVino::NetConfig*>(config))
+                );
+                break;
+        }
     }
 }
 
@@ -142,7 +147,8 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
                 std::bind(&GstBusCountFilter::test_quit, this)
         ),
         buscount_running(false),
-        pixel_size(3),
+        pixel_size(format_descriptions[0].size),
+        cv_type(format_descriptions[0].cv_type),
         frame_width(1),
         frame_height(1),
         fps(1.0)
@@ -166,11 +172,14 @@ nonstd::optional<cv::Mat> GstBusCountFilter::next_frame()
 
     if (frame_in_queue->length() == 0) {
         GST_DEBUG("Waiting for next frame");
-        frame_queue_cond.wait(lk);
+        frame_queue_pushed.wait(lk);
     }
 
     GST_DEBUG("Popping next frame");
-    return frame_in_queue->pop();
+    cv::Mat ret(frame_in_queue->pop());
+    frame_queue_popped.notify_one();
+
+    return ret;
 }
 
 void GstBusCountFilter::push_frame(const cv::Mat &frame)
@@ -204,7 +213,6 @@ void GstBusCountFilter::push_frame(const cv::Mat &frame)
     if (buf)
     {
         GST_DEBUG("Found frame. Pushing to video_out pad");
-        GST_DEBUG("Buffer sizes are %zu and %u", frame.total(), mapinfo.get_size());
         video_out->push(std::move(buf));
     }
 }
@@ -225,7 +233,8 @@ bool GstBusCountFilter::setup_caps(Glib::RefPtr<Gst::Event> &event)
 
     GST_DEBUG("### Set caps to %s", out_caps->to_string().c_str());
 
-    pixel_size = 3;
+    cv_type = format_descriptions[0].cv_type;
+    pixel_size = format_descriptions[0].size;
     frame_width = 1;
     frame_height = 1;
     fps = 1.0;
@@ -243,6 +252,7 @@ bool GstBusCountFilter::setup_caps(Glib::RefPtr<Gst::Event> &event)
             if (value.get() == format_descriptions[i].name)
             {
                 format_exists = true;
+                cv_type = format_descriptions[i].cv_type;
                 pixel_size = format_descriptions[i].size;
                 GST_DEBUG("Pixel size set to %i", pixel_size);
             }
@@ -318,6 +328,7 @@ bool GstBusCountFilter::sink_event(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefP
 // Flow control
 Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Buffer> &buf)
 {
+    std::unique_lock<std::mutex> lk(cond_m);
 
     Gst::MapInfo mapinfo;
     buf->map(mapinfo, Gst::MAP_READ | Gst::MAP_WRITE);
@@ -331,10 +342,15 @@ Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> &pad, Glib
         return Gst::FLOW_NOT_SUPPORTED;
     }
 
+    if (frame_in_queue->length() >= 16) {
+        GST_DEBUG("Queue full, waiting for empty");
+        frame_queue_popped.wait(lk);
+    }
+
     GST_DEBUG("Pushing data to queue");
-    frame_in_queue->push(cv::Mat(frame_height, frame_width, CV_8UC3, mapinfo.get_data(), pixel_size));
+    frame_in_queue->push(cv::Mat(frame_height, frame_width, cv_type, mapinfo.get_data()));
     frame_out_queue->push(buf);
-    frame_queue_cond.notify_one();
+    frame_queue_pushed.notify_one();
 
     buf->unmap(mapinfo);
 
@@ -352,26 +368,31 @@ Gst::StateChangeReturn GstBusCountFilter::change_state_vfunc(Gst::StateChange tr
     switch (transition)
     {
         case Gst::STATE_CHANGE_NULL_TO_READY:
+            GST_DEBUG("NULL -> READY");
             break;
         case Gst::STATE_CHANGE_READY_TO_PAUSED:
-            break;
-        case Gst::STATE_CHANGE_PAUSED_TO_PLAYING:
+            GST_DEBUG("READY -> PAUSED");
             GST_DEBUG("Starting buscounter thread");
+            buscount_running = true;
             buscount_thread = std::thread(
                 [this]()
                 {
                     try
                     {
                         GST_DEBUG("Started buscounter thread");
-                        buscounter.run(BusCounter::RUN_SERIAL, true);
+                        buscounter.run(BusCounter::RUN_PARALLEL, true);
                         GST_DEBUG("Buscounting finished");
                     }
                     catch (std::exception &e)
                     {
                         GST_ERROR("An exception occurred while running buscounter: %s", e.what());
+                        set_state(Gst::STATE_NULL);
                     }
                 }
             );
+            break;
+        case Gst::STATE_CHANGE_PAUSED_TO_PLAYING:
+            GST_DEBUG("PAUSED -> PLAYING");
             break;
         default:
             break;
@@ -386,16 +407,19 @@ Gst::StateChangeReturn GstBusCountFilter::change_state_vfunc(Gst::StateChange tr
     switch (transition)
     {
         case Gst::STATE_CHANGE_PLAYING_TO_PAUSED:
+            GST_DEBUG("PLAYING -> PAUSED");
+            break;
+
+        case Gst::STATE_CHANGE_PAUSED_TO_READY:
+            GST_DEBUG("PAUSED -> READY");
             GST_DEBUG("Stopping buscounter thread");
             buscount_running = false;
             buscount_thread.join();
             GST_DEBUG("Stopped buscounter thread");
             break;
 
-        case Gst::STATE_CHANGE_PAUSED_TO_READY:
-            break;
-
         case Gst::STATE_CHANGE_READY_TO_NULL:
+            GST_DEBUG("READY -> NULL");
             break;
 
         default:
@@ -407,11 +431,28 @@ Gst::StateChangeReturn GstBusCountFilter::change_state_vfunc(Gst::StateChange tr
 
 static gboolean plugin_init(GstPlugin* plugin)
 {
+
     // Ensure Glib is a go
     Glib::init();
 
     // Initialize debug category
     GST_DEBUG_CATEGORY_INIT(buscount, "buscount", 0, "A debug category for the buscount plugin");
+
+    DetectorOpenCV::NetConfig net_config {
+        0.5f,               // thresh
+        15,                 // clazz
+        cv::Size(300, 300), // size
+        1, //2/255.0,            // scale
+        cv::Scalar(1,1,1),//cv::Scalar(127.5, 127.5, 127.5),     // mean
+        "../models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+        "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
+        cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // preferred backend
+        cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
+    };
+
+    GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config);
+
+    GST_DEBUG("Initializing plugin");
 
     // Register elements (we've only got 1 element at the moment)
     return GstBusCountFilter::register_buscount_filter(plugin);

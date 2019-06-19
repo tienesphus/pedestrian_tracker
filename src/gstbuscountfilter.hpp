@@ -39,7 +39,8 @@ class GstBusCountFilter : public Gst::Element
     // Owned objects
     Glib::RefPtr<Gst::AtomicQueue<cv::Mat>> frame_in_queue;
     Glib::RefPtr<Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>> frame_out_queue;
-    std::condition_variable frame_queue_cond;
+    std::condition_variable frame_queue_pushed;
+    std::condition_variable frame_queue_popped;
     std::mutex cond_m;
 
     WorldConfig world_config;
@@ -50,6 +51,7 @@ class GstBusCountFilter : public Gst::Element
     bool buscount_running;
 
     uint8_t pixel_size;
+    int cv_type;
     int frame_width;
     int frame_height;
     float fps;
