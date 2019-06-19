@@ -36,10 +36,10 @@ add_library(buscount_static STATIC
 	detector_openvino.cpp
 )
 
+set_property(TARGET buscount_static PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(buscount_static PUBLIC
     $<$<CONFIG:Debug>:TBB_USE_DEBUG=1>
 )
-
 target_link_libraries(buscount_static PUBLIC
 	${TBB_LIBRARIES}
     opencv_core opencv_dnn
@@ -50,23 +50,36 @@ target_link_libraries(buscount_static PUBLIC
 ### libgstbuscountplugin.
   # Compiling this as a library allows us to create a .so file, which can be loaded by
   # gst-inspect-1.0 and gst-launch-1.0 for debugging purposes.
-add_library(gstbuscountplugin_static STATIC gstbuscountfilter.cpp)
-target_include_directories(gstbuscountplugin_static PUBLIC
-    ${GStreamerRTSPsrv_INCLUDE_DIRS}
-    ${GStreamerMM_INCLUDE_DIRS}
-)
-target_link_libraries(gstbuscountplugin_static PUBLIC
-    buscount_static
+add_library(gstbuscountplugin_obj_if INTERFACE IMPORTED)
+set_property(TARGET gstbuscountplugin_obj_if PROPERTY INTERFACE_LINK_LIBRARIES
     ${GStreamerRTSPsrv_LIBRARIES}
     ${GStreamerMM_LIBRARIES}
 )
+set_property(TARGET gstbuscountplugin_obj_if PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+    $<TARGET_PROPERTY:buscount_static,INCLUDE_DIRECTORIES>
+    ${GStreamerRTSPsrv_INCLUDE_DIRS}
+    ${GStreamerMM_INCLUDE_DIRS}
+)
+
+add_library(gstbuscountplugin_obj OBJECT gstbuscountfilter.cpp)
+set_property(TARGET gstbuscountplugin_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_include_directories(gstbuscountplugin_obj PUBLIC
+    $<TARGET_PROPERTY:gstbuscountplugin_obj_if,INTERFACE_INCLUDE_DIRECTORIES>
+)
+
 
 # Static library is for linking directly with gstreamer. Dynamic library is only for
 # debugging with gst-launch-1.0 and gst-inspect-1.0
-file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/null.cpp CONTENT "")
-add_library(gstbuscountplugin MODULE ${CMAKE_BINARY_DIR}/null.cpp)
-target_link_libraries(gstbuscountplugin PUBLIC gstbuscountplugin_static)
-
+add_library(gstbuscountplugin_static STATIC $<TARGET_OBJECTS:gstbuscountplugin_obj>)
+target_link_libraries(gstbuscountplugin_static
+    PUBLIC gstbuscountplugin_obj_if
+    PRIVATE buscount_static
+)
+add_library(gstbuscountplugin MODULE $<TARGET_OBJECTS:gstbuscountplugin_obj>)
+target_link_libraries(gstbuscountplugin
+    PUBLIC gstbuscountplugin_obj_if
+    PRIVATE buscount_static
+)
 
 add_executable(buscountcli buscountcli.cpp)
 add_executable(buscountd   buscountd.cpp)

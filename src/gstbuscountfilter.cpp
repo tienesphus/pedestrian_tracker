@@ -350,7 +350,7 @@ const GstPluginDesc gst_plugin_desc = {
     GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
     "gstbuscount", "Project specific plugin for defining new gstreamer elements",
-    GstBusCount::plugin_init,
+    static_cast<gboolean(*)(GstPlugin *plugin)>(&GstBusCount::plugin_init),
     "1.0", "Proprietary",
     "gstbuscountfilter.cpp", "buscountd",
     "https://swinburne.com.au",
