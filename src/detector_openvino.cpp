@@ -42,7 +42,6 @@ static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
 
 
 DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
-        Detector(),
         config(config)
 {
 
@@ -92,6 +91,8 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
 
     std::cout << "End Loading detector" << std::endl;
 }
+
+DetectorOpenVino::~DetectorOpenVino() {}
 
 Detections DetectorOpenVino::process(const cv::Mat &frame)
 {

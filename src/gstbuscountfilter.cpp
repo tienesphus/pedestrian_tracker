@@ -1,46 +1,66 @@
 
 #include "gstbuscountfilter.hpp"
+#include "detector_opencv.hpp"
+#include "detector_openvino.hpp"
 
 #include <gstreamermm/wrap_init.h>
 #include <glib.h>
 
+GST_DEBUG_CATEGORY_STATIC(buscount); // Define a new debug category for gstreamer output
+#define GST_CAT_DEFAULT buscount     // Set new category as the default category
+
 namespace GstBusCount {
 
-Gst::ValueList GstBusCountFilter::formats;
-
-static void value_list_string_init(Gst::ValueList &list, ...)
+// ******** Compilation unit specific data ******** //
+struct PixelFormat
 {
-    va_list args;
-    va_start(args, list);
+    Glib::ustring name;
+    uint8_t size;
+};
 
-    char *str;
-    while (str = va_arg(args, char*))
-    {
-        Glib::Value<Glib::ustring> val;
-        Glib::ustring ustr(str);
+static const PixelFormat format_descriptions[] = {
+    { "BGR",  3 },
+    { "BGRx", 4 },
+    { "BGRA", 4 }
+};
 
-        val.init(val.value_type());
-        val.set(ustr);
 
-        list.append(val);
-    }
+// ******** Static members ******** //
+const WorldConfig GstBusCountFilter::default_world_config(
+    Line(cv::Point(0, 1), cv::Point(0, 1)),
+    Line(cv::Point(0, 1), cv::Point(0, 1)),
+    Line(cv::Point(0, 1), cv::Point(0, 1)),
+    Line(cv::Point(0, 1), cv::Point(0, 1))
+);
 
-    va_end(args);
-}
+Gst::ValueList GstBusCountFilter::formats;
+std::unique_ptr<Detector> GstBusCountFilter::detector;
+
+
+// ******** Function definitions ******** //
 
 void GstBusCountFilter::class_init(Gst::ElementClass<GstBusCountFilter> *klass)
 {
-    formats.init(formats.get_type());
-    value_list_string_init(formats,
-        "BGRx", "RGBx", "xRGB", "xBGR", "RGBA",
-        "BGRA", "ARGB", "RGB", "BGR", NULL
-    );
-
+    // Metadata for the class
     klass->set_metadata(
             "Bus Counter Filter",
             "Processor/Video/",
             "Processes incoming video from a camera and extract person entry count",
             "Alastair Knowles <2062674@student.swin.edu.au>");
+
+    // Static object initialisation. Done here instead of at the compilation unit level
+    // due to requiring initialization of gstreamer stuff.
+    formats.init(formats.get_type());
+
+    for (auto i = 0u; i < sizeof(format_descriptions) / sizeof(PixelFormat); i++)
+    {
+        Glib::Value<Glib::ustring> val;
+
+        val.init(val.value_type());
+        val.set(Glib::ustring(format_descriptions[i].name));
+
+        formats.append(val);
+    }
 
     // Looks ugly, but we can't use template/variadic constructor because it implicitly copies
     // everything, and there's a bug when copying Glib::Value objects (they aren't fully
@@ -74,14 +94,22 @@ void GstBusCountFilter::class_init(Gst::ElementClass<GstBusCountFilter> *klass)
     );
 }
 
-bool GstBusCountFilter::register_buscount_filter(Glib::RefPtr<Gst::Plugin> plugin)
+void GstBusCountFilter::detector_init(Detector::Type detector_type, void *config)
 {
-    return Gst::ElementFactory::register_element(
-        plugin,
-        "buscountfilter",
-        10,
-        Gst::register_mm_type<GstBusCountFilter>("buscountfilter")
-    );
+    switch (detector_type)
+    {
+        case Detector::DETECTOR_OPENCV:
+            detector = std::unique_ptr<DetectorOpenCV>(
+                new DetectorOpenCV(*static_cast<DetectorOpenCV::NetConfig*>(config))
+            );
+            break;
+
+        case Detector::DETECTOR_OPENVINO:
+            detector = std::unique_ptr<DetectorOpenVino>(
+                new DetectorOpenVino(*static_cast<DetectorOpenVino::NetConfig*>(config))
+            );
+            break;
+    }
 }
 
 bool GstBusCountFilter::register_buscount_filter(GstPlugin *plugin)
@@ -95,11 +123,28 @@ bool GstBusCountFilter::register_buscount_filter(GstPlugin *plugin)
 }
 
 
-
 GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
         Glib::ObjectBase(typeid(GstBusCountFilter)),
         Gst::Element(gobj),
-        test_property(*this, "test_property", "default_val")
+        //line_inside_property(*this, "line_inside_property", "default_val")
+        //line_outside_property(*this, "line_outside_property", "default_val")
+        //line_bounds_a_property(*this, "line_bounds_a_property", "default_val")
+        //line_bounds_b_property(*this, "line_bounds_b_property", "default_val")
+        test_property(*this, "test_property", "default_val"),
+        frame_in_queue(Gst::AtomicQueue<cv::Mat>::create(10)),
+        frame_out_queue(Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>::create(10)),
+        world_config(default_world_config),
+        tracker(world_config),
+        buscounter(
+                *detector, tracker, world_config,
+                std::bind(&GstBusCountFilter::next_frame, this),
+                std::bind(&GstBusCountFilter::push_frame, this, std::placeholders::_1),
+                std::bind(&GstBusCountFilter::test_quit, this)
+        ),
+        pixel_size(3),
+        frame_width(1),
+        frame_height(1),
+        fps(1.0)
 {
     add_pad(video_in = Gst::Pad::create(get_pad_template("video_sink"), "video_sink"));
     add_pad(video_out = Gst::Pad::create(get_pad_template("video_src"), "video_src"));
@@ -111,6 +156,126 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
     video_in->set_event_function(sigc::mem_fun(*this, &GstBusCountFilter::sink_event));
 }
 
+// Private methods
+nonstd::optional<cv::Mat> GstBusCountFilter::next_frame()
+{
+    std::unique_lock<std::mutex> lk(cond_m);
+
+    if (frame_in_queue->length() == 0) {
+        frame_queue_cond.wait(lk);
+    }
+
+    return frame_in_queue->pop();
+}
+
+void GstBusCountFilter::push_frame(const cv::Mat &frame)
+{
+    Glib::RefPtr<Gst::Buffer> buf;
+    Gst::MapInfo mapinfo;
+    do
+    {
+        if (buf)
+        {
+            buf->unmap(mapinfo);
+            buf.reset();
+        }
+        if (frame_out_queue->length() == 0)
+        {
+            break;
+        }
+
+        buf = frame_out_queue->pop();
+        buf->map(mapinfo, Gst::MAP_READ);
+    }
+    while (frame.data != mapinfo.get_data());
+
+    if (buf)
+        video_out->push(std::move(buf));
+}
+
+bool GstBusCountFilter::test_quit()
+{
+    return false;
+}
+
+bool GstBusCountFilter::setup_caps(Glib::RefPtr<Gst::Event> &event)
+{
+    // Scratch value for fetching fields
+
+    // Sink pad caps have been negotiated. Copy caps to source pad.
+    auto caps_event = Glib::RefPtr<Gst::EventCaps>::cast_static(event);
+    auto out_caps = caps_event->parse_caps()->copy();
+    auto s = out_caps->get_structure(0);
+
+    GST_DEBUG("### Set caps to %s", out_caps->to_string().c_str());
+
+    pixel_size = 3;
+    frame_width = 1;
+    frame_height = 1;
+    fps = 1.0;
+
+    if (s.get_field_type("format") != Glib::Value<Glib::ustring>::value_type())
+        GST_DEBUG("Format is not of a valid type, defaulting pixel size to %i", pixel_size);
+    else
+    {
+        Glib::Value<Glib::ustring> value;
+        s.get_field("format", value);
+
+        bool format_exists = false;
+        for (auto i = 0u; i < sizeof(format_descriptions) / sizeof(PixelFormat); i++)
+        {
+            if (value.get() == format_descriptions[i].name)
+            {
+                format_exists = true;
+                pixel_size = format_descriptions[i].size;
+                GST_DEBUG("Pixel size set to %i", pixel_size);
+            }
+        }
+
+        if (!format_exists)
+            GST_DEBUG("Format is not of a valid type, defaulting pixel size to %i", pixel_size);
+    }
+
+    if (s.get_field_type("width") != Glib::Value<int>::value_type())
+        GST_DEBUG("Width is not of a valid type, defaulting to %i", frame_width);
+    else
+    {
+        Glib::Value<int> value;
+        s.get_field("width", value);
+
+        frame_width = value.get();
+
+        GST_DEBUG("Width set to %i", frame_width);
+    }
+
+    if (s.get_field_type("height") != Glib::Value<int>::value_type())
+        GST_DEBUG("Height is not of a valid type, defaulting to %i", frame_height);
+    else
+    {
+        Glib::Value<int> value;
+        s.get_field("height", value);
+
+        frame_height = value.get();
+
+        GST_DEBUG("Height set to %i", frame_height);
+    }
+
+    if (s.get_field_type("framerate") != Glib::Value<Gst::Fraction>::value_type())
+        GST_DEBUG("Framerate is not of a valid type, defaulting to %f", fps);
+    else
+    {
+        Glib::Value<Gst::Fraction> value;
+        s.get_field("framerate", value);
+
+        Gst::Fraction f = value.get();
+        fps = f.num / f.denom;
+
+        GST_DEBUG("Framerate set to %f", fps);
+    }
+
+    return gst_pad_set_caps(video_out->gobj(), out_caps->gobj());
+}
+
 // Events
 bool GstBusCountFilter::sink_event(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Event> &event)
 {
@@ -120,15 +285,8 @@ bool GstBusCountFilter::sink_event(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefP
     {
         case GST_EVENT_CAPS:
         {
-            // Sink pad caps have been negotiated. Copy caps to source pad.
-            auto caps_event = Glib::RefPtr<Gst::EventCaps>::cast_static(event);
-            auto out_caps = caps_event->parse_caps()->copy();
-
-            g_print("### Set caps to %s", out_caps->to_string().c_str());
-
-            result = gst_pad_set_caps(video_out->gobj(), out_caps->gobj());
+            result = setup_caps(event);
             result &= pad->event_default(Glib::RefPtr<Gst::Event>(event));
-
             break;
         }
 
@@ -144,31 +302,49 @@ bool GstBusCountFilter::sink_event(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefP
 // Flow control
 Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Buffer> &buf)
 {
-    buf = buf->create_writable();
 
     Gst::MapInfo mapinfo;
-    buf->map(mapinfo, Gst::MAP_WRITE);
+    buf->map(mapinfo, Gst::MAP_READ | Gst::MAP_WRITE);
 
-    std::sort(mapinfo.get_data(), mapinfo.get_data() + mapinfo.get_size());
+    if (mapinfo.get_size() != (uint64_t)frame_width * (uint64_t)frame_height * pixel_size)
+    {
+        GST_ERROR("Buffer size (%u) did not match calculated size (%llu)",
+                mapinfo.get_size(),
+                (uint64_t)frame_width * (uint64_t)frame_height * pixel_size
+        );
+        return Gst::FLOW_NOT_SUPPORTED;
+    }
+
+    frame_in_queue->push(cv::Mat(frame_height, frame_width, CV_8UC3, mapinfo.get_data(), pixel_size));
+    frame_out_queue->push(buf);
+    frame_queue_cond.notify_one();
+
     buf->unmap(mapinfo);
 
-    return video_out->push(std::move(buf));
-}
-
-static bool plugin_init(const Glib::RefPtr<Gst::Plugin> &plugin)
-{
-    return GstBusCountFilter::register_buscount_filter(plugin->gobj());
+    return Gst::FLOW_OK;
 }
 
 static gboolean plugin_init(GstPlugin* plugin)
 {
     // Ensure Glib is a go
     Glib::init();
+
+    // Initialize debug category
+    GST_DEBUG_CATEGORY_INIT(buscount, "buscount", 0, "A debug category for the buscount plugin");
+
+    // Register elements (we've only got 1 element at the moment)
     return GstBusCountFilter::register_buscount_filter(plugin);
+
+}
+
+static bool plugin_init(const Glib::RefPtr<Gst::Plugin> &plugin)
+{
+    return plugin_init(plugin->gobj());
 }
 
 } // end namespace GstBusCount
 
+// Struct for plugin registration. Used for debugging with gst-inspect-1.0 and gst-launch-1.0
 extern "C"
 const GstPluginDesc gst_plugin_desc = {
     GST_VERSION_MAJOR,

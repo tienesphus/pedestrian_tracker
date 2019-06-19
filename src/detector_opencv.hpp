@@ -25,6 +25,7 @@ public:
      * Constructs a detector from the given NetConfig
      */
     explicit DetectorOpenCV(const NetConfig &config);
+    virtual ~DetectorOpenCV();
 
     Detections process(const cv::Mat &frame) override;
 

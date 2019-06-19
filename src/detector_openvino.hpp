@@ -20,6 +20,7 @@ public:
      * Constructs a detector from the given NetConfig
      */
     explicit DetectorOpenVino(const NetConfig &config);
+    virtual ~DetectorOpenVino();
 
     Detections process(const cv::Mat &frame) override;
 

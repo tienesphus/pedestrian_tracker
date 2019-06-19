@@ -56,6 +56,7 @@ target_include_directories(gstbuscountplugin_static PUBLIC
     ${GStreamerMM_INCLUDE_DIRS}
 )
 target_link_libraries(gstbuscountplugin_static PUBLIC
+    buscount_static
     ${GStreamerRTSPsrv_LIBRARIES}
     ${GStreamerMM_LIBRARIES}
 )

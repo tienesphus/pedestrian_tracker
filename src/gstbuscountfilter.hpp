@@ -1,6 +1,11 @@
 #ifndef GST_BUSCOUNTFILTER_HPP
 #define GST_BUSCOUNTFILTER_HPP
 
+#include "libbuscount.hpp"
+#include "detector.hpp"
+#include "tracker.hpp"
+#include "world.hpp"
+
 #include <gstreamermm.h>
 #include <gstreamermm/private/element_p.h>
 
@@ -11,20 +16,58 @@ void plugin_init_static();
 
 class GstBusCountFilter : public Gst::Element
 {
-    static Gst::ValueList formats;
+    /******** Static members ********/
 
+    static const WorldConfig default_world_config;
+
+    static Gst::ValueList formats;
+    static std::unique_ptr<Detector> detector;
+
+    /******** Object members ********/
+
+    // Pads
     Glib::RefPtr<Gst::Pad> video_in;
     Glib::RefPtr<Gst::Pad> video_out;
 
+    // Properties
     Glib::Property<Glib::ustring> test_property;
+    //Glib::Property<Glib::ustring> line_inside_property;
+    //Glib::Property<Glib::ustring> line_outside_property;
+    //Glib::Property<Glib::ustring> line_bounds_a_property;
+    //Glib::Property<Glib::ustring> line_bounds_b_property;
+
+    // Owned objects
+    Glib::RefPtr<Gst::AtomicQueue<cv::Mat>> frame_in_queue;
+    Glib::RefPtr<Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>> frame_out_queue;
+    std::condition_variable frame_queue_cond;
+    std::mutex cond_m;
+
+    WorldConfig world_config;
+    Tracker tracker;
+    BusCounter buscounter;
+
+    uint8_t pixel_size;
+    int frame_width;
+    int frame_height;
+    float fps;
+
+
+    /******** Object methods ********/
+
+    nonstd::optional<cv::Mat> next_frame();
+    void push_frame(const cv::Mat &frame);
+    bool test_quit();
+
+    bool setup_caps(Glib::RefPtr<Gst::Event> &event);
+
 public:
     /******** Static methods ********/
 
     // Class constructor
     static void class_init(Gst::ElementClass<GstBusCountFilter> *klass);
+    static void detector_init(Detector::Type detector_type, void *config);
 
     // Registration function
-    static bool register_buscount_filter(Glib::RefPtr<Gst::Plugin> plugin);
     static bool register_buscount_filter(GstPlugin *plugin);
 
     /******** Object methods ********/

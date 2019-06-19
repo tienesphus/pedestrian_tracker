@@ -12,9 +12,20 @@
 class Detector {
 public:
 
+    /******** Type definitions ********/
+
+    // TODO: This should be replaced with an autoregistration mechanism for derived types
+    enum Type {
+        DETECTOR_OPENCV,
+        DETECTOR_OPENVINO
+    };
+
     typedef std::shared_future<Detections> intermediate;
 
+    /******** Object Methods ********/
+
     Detector() = default;
+    virtual ~Detector() = 0;
 
     /**
      * Begins the process of running inference on an image.
