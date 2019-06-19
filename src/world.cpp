@@ -1,3 +1,7 @@
+#include <utility>
+
+#include <utility>
+
 #include "world.hpp"
 
 #include <fstream>
@@ -25,23 +29,23 @@ void WorldState::draw(cv::Mat& display) const
 
 //  ----------- WORLD CONFIG ---------------
 
-WorldConfig::WorldConfig(const Line &inside, const Line &outside, 
-        const Line &inner_bounds_a, const Line &inner_bounds_b):
-    inside(inside), outside(outside), 
-    inner_bounds_a(inner_bounds_a), inner_bounds_b(inner_bounds_b)
+WorldConfig::WorldConfig(Line inside, Line outside,
+        Line inner_bounds_a, Line inner_bounds_b):
+    inside(std::move(inside)), outside(std::move(outside)),
+    inner_bounds_a(std::move(inner_bounds_a)), inner_bounds_b(std::move(inner_bounds_b))
 {
 }
 
-WorldConfig WorldConfig::from_file(const std::string& fname)
+WorldConfig WorldConfig::from_file(const cv::Size& world_size, const std::string& fname)
 {
     std::fstream config_file(fname);
     if (!config_file.is_open()) 
         throw "Cannot find config file: '" + fname + "'";
     
-    int iax, iay, ibx, iby; // input line
-    int oax, oay, obx, oby; // output line
-    int b1ax, b1ay, b1bx, b1by; // bounds 1 line
-    int b2ax, b2ay, b2bx, b2by; // bounds 2 line
+    float iax, iay, ibx, iby; // input line
+    float oax, oay, obx, oby; // output line
+    float b1ax, b1ay, b1bx, b1by; // bounds 1 line
+    float b2ax, b2ay, b2bx, b2by; // bounds 2 line
     
     config_file >> iax >> iay >> ibx >> iby;
     config_file >> oax >> oay >> obx >> oby;
@@ -50,16 +54,19 @@ WorldConfig WorldConfig::from_file(const std::string& fname)
     
     config_file.close();
 
+    int w = world_size.width;
+    int h = world_size.height;
+
     // setup the world and persistent data
-    return WorldConfig(
+    return {
         // inside, outside:
-        Line(cv::Point(iax, iay), cv::Point(ibx, iby)),
-        Line(cv::Point(oax, oay), cv::Point(obx, oby)),
+        Line(cv::Point(iax*w, iay*h), cv::Point(ibx*w, iby*h)),
+        Line(cv::Point(oax*w, oay*h), cv::Point(obx*w, oby*h)),
 
         // inner bounds:
-        Line(cv::Point(b1ax, b1ay), cv::Point(b1bx, b1by)),
-        Line(cv::Point(b2ax, b2ay), cv::Point(b2bx, b2by))
-    );
+        Line(cv::Point(b1ax*w, b1ay*h), cv::Point(b1bx*w, b1by*h)),
+        Line(cv::Point(b2ax*w, b2ay*h), cv::Point(b2bx*w, b2by*h))
+    };
 }
 
 void WorldConfig::draw(cv::Mat &img) const

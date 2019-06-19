@@ -58,10 +58,10 @@ struct WorldConfig
      * @param the filename to read from
      * @returns a new WorldConfig
      */
-    static WorldConfig from_file(const std::string& fname);
+    static WorldConfig from_file(const cv::Size& world_size, const std::string& fname);
     
-    WorldConfig(const Line &inside, const Line &outside, 
-            const Line &inner_bounds_a, const Line &inner_bounds_b);
+    WorldConfig(Line inside, Line outside,
+            Line inner_bounds_a, Line inner_bounds_b);
     
     /**
      * Tests if a point is inside the world boulds

@@ -116,8 +116,8 @@ void Track::draw(cv::Mat &img) const {
 
 //  -----------  TRACKER ---------------
 
-Tracker::Tracker(WorldConfig config):
-    config(std::move(config)), state(WorldState(0, 0)), index_count(0)
+Tracker::Tracker(WorldConfig config, float threshold):
+    config(std::move(config)), state(WorldState(0, 0)), index_count(0), threshold(threshold)
 {
 }
 
@@ -127,12 +127,13 @@ Tracker::~Tracker()
         delete track;
 }
 
-WorldState Tracker::process(const Detections &detections, const cv::Mat&)
+WorldState Tracker::process(const Detections &detections, const cv::Mat& frame)
 {
-    // Note: 'frame' is currently unused, but included as it will be used in the future
-    // Note 2: World State is purposely copied out so it is a snapshot
+    // Note: World State is purposely copied out so it is a snapshot
 
-    merge(detections);
+    cv::Size size(frame.cols, frame.rows);
+
+    merge(detections, size);
     update();
     
     return state;
@@ -150,14 +151,14 @@ int _difference(const cv::Point& center_a, const cv::Point& center_b) {
  * Looks for detections that are near current tracks. If there is something
  * close by, then the detection will be merged into it.
  */
-void Tracker::merge(const Detections &detection_results)
+void Tracker::merge(const Detections &detection_results, const cv::Size& frame_size)
 {
     std::cout << "MERGING" << std::endl;
     std::vector<Detection> detections = detection_results.get_detections();
     
     std::vector<std::tuple<int, int, Track*>> confidences; // vector<tuple<difference, detect_index, track>>
     std::vector<bool> detection_delt_with;
-    
+
     std::cout << "Calculating differences" << std::endl;
     // build a map of differences between all tracks and all detections 
     for (size_t i = 0; i < detections.size(); i++) {
@@ -183,6 +184,7 @@ void Tracker::merge(const Detections &detection_results)
     std::sort(confidences.begin(), confidences.end());
 
     std::cout << "Finding merges" << std::endl;
+    float threshold_scale = frame_size.width*frame_size.height;
     // iteratively merge the closest of the detection/track combinations
     for (size_t i = 0; i < confidences.size(); i++) {
         std::tuple<int, int, Track*> data = confidences[i];
@@ -190,8 +192,8 @@ void Tracker::merge(const Detections &detection_results)
         int detection_index = std::get<1>(data);
         Track* track = std::get<2>(data);
 
-        // threshold box's that are too far away (60px)
-        if (difference > 60*60) {
+        // threshold box's that are too far away
+        if (difference > threshold*threshold*threshold_scale) {
             std::cout << " Differences too high" << std::endl;
             break;
         }

@@ -19,7 +19,12 @@ class Tracker
 {
     
 public:
-    explicit Tracker(WorldConfig config);
+    /**
+     * Constructs a Tracker from the given data
+     * @param config the world in/out lines
+     * @param threshold the max distance before tracks are considered different
+     */
+    Tracker(WorldConfig config, float threshold);
 
     ~Tracker();
   
@@ -43,8 +48,9 @@ private:
     WorldState state;
     std::vector<Track*> tracks;
     int index_count;
+    float threshold;
     
-    void merge(const Detections &detections);
+    void merge(const Detections &detections,  const cv::Size& frame_size);
     void update();
 };
 
