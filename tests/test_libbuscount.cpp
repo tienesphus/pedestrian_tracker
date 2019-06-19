@@ -16,8 +16,8 @@ TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
 
     DummyDetector detector;
 
-    WorldConfig config = WorldConfig::from_file(std::string(SOURCE_DIR)+"/config.csv");
-    Tracker tracker(config);
+    WorldConfig config = WorldConfig::from_file(cv::Size(300, 300), std::string(SOURCE_DIR)+"/config.csv");
+    Tracker tracker(config, 0.1);
 
     int count = 50;
     BusCounter counter(detector, tracker, config,
@@ -41,8 +41,8 @@ TEST_CASE( "Bus Counter runs in parallel", "[libbuscount]" ) {
 
     DummyDetector detector;
 
-    WorldConfig config = WorldConfig::from_file(std::string(SOURCE_DIR)+"/config.csv");
-    Tracker tracker(config);
+    WorldConfig config = WorldConfig::from_file(cv::Size(300, 300), std::string(SOURCE_DIR)+"/config.csv");
+    Tracker tracker(config, 0.1);
 
     int count = 50;
     BusCounter counter(detector, tracker, config,
