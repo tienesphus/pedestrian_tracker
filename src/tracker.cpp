@@ -229,6 +229,30 @@ void Tracker::merge(const Detections &detection_results, const cv::Size& frame_s
             this->tracks.push_back(new Track(d.box, d.confidence, index_count++));
         }
     }
+    
+    // Delete tracks with very high overlap
+    std::cout << "Deleting similar tracks " << std::endl;
+    for (size_t i = 0; i < this->tracks.size(); i++) {
+        Track* track_i = this->tracks[i];
+        for (size_t j = i+1; j < this->tracks.size(); j++) {
+            Track* track_j = this->tracks[j];
+            
+            if (IoU(track_i->box, track_j->box) > 0.95) {
+                if (track_i->confidence > track_j->confidence) {
+                    std::cout << "Deleting j: " << j << std::endl;
+                    delete track_j;
+                    this->tracks.erase(this->tracks.begin()+j);
+                    --j;
+                } else {
+                    std::cout << "Deleting i: " << i << std::endl;
+                    delete track_i;
+                    this->tracks.erase(this->tracks.begin()+i);
+                    i--;
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /**

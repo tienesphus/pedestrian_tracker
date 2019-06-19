@@ -25,6 +25,6 @@ struct Line {
  * 
  * IoU is area(intersection)/area(union)
  */
-float IoU(const cv::Rect2d &a, const cv::Rect2d &b);
+float IoU(const cv::Rect &a, const cv::Rect &b);
 
 #endif

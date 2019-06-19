@@ -129,7 +129,7 @@ Detections DetectorOpenVino::process(const cv::Mat &frame)
 
         if (lbl == config.clazz && con > config.thresh) {
             std::cout << "    Found: " << id << " " << lbl << "(" << con*100 << "%) - " << r << std::endl;
-            results.emplace_back(r, 1);
+            results.emplace_back(r, con);
         }
     }
 
