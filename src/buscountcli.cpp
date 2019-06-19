@@ -42,14 +42,15 @@ int main() {
     cv_cap->set(cv::CAP_PROP_FRAME_WIDTH,640);
     cv_cap->set(cv::CAP_PROP_FRAME_HEIGHT,480);
     
-    VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_capture(cv_cap);
+    //VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_capture(cv_cap);
 
     DetectorOpenVino detector(net_config);
     WorldConfig world_config = WorldConfig::from_file(cv::Size(640, 480), "../config.csv");
     Tracker tracker(world_config, 0.2);
 
     BusCounter counter(detector, tracker, world_config,
-            [&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
+            //[&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
+            [&cv_cap]() -> nonstd::optional<cv::Mat> { cv::Mat frame; cv_cap->read(frame); return frame; },
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
             []() { return cv::waitKey(20) == 'q'; }
     );
