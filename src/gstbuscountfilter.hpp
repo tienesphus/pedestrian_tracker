@@ -46,6 +46,9 @@ class GstBusCountFilter : public Gst::Element
     Tracker tracker;
     BusCounter buscounter;
 
+    std::thread buscount_thread;
+    bool buscount_running;
+
     uint8_t pixel_size;
     int frame_width;
     int frame_height;
@@ -78,6 +81,8 @@ public:
     // Flow control and events
     Gst::FlowReturn chain(const Glib::RefPtr<Gst::Pad> &, Glib::RefPtr<Gst::Buffer> &);
     bool sink_event(const Glib::RefPtr<Gst::Pad> &, Glib::RefPtr<Gst::Event> &);
+
+    Gst::StateChangeReturn change_state_vfunc(Gst::StateChange transition) override;
 
 };
 

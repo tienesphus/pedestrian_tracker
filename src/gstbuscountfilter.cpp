@@ -141,6 +141,7 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
                 std::bind(&GstBusCountFilter::push_frame, this, std::placeholders::_1),
                 std::bind(&GstBusCountFilter::test_quit, this)
         ),
+        buscount_running(false),
         pixel_size(3),
         frame_width(1),
         frame_height(1),
@@ -161,10 +162,14 @@ nonstd::optional<cv::Mat> GstBusCountFilter::next_frame()
 {
     std::unique_lock<std::mutex> lk(cond_m);
 
+    GST_DEBUG("Getting next frame");
+
     if (frame_in_queue->length() == 0) {
+        GST_DEBUG("Waiting for next frame");
         frame_queue_cond.wait(lk);
     }
 
+    GST_DEBUG("Popping next frame");
     return frame_in_queue->pop();
 }
 
@@ -172,30 +177,41 @@ void GstBusCountFilter::push_frame(const cv::Mat &frame)
 {
     Glib::RefPtr<Gst::Buffer> buf;
     Gst::MapInfo mapinfo;
+
+    GST_DEBUG("Frame push requested");
+
     do
     {
         if (buf)
         {
+            GST_DEBUG("Clearing buffer data");
             buf->unmap(mapinfo);
             buf.reset();
         }
         if (frame_out_queue->length() == 0)
         {
+            GST_DEBUG("frame_out_queue exausted");
             break;
         }
 
+        GST_DEBUG("Fetching next frame from frame_out_queue");
         buf = frame_out_queue->pop();
         buf->map(mapinfo, Gst::MAP_READ);
     }
     while (frame.data != mapinfo.get_data());
 
+
     if (buf)
+    {
+        GST_DEBUG("Found frame. Pushing to video_out pad");
+        GST_DEBUG("Buffer sizes are %zu and %u", frame.total(), mapinfo.get_size());
         video_out->push(std::move(buf));
+    }
 }
 
 bool GstBusCountFilter::test_quit()
 {
-    return false;
+    return !buscount_running;
 }
 
 bool GstBusCountFilter::setup_caps(Glib::RefPtr<Gst::Event> &event)
@@ -315,6 +331,7 @@ Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> &pad, Glib
         return Gst::FLOW_NOT_SUPPORTED;
     }
 
+    GST_DEBUG("Pushing data to queue");
     frame_in_queue->push(cv::Mat(frame_height, frame_width, CV_8UC3, mapinfo.get_data(), pixel_size));
     frame_out_queue->push(buf);
     frame_queue_cond.notify_one();
@@ -322,6 +339,70 @@ Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> &pad, Glib
     buf->unmap(mapinfo);
 
     return Gst::FLOW_OK;
+}
+
+Gst::StateChangeReturn GstBusCountFilter::change_state_vfunc(Gst::StateChange transition)
+{
+    Gst::StateChangeReturn result = Gst::STATE_CHANGE_SUCCESS;
+
+    // Note: Changing upwards vs changing downwards are handled in separate switch statements due
+    //       to multithreading considerations.
+
+    // Changing upward
+    switch (transition)
+    {
+        case Gst::STATE_CHANGE_NULL_TO_READY:
+            break;
+        case Gst::STATE_CHANGE_READY_TO_PAUSED:
+            break;
+        case Gst::STATE_CHANGE_PAUSED_TO_PLAYING:
+            GST_DEBUG("Starting buscounter thread");
+            buscount_thread = std::thread(
+                [this]()
+                {
+                    try
+                    {
+                        GST_DEBUG("Started buscounter thread");
+                        buscounter.run(BusCounter::RUN_SERIAL, true);
+                        GST_DEBUG("Buscounting finished");
+                    }
+                    catch (std::exception &e)
+                    {
+                        GST_ERROR("An exception occurred while running buscounter: %s", e.what());
+                    }
+                }
+            );
+            break;
+        default:
+            break;
+    }
+
+    // Something bad happened in the parent...oops.
+    result = Gst::Element::change_state_vfunc(transition);
+    if (result == Gst::STATE_CHANGE_FAILURE)
+        return result;
+
+    // Changing downward
+    switch (transition)
+    {
+        case Gst::STATE_CHANGE_PLAYING_TO_PAUSED:
+            GST_DEBUG("Stopping buscounter thread");
+            buscount_running = false;
+            buscount_thread.join();
+            GST_DEBUG("Stopped buscounter thread");
+            break;
+
+        case Gst::STATE_CHANGE_PAUSED_TO_READY:
+            break;
+
+        case Gst::STATE_CHANGE_READY_TO_NULL:
+            break;
+
+        default:
+            break;
+    }
+
+    return result;
 }
 
 static gboolean plugin_init(GstPlugin* plugin)

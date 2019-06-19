@@ -6,6 +6,8 @@
 #include <gst/rtsp-server/rtsp-server.h>
 
 // Project includes
+#include "detector_opencv.hpp"
+#include "detector_openvino.hpp"
 #include "gstbuscountfilter.hpp"
 
 GstRTSPMediaFactory *create_test_factory()
@@ -56,8 +58,32 @@ int main (int argc, char *argv[])
     // Initialise gstreamermm
     Gst::init(argc, argv);
 
+    DetectorOpenCV::NetConfig net_config {
+        0.5f,               // thresh
+        15,                 // clazz
+        cv::Size(300, 300), // size
+        1, //2/255.0,            // scale
+        cv::Scalar(1,1,1),//cv::Scalar(127.5, 127.5, 127.5),     // mean
+        "../models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+        "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
+        //"../models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
+        //"../models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
+        cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // preferred backend
+        cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
+    };
+
+    /*DetectorOpenVino::NetConfig net_config {
+            0.5f,               // thresh
+            15,                 // clazz
+            "../models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+            "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
+    };*/
+
+
     // Register the gstreamer buscount plugin
     GstBusCount::plugin_init_static();
+    //GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENVINO, &net_config);
+    GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config);
 
     // Create a main loop for the current thread
     Glib::RefPtr<Glib::MainLoop> loop = Glib::MainLoop::create();
