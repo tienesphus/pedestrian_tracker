@@ -79,7 +79,15 @@ public:
      * @return the syncronised video
      */
     static VideoSync<cv::Mat, averaging> from_video(const std::string& filename) {
-        std::shared_ptr<cv::VideoCapture> cap = std::make_shared<cv::VideoCapture>(filename);
+        return from_capture(std::make_shared<cv::VideoCapture>(filename));
+    }
+
+    /**
+     * Helper function to create a VideoSync from a opencv Capture.
+     * @param cap the video capture to wrap
+     * @return the syncronised video
+     */
+    static VideoSync<cv::Mat, averaging> from_capture(const std::shared_ptr<cv::VideoCapture> cap) {
         int src_fps = static_cast<int>(cap->get(cv::CAP_PROP_FPS));
         return VideoSync([cap]() -> auto {
             cv::Mat frame;
@@ -89,6 +97,7 @@ public:
     }
 
 private:
+
     float src_fps;
     std::function<src_cb_t> src;
 
