@@ -22,13 +22,13 @@ find_package(Threads REQUIRED)
 add_library(buscount OBJECT
 	libbuscount.cpp
 	detection.cpp
-	tracker.cpp
 	utils.cpp
 	optional.hpp
 	world.cpp
 	detector.cpp
 	detector_opencv.cpp
 	detector_openvino.cpp
+	tracker_reidentify.cpp
 )
 
 target_compile_definitions(buscount PUBLIC
@@ -59,6 +59,8 @@ add_executable(buscountd   buscountd.cpp)
 target_include_directories(buscountd PRIVATE
 	${GSTRTSPSRV_INCLUDE_DIRS}
 )
+
+target_compile_definitions(buscountcli PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
 
 target_link_libraries(buscountcli buscount_static opencv_highgui)
 target_link_libraries(buscountd ${GSTRTSPSRV_LIBRARIES})
