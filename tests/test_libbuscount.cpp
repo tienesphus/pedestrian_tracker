@@ -1,23 +1,30 @@
 #include "catch.hpp"
 
 #include "libbuscount.hpp"
-#include "detector.hpp"
 #include "testing_utils.hpp"
 
 class DummyDetector: public Detector {
-    Detections process(const cv::Mat&) override {
+    Detections process(const cv::Mat& frame) override {
+        REQUIRE(!frame.empty());
         std::vector<Detection> results;
         results.emplace_back(cv::Rect(1, 2, 3, 4), 0.5);
         return Detections(results);
     }
 };
 
+class DummyTracker: public Tracker {
+    WorldState process(const Detections& detections, const cv::Mat& frame) override {
+        REQUIRE(!frame.empty());
+        REQUIRE(detections.get_detections().size() == 1);
+    };
+    void draw(cv::Mat&) const override {};
+};
+
 TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
 
     DummyDetector detector;
-
+    DummyTracker tracker;
     WorldConfig config = WorldConfig::from_file(cv::Size(300, 300), std::string(SOURCE_DIR)+"/config.csv");
-    Tracker tracker(config, 0.1);
 
     int count = 50;
     BusCounter counter(detector, tracker, config,
@@ -40,9 +47,8 @@ TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
 TEST_CASE( "Bus Counter runs in parallel", "[libbuscount]" ) {
 
     DummyDetector detector;
-
+    DummyTracker tracker;
     WorldConfig config = WorldConfig::from_file(cv::Size(300, 300), std::string(SOURCE_DIR)+"/config.csv");
-    Tracker tracker(config, 0.1);
 
     int count = 50;
     BusCounter counter(detector, tracker, config,
