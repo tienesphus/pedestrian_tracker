@@ -1,9 +1,10 @@
 #ifndef TRACKER_RI_H
 #define TRACKER_RI_H
 
-#include <opencv2/dnn.hpp>
-
 #include "tracker.hpp"
+
+#include <opencv2/dnn.hpp>
+#include <inference_engine.hpp>
 
 /** 
  * A jumble of data that follows a detection result around 
@@ -23,8 +24,6 @@ public:
         std::string model;      // path to the model file (.bin)
         cv::Size size;          // Size of input layer
         float thresh;           // confidence to threshold positive detections at (between 0-1)
-        int preferred_backend;
-        int preferred_target;
     };
 
     /**
@@ -32,9 +31,9 @@ public:
      * @param config the world in/out lines
      * @param threshold the max distance before tracks are considered different
      */
-    Tracker_RI(NetConfig net, WorldConfig world);
+    Tracker_RI(const NetConfig& net, WorldConfig world, InferenceEngine::InferencePlugin &plugin);
 
-    ~Tracker_RI() override;
+    ~Tracker_RI();
 
     /**
      * Processes some detections
@@ -52,14 +51,16 @@ private:
     Tracker_RI(const Tracker_RI& t);
     Tracker_RI& operator=(const Tracker_RI& t);
 
-    cv::dnn::Net net;
     NetConfig netConfig;
+    InferenceEngine::ExecutableNetwork network;
+    std::string inputName, outputName;
 
     WorldConfig worldConfig;
     WorldState state;
     std::vector<std::unique_ptr<Track>> tracks;
     int index_count;
 
+    std::vector<float> identify(const cv::Mat &person);
     void merge(const Detections &detections,  const cv::Mat& frame);
     void update();
 };

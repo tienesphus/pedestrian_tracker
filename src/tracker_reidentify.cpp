@@ -1,11 +1,7 @@
-#include <utility>
-
-#include <utility>
-
 #include "tracker_reidentify.hpp"
 
-#include <iostream>
 #include <utility>
+#include <iostream>
 
 #include <opencv2/imgproc.hpp>
 
@@ -20,7 +16,7 @@ public:
      * @param conf the confidence that the track still exists
      * @param index a unique index for the track
      */
-    Track(cv::Rect box, float conf, int index, cv::Mat features);
+    Track(cv::Rect box, float conf, int index, std::vector<float> features);
 
     /**
      * Updates the status of this Track. Updates the world count.
@@ -35,7 +31,7 @@ public:
     cv::Rect box;
     float confidence;
     int index;
-    cv::Mat features;
+    std::vector<float> features;
 
     bool been_inside = false;
     bool been_outside = false;
@@ -47,7 +43,7 @@ public:
 
 };
 
-Track::Track(cv::Rect box, float conf, int index, cv::Mat features):
+Track::Track(cv::Rect box, float conf, int index, std::vector<float> features):
           box(std::move(box)),
           confidence(conf),
           index(index),
@@ -130,19 +126,104 @@ void Track::draw(cv::Mat &img) const {
 
 //  -----------  TRACKER ---------------
 
+/**
+ * @brief Wraps data stored inside of a passed cv::Mat object by new Blob pointer.
+ * @note: No memory allocation is happened. The blob just points to already existing
+ *        cv::Mat data.
+ * @param mat - given cv::Mat object with an image data.
+ * @return resulting Blob pointer.
+ */
+static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
+    size_t channels = mat.channels();
+    size_t height = mat.size().height;
+    size_t width = mat.size().width;
 
-Tracker_RI::Tracker_RI(NetConfig netConfig, WorldConfig world):
-        net(cv::dnn::readNetFromModelOptimizer(netConfig.meta, netConfig.model)), netConfig(std::move(netConfig)),
-        worldConfig(std::move(world)), state(WorldState(0, 0)), index_count(0)
+    size_t strideH = mat.step.buf[0];
+    size_t strideW = mat.step.buf[1];
+
+    bool is_dense =
+            strideW == channels &&
+            strideH == channels * width;
+
+    if (!is_dense)
+        throw std::logic_error("Detector doesn't support conversion from not dense cv::Mat");
+
+    InferenceEngine::TensorDesc tDesc(InferenceEngine::Precision::U8,
+                                      {1, channels, height, width},
+                                      InferenceEngine::Layout::NHWC);
+
+    return InferenceEngine::make_shared_blob<uint8_t>(tDesc, mat.data);
+}
+
+
+Tracker_RI::Tracker_RI(const NetConfig& netConfig, WorldConfig world, InferenceEngine::InferencePlugin &plugin):
+    netConfig(netConfig), worldConfig(std::move(world)), state(WorldState(0, 0)), index_count(0)
 {
-    this->net.setPreferableBackend(this->netConfig.preferred_backend);
-    this->net.setPreferableTarget (this->netConfig.preferred_target);
+    using namespace InferenceEngine;
+
+    std::cout << "[ INFO ] Loading network files for PersonREID" << std::endl;
+    CNNNetReader netReader;
+    /** Read network model **/
+    netReader.ReadNetwork(netConfig.meta);
+    /** Set batch size to 1 **/
+    std::cout << "[ INFO ] Batch size is forced to  1" << std::endl;
+    netReader.getNetwork().setBatchSize(1);
+    /** Extract model name and load it's weights **/
+    netReader.ReadWeights(netConfig.model);
+    // -----------------------------------------------------------------------------------------------------
+
+    /** SSD-based network should have one input and one output **/
+    // ---------------------------Check inputs ------------------------------------------------------
+    std::cout << "[ INFO ] Checking Person Reidentification inputs" << std::endl;
+    InputsDataMap inputInfo(netReader.getNetwork().getInputsInfo());
+    if (inputInfo.size() != 1) {
+        throw std::logic_error("Person Reidentification network should have only one input");
+    }
+    inputName = inputInfo.begin()->first;
+    InputInfo::Ptr& inputInfoFirst = inputInfo.begin()->second;
+    inputInfoFirst->setInputPrecision(Precision::U8);
+
+    inputInfoFirst->getPreProcess().setResizeAlgorithm(ResizeAlgorithm::RESIZE_BILINEAR);
+    inputInfoFirst->getInputData()->setLayout(Layout::NHWC);
+
+    // -----------------------------------------------------------------------------------------------------
+
+    // ---------------------------Check outputs ------------------------------------------------------
+    std::cout << "[ INFO ] Checking Person Reidentification outputs" << std::endl;
+    OutputsDataMap outputInfo(netReader.getNetwork().getOutputsInfo());
+    if (outputInfo.size() != 1) {
+        throw std::logic_error("Person Reidentification network should have only one output");
+    }
+    outputName = outputInfo.begin()->first;
+
+    this->network = plugin.LoadNetwork(netReader.getNetwork(), {});
 }
 
 Tracker_RI::~Tracker_RI() {
-    //for (Track* track : this->tracks) {
-    //    delete track;
-    //}
+
+}
+
+std::vector<float> Tracker_RI::identify(const cv::Mat &person) {
+    using namespace InferenceEngine;
+
+    InferRequest request = network.CreateInferRequest();
+    Blob::Ptr inputBlob = wrapMat2Blob(person.clone()); // clone is needed so the Mat is dense
+    request.SetBlob(inputName, inputBlob);
+
+    request.StartAsync();
+    request.Wait(IInferRequest::WaitMode::RESULT_READY);
+
+    Blob::Ptr attribsBlob = request.GetBlob(outputName);
+
+    auto numOfChannels = attribsBlob->getTensorDesc().getDims().at(1);
+    /* output descriptor of Person Reidentification Recognition network has size 256 */
+    if (numOfChannels != 256) {
+        throw std::logic_error("Output size (" + std::to_string(numOfChannels) + ") of the "
+                                                                                 "Person Reidentification network is not equal to 256");
+    }
+
+    auto outputValues = attribsBlob->buffer().as<float*>();
+    return std::vector<float>(outputValues, outputValues + 256);
 }
 
 WorldState Tracker_RI::process(const Detections &detections, const cv::Mat& frame)
@@ -166,11 +247,11 @@ void Tracker_RI::merge(const Detections &detection_results, const cv::Mat& frame
 
     struct DetectionExtra {
         const Detection detection;
-        cv::Mat features;
+        std::vector<float> features;
         bool merged;
         int index;
 
-        DetectionExtra(Detection d, cv::Mat features, size_t index):
+        DetectionExtra(Detection d, std::vector<float> features, size_t index):
             detection(std::move(d)), features(std::move(features)), merged(false), index(index)
         {}
     };
@@ -191,14 +272,12 @@ void Tracker_RI::merge(const Detections &detection_results, const cv::Mat& frame
     for (Detection detection : detection_results.get_detections()) {
 
         // Get the track/detection merge confidence
+        // Note: attempting to crop outside of Mat bounds crashes program, thus,
+        // take the intersection of the detection box and the full frame to ensure that never happens
         cv::Mat crop = frame(intersection(detection.box, cv::Rect(0, 0, frame.cols, frame.rows)));
-        cv::Mat blob = cv::dnn::blobFromImage(crop, 1, netConfig.size);
-        net.setInput(blob);
-        cv::Mat result;
-        net.forward(result);
 
         // Add the extra detection info
-        detections.emplace_back(detection, result.clone(), index++);
+        detections.emplace_back(detection, identify(crop), index++);
     }
 
 

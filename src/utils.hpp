@@ -32,7 +32,7 @@ float IoU(const cv::Rect &a, const cv::Rect &b);
 /**
  * Computes the cosine difference between the two 'vectors'
  */
-float cosine_similarity(const cv::Mat &a, const cv::Mat &b);
+float cosine_similarity(const std::vector<float> &a, const std::vector<float> &b);
 
 /**
  * Gets the intersection of two rectangles.

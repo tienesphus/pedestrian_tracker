@@ -31,7 +31,7 @@ static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
             strideH == channels * width;
 
     if (!is_dense)
-        throw "Detector doesn't support conversion from not dense cv::Mat";
+        throw std::logic_error("Detector doesn't support conversion from not dense cv::Mat");
 
     InferenceEngine::TensorDesc tDesc(InferenceEngine::Precision::U8,
                                       {1, channels, height, width},
@@ -41,14 +41,10 @@ static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
 }
 
 
-DetectorOpenVino::DetectorOpenVino(const NetConfig &config):
+DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::InferencePlugin &plugin):
         Detector(),
         config(config)
 {
-
-    std::cout << "Loading plugin" << std::endl;
-    InferencePlugin plugin = PluginDispatcher({""}).getPluginByDevice("MYRIAD");
-
     std::cout << "Reading network" << std::endl;
     CNNNetReader netReader;
     netReader.ReadNetwork(config.meta);

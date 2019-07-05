@@ -52,16 +52,15 @@ float IoU(const cv::Rect &a, const cv::Rect &b) {
 }
 
 
-float cosine_similarity(const cv::Mat &a, const cv::Mat &b) {
+float cosine_similarity(const std::vector<float>& a, const std::vector<float> &b) {
     // See https://en.wikipedia.org/wiki/Cosine_similarity
     float dot = 0;
     float denom_a = 0;
     float denom_b = 0;
 
-    // TODO this assumes a very specific mat type
-    for (size_t i = 0; i < a.size[1]; i++) {
-        float a_val = a.at<float>(0, i);
-        float b_val = b.at<float>(0, i);
+    for (size_t i = 0; i < a.size(); i++) {
+        float a_val = a[i];
+        float b_val = b[i];
         dot     += a_val * b_val;
         denom_a += a_val * a_val;
         denom_b += b_val * b_val;

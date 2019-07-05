@@ -25,7 +25,8 @@ TEST_CASE( "Basic detection with OpenVino", "[detector_openvino]" ) {
 
     cv::Mat image = load_test_image();
     auto net_config = load_test_config_ie();
-    DetectorOpenVino detector(net_config);
+    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
+    DetectorOpenVino detector(net_config, plugin);
 
     Detections results = detector.process(image);
 
@@ -36,7 +37,8 @@ TEST_CASE( "Detection with aysnc", "[detector_openvino]" ) {
 
     cv::Mat image = load_test_image();
     auto net_config = load_test_config_ie();
-    DetectorOpenVino detector(net_config);
+    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
+    DetectorOpenVino detector(net_config, plugin);
 
     Detections results = detector.wait_async(detector.start_async(image));
 
@@ -46,7 +48,8 @@ TEST_CASE( "Detection with aysnc", "[detector_openvino]" ) {
 TEST_CASE( "Multiprocessing with async", "[detector_openvino]" ) {
 
     auto net_config = load_test_config_ie();
-    DetectorOpenVino detector(net_config);
+    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
+    DetectorOpenVino detector(net_config, plugin);
 
     const int iterations = 10;
     std::vector<Detector::intermediate> futures;

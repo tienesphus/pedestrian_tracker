@@ -19,7 +19,7 @@ public:
     /**
      * Constructs a detector from the given NetConfig
      */
-    explicit DetectorOpenVino(const NetConfig &config);
+    explicit DetectorOpenVino(const NetConfig &config, InferenceEngine::InferencePlugin &plugin);
 
     Detections process(const cv::Mat &frame) override;
 
