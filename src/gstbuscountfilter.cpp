@@ -27,12 +27,15 @@ static const PixelFormat format_descriptions[] = {
 
 
 // ******** Static members ******** //
-const WorldConfig GstBusCountFilter::default_world_config(
+const WorldConfig GstBusCountFilter::default_world_config = WorldConfig::from_file("../config.csv");
+/*
+(
     Line(cv::Point(0, 1), cv::Point(0, 1)),
     Line(cv::Point(0, 1), cv::Point(0, 1)),
     Line(cv::Point(0, 1), cv::Point(0, 1)),
     Line(cv::Point(0, 1), cv::Point(0, 1))
 );
+*/
 
 Gst::ValueList GstBusCountFilter::formats;
 std::unique_ptr<Detector> GstBusCountFilter::detector;
@@ -103,12 +106,14 @@ void GstBusCountFilter::detector_init(Detector::Type detector_type, void *config
         switch (detector_type)
         {
             case Detector::DETECTOR_OPENCV:
+                GST_DEBUG("Using OpenCV detector");
                 detector = std::unique_ptr<DetectorOpenCV>(
                     new DetectorOpenCV(*static_cast<DetectorOpenCV::NetConfig*>(config))
                 );
                 break;
 
             case Detector::DETECTOR_OPENVINO:
+                GST_DEBUG("Using OpenViNO detector");
                 detector = std::unique_ptr<DetectorOpenVino>(
                     new DetectorOpenVino(*static_cast<DetectorOpenVino::NetConfig*>(config))
                 );
@@ -209,6 +214,7 @@ void GstBusCountFilter::push_frame(const cv::Mat &frame)
     }
     while (frame.data != mapinfo.get_data());
 
+    buf->unmap(mapinfo);
 
     if (buf)
     {
@@ -333,7 +339,7 @@ Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> &pad, Glib
     Gst::MapInfo mapinfo;
     buf->map(mapinfo, Gst::MAP_READ | Gst::MAP_WRITE);
 
-    if (mapinfo.get_size() != (uint64_t)frame_width * (uint64_t)frame_height * pixel_size)
+    if (mapinfo.get_size() < (uint64_t)frame_width * (uint64_t)frame_height * pixel_size)
     {
         GST_ERROR("Buffer size (%u) did not match calculated size (%llu)",
                 mapinfo.get_size(),
