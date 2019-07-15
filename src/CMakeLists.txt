@@ -29,7 +29,6 @@ add_library(buscount OBJECT
 	detector.cpp
 	detector_opencv.cpp
 	detector_openvino.cpp
-	tracker_reidentify.cpp
 	tracker_component.cpp
 	feature_affinity.cpp
 	position_affinity.cpp
