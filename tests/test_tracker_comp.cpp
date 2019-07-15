@@ -6,8 +6,6 @@
 #include <tracker_component.hpp>
 #include "testing_utils.hpp"
 
-#include <inference_engine.hpp>
-
 #include "catch.hpp"
 
 // THIS TEST IS VERY MUCH SO UNFINISHED
@@ -50,17 +48,17 @@ public:
     }
 
     void merge(const TestData &detectionData, TestData &trackData) const override {
-
+        REQUIRE(detectionData.owner == number);
+        REQUIRE(trackData.owner == number);
     }
 
-    void draw(const TestData &data, cv::Mat &img) const override {
-
+    void draw(const TestData &data, cv::Mat&) const override {
+        REQUIRE(data.owner == number);
     }
 };
 
 TEST_CASE( "Tracker gives correct data", "[tracker_comp]" ) {
 
-    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
     TrackerComp tracker(WorldConfig::from_file(cv::Size(640, 480), std::string(SOURCE_DIR)+"/config.csv"));
 
     TestTracker* tracker_a = new TestTracker(1);
@@ -78,7 +76,4 @@ TEST_CASE( "Tracker gives correct data", "[tracker_comp]" ) {
 
     REQUIRE(tracker_a->detector_calls.size() == 2);
     REQUIRE(tracker_b->detector_calls.size() == 2);
-
-
-
 }
