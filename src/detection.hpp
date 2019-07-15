@@ -34,7 +34,7 @@ public:
     /**
      * Get the detections that occured
      */
-    std::vector<Detection> get_detections() const;
+    const std::vector<Detection>& get_detections() const;
     
     /**
      * Draws the results onto an image.

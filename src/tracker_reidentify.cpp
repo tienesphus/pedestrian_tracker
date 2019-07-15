@@ -8,7 +8,7 @@
 
 //  ----------- TRACK ---------------
 
-class Track {
+class TrackRI {
 public:
     /**
      * Initialises a Track
@@ -16,7 +16,7 @@ public:
      * @param conf the confidence that the track still exists
      * @param index a unique index for the track
      */
-    Track(cv::Rect box, float conf, int index, std::vector<float> features);
+    TrackRI(cv::Rect box, float conf, int index, std::vector<float> features);
 
     /**
      * Updates the status of this Track. Updates the world count.
@@ -43,7 +43,7 @@ public:
 
 };
 
-Track::Track(cv::Rect box, float conf, int index, std::vector<float> features):
+TrackRI::TrackRI(cv::Rect box, float conf, int index, std::vector<float> features):
           box(std::move(box)),
           confidence(conf),
           index(index),
@@ -51,7 +51,7 @@ Track::Track(cv::Rect box, float conf, int index, std::vector<float> features):
           color(rand() % 256)
 {}
 
-bool Track::update(const WorldConfig &config, WorldState &world)
+bool TrackRI::update(const WorldConfig &config, WorldState &world)
 {
     // look only at the boxes center point
     int x = box.x + box.width/2;
@@ -103,7 +103,7 @@ bool Track::update(const WorldConfig &config, WorldState &world)
     return confidence > 0.2;
 }
 
-void Track::draw(cv::Mat &img) const {
+void TrackRI::draw(cv::Mat &img) const {
     cv::Scalar clr = hsv2rgb(cv::Scalar(color, 255, confidence*255));
     cv::rectangle(img, box, clr, 1);
     
@@ -258,10 +258,10 @@ void Tracker_RI::merge(const Detections &detection_results, const cv::Mat& frame
 
     struct MergeOption {
         float confidence;
-        Track * track;
+        TrackRI * track;
         DetectionExtra * extra;
 
-        MergeOption(float conf, Track* track, DetectionExtra* detect):
+        MergeOption(float conf, TrackRI* track, DetectionExtra* detect):
             confidence(conf), track(track), extra(detect)
         {}
     };
@@ -286,7 +286,7 @@ void Tracker_RI::merge(const Detections &detection_results, const cv::Mat& frame
     std::vector<MergeOption> merges;
 
     for (DetectionExtra &extra : detections) {
-        for (std::unique_ptr<Track> &track : this->tracks) {
+        for (std::unique_ptr<TrackRI> &track : this->tracks) {
 
             float confidence = cosine_similarity(extra.features, track->features);
             std::cout << " d" << extra.index << " x t" << track->index << ": " << confidence << std::endl;
@@ -318,7 +318,7 @@ void Tracker_RI::merge(const Detections &detection_results, const cv::Mat& frame
         }
 
         const Detection& d = merge.extra->detection;
-        Track* track = merge.track;
+        TrackRI* track = merge.track;
 
         std::cout << "Merging d" << merge.extra->index <<  " and t" << track->index << std::endl;
 
@@ -348,7 +348,7 @@ void Tracker_RI::merge(const Detections &detection_results, const cv::Mat& frame
             const Detection &d = extra.detection;
             std::cout << "Making a new box for detection " << d.box << std::endl;
 
-            this->tracks.push_back(std::make_unique<Track>(d.box, d.confidence, index_count++, extra.features));
+            this->tracks.push_back(std::make_unique<TrackRI>(d.box, d.confidence, index_count++, extra.features));
         }
     }
     
@@ -356,9 +356,9 @@ void Tracker_RI::merge(const Detections &detection_results, const cv::Mat& frame
     // This occurs when two detections are produced for the same person
     std::cout << "Deleting similar tracks " << std::endl;
     for (size_t i = 0; i < this->tracks.size(); i++) {
-        std::unique_ptr<Track> &track_i = this->tracks[i];
+        std::unique_ptr<TrackRI> &track_i = this->tracks[i];
         for (size_t j = i+1; j < this->tracks.size(); j++) {
-            std::unique_ptr<Track> &track_j = this->tracks[j];
+            std::unique_ptr<TrackRI> &track_j = this->tracks[j];
             
             if (IoU(track_i->box, track_j->box) > 0.95 &&
                     cosine_similarity(track_i->features, track_j->features) > netConfig.thresh) {
@@ -384,7 +384,7 @@ void Tracker_RI::merge(const Detections &detection_results, const cv::Mat& frame
 void Tracker_RI::update()
 {
     this->tracks.erase(std::remove_if(std::begin(this->tracks), std::end(this->tracks),
-            [this](std::unique_ptr<Track>& t) {
+            [this](std::unique_ptr<TrackRI>& t) {
                 return !t->update(this->worldConfig, this->state);
             }
             ), std::end(this->tracks));
@@ -392,7 +392,7 @@ void Tracker_RI::update()
 
 void Tracker_RI::draw(cv::Mat& img) const
 {
-    for (const std::unique_ptr<Track>& track : tracks)
+    for (const std::unique_ptr<TrackRI>& track : tracks)
         track->draw(img);
 }
 

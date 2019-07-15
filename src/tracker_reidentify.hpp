@@ -9,7 +9,7 @@
 /** 
  * A jumble of data that follows a detection result around 
  */
-class Track;
+class TrackRI;
 
 /**
  * Persistent data needed to know how to track different objects across frames
@@ -33,7 +33,7 @@ public:
      */
     Tracker_RI(const NetConfig& net, WorldConfig world, InferenceEngine::InferencePlugin &plugin);
 
-    ~Tracker_RI();
+    ~Tracker_RI() override;
 
     /**
      * Processes some detections
@@ -57,9 +57,10 @@ private:
 
     WorldConfig worldConfig;
     WorldState state;
-    std::vector<std::unique_ptr<Track>> tracks;
+    std::vector<std::unique_ptr<TrackRI>> tracks;
     int index_count;
 
+public:
     std::vector<float> identify(const cv::Mat &person);
     void merge(const Detections &detections,  const cv::Mat& frame);
     void update();

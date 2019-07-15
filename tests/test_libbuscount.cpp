@@ -16,6 +16,7 @@ class DummyTracker: public Tracker {
     WorldState process(const Detections& detections, const cv::Mat& frame) override {
         REQUIRE(!frame.empty());
         REQUIRE(detections.get_detections().size() == 1);
+        return WorldState(0, 0);
     };
     void draw(cv::Mat&) const override {};
 };

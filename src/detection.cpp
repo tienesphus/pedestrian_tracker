@@ -27,7 +27,7 @@ Detections::Detections(std::vector<Detection> detections):
 {
 }
 
-std::vector<Detection> Detections::get_detections() const
+const std::vector<Detection>& Detections::get_detections() const
 {
     return this->detections;
 }

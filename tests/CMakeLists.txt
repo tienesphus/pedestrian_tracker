@@ -9,6 +9,8 @@ add_executable(tests
     test_tick_counter.cpp
     test_libbuscount.cpp
     test_video_sync.cpp
+    test_tracker_comp.cpp
+    test_affinity_features.cpp
 )
 
 target_compile_definitions(tests PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
@@ -18,4 +20,5 @@ target_link_libraries(tests buscount_static opencv_videoio)
 target_include_directories(tests PUBLIC
     $<TARGET_PROPERTY:buscount_static,SOURCE_DIR>
     ${bus_count_SOURCE_DIR}/include/catch2
+    ${bus_count_SOURCE_DIR}/include/fakeit
 )

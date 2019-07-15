@@ -1,4 +1,5 @@
 
+
 # Added so we can use traditional pkg-config style build information.
 find_package(PkgConfig REQUIRED)
 
@@ -29,6 +30,9 @@ add_library(buscount OBJECT
 	detector_opencv.cpp
 	detector_openvino.cpp
 	tracker_reidentify.cpp
+	tracker_component.cpp
+	feature_affinity.cpp
+	position_affinity.cpp
 )
 
 target_compile_definitions(buscount PUBLIC

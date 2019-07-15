@@ -1,5 +1,6 @@
 #include <gst/gst.h>
 #include <gst/rtsp-server/rtsp-server.h>
+#include <tuple>
 
 int main (int argc, char *argv[])
 {
@@ -50,4 +51,44 @@ int main (int argc, char *argv[])
   g_main_loop_run (loop);
 
   return 0;
+}
+
+class Base {
+    static std::vector<std::tuple<std::string, std::function>> children;
+protected:
+
+    template<typename T>
+    class register {
+    public:
+        register(std::string name) {
+            Base::children.emplace_back(name, T::init);
+        }
+    };
+
+    template<typename T>
+    friend register::register(std::string);
+public:
+    Base create(string name, ......);
+};
+
+class Intermediary : Base {
+    static unique_ptr<Plugin>;
+    Intermediary() {
+        if(!unique_ptr) {
+            unique_ptr = unique_ptr(new Plugin(aolijowiea));
+        }
+    }
+};
+
+class Derived : Intermediary {
+    Derived();
+    static Base::register<Derived> _register;
+public:
+    static Derived init();
+};
+
+auto Derived::_register("hjgjgj");
+
+Derived Derived::init() {
+    Derived();
 }
