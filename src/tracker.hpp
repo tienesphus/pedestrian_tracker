@@ -6,6 +6,7 @@
 
 #include "detection.hpp"
 #include "world.hpp"
+#include "event.hpp"
 
 /** 
  * A jumble of data that follows a detection result around 
@@ -32,7 +33,7 @@ public:
      * Processes some detections
      * @returns a snapshot of the new state of the world
      */
-    WorldState process(const Detections &detections, const cv::Mat& frame);
+    std::vector<Event> process(const Detections &detections, const cv::Mat& frame);
     
     /**
      * Draws the current state
@@ -45,13 +46,12 @@ private:
     Tracker& operator=(const Tracker& t);
 
     WorldConfig config;
-    WorldState state;
     std::vector<Track*> tracks;
     int index_count;
     float threshold;
     
     void merge(const Detections &detections,  const cv::Size& frame_size);
-    void update();
+    std::vector<Event> update();
 };
 
 #endif

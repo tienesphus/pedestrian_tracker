@@ -11,6 +11,7 @@
 #include "detector_opencv.hpp"
 #include "video_sync.hpp"
 #include "optional.hpp"
+#include "event.hpp"
 
 
 int main() {
@@ -52,7 +53,8 @@ int main() {
             //[&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
             [&cv_cap]() -> nonstd::optional<cv::Mat> { cv::Mat frame; cv_cap->read(frame); return frame; },
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
-            []() { return cv::waitKey(20) == 'q'; }
+            []() { return cv::waitKey(20) == 'q'; },
+            [](Event event) {std::cout << "EVENT: " << name(event) << std::endl;}
     );
     counter.run(BusCounter::RUN_PARALLEL, true);
 

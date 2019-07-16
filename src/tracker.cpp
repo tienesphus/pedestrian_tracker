@@ -25,7 +25,7 @@ class Track
     /**
      * Updates the status of this Track. Updates the world count.
      */
-    bool update(const WorldConfig& config, WorldState& world);
+    bool update(const WorldConfig& config, std::vector<Event>& events);
 
     /**
      * Draws the Track onto the given image
@@ -49,7 +49,7 @@ class Track
     {
 }
 
-bool Track::update(const WorldConfig &config, WorldState &world)
+bool Track::update(const WorldConfig &config, std::vector<Event> &events)
 {
     // look only at the boxes center point
     int x = box.x + box.width/2;
@@ -64,13 +64,15 @@ bool Track::update(const WorldConfig &config, WorldState &world)
             been_inside = true;
             if (been_outside && !counted_in && !counted_out)
             {
-                world.in_count++;
+                events.push_back(Event::COUNT_IN);
+                //world.in_count++;
                 counted_in = true;
             }
 
             if (been_outside && counted_out)
             {
-                world.out_count--;
+                events.push_back(Event::COUNT_IN);
+                //world.out_count--;
                 counted_out = false;
                 been_outside = false;
             }
@@ -81,13 +83,15 @@ bool Track::update(const WorldConfig &config, WorldState &world)
             been_outside = true;
             if (been_inside && !counted_out && !counted_in)
             {
-                world.out_count++;
+                events.push_back(Event::COUNT_OUT);
+                //world.out_count++;
                 counted_out = true;
             }
 
             if (been_inside && counted_in)
             {
-                world.in_count--;
+                events.push_back(Event::COUNT_OUT);
+                //world.in_count--;
                 counted_in = false;
                 been_inside = false;
             }
@@ -117,7 +121,7 @@ void Track::draw(cv::Mat &img) const {
 //  -----------  TRACKER ---------------
 
 Tracker::Tracker(WorldConfig config, float threshold):
-    config(std::move(config)), state(WorldState(0, 0)), index_count(0), threshold(threshold)
+    config(std::move(config)), index_count(0), threshold(threshold)
 {
 }
 
@@ -127,16 +131,14 @@ Tracker::~Tracker()
         delete track;
 }
 
-WorldState Tracker::process(const Detections &detections, const cv::Mat& frame)
+std::vector<Event> Tracker::process(const Detections &detections, const cv::Mat& frame)
 {
     // Note: World State is purposely copied out so it is a snapshot
 
     cv::Size size(frame.cols, frame.rows);
 
     merge(detections, size);
-    update();
-    
-    return state;
+    return update();
 }
 
 // Gets the square of the distance between two boxes.
@@ -259,17 +261,21 @@ void Tracker::merge(const Detections &detection_results, const cv::Size& frame_s
  * Updates the status of each Track. Updates the world count.
  * Deletes old tracks.
  */
-void Tracker::update()
+std::vector<Event> Tracker::update()
 {
+    std::vector<Event> events;
+
     std::vector<Track*> new_tracks;
     for (Track* t : this->tracks) 
     {
-        if (t->update(this->config, this->state))
+        if (t->update(this->config, events))
             new_tracks.push_back(t);
         else
             delete t;
     }
     this->tracks = new_tracks;
+
+    return events;
 }
 
 void Tracker::draw(cv::Mat& img) const

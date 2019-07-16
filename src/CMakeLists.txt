@@ -29,6 +29,7 @@ add_library(buscount OBJECT
 	detector.cpp
 	detector_opencv.cpp
 	detector_openvino.cpp
+	event.cpp
 )
 
 target_compile_definitions(buscount PUBLIC
