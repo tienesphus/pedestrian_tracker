@@ -87,7 +87,7 @@ int main() {
     TrackerComp tracker(world_config);
 
     tracker.use<FeatureAffinity, FeatureData>(0.5, tracker_config, plugin);
-    tracker.use<PositionAffinity, PositionData>(0.5, 80);
+    tracker.use<PositionAffinity, PositionData>(0.5, 1);
 
     BusCounter counter(detector, tracker, world_config,
             [&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },

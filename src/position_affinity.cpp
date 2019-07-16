@@ -22,10 +22,10 @@ float PositionAffinity::affinity(const PositionData& detection, const PositionDa
 
     int x_err = detection.loc.x - x_expected;
     int y_err = detection.loc.y - y_expected;
-
     int dist = x_err*x_err + y_err*y_err;
 
-    float conf = (scale*scale - dist) / (scale*scale);
+    float thresh = track.loc.width*track.loc.height*scale;
+    float conf = (thresh - dist) / thresh;
 
     return conf;
 }
