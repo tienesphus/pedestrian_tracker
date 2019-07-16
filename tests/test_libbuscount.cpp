@@ -29,7 +29,8 @@ TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
             [&count]() -> bool {
                 --count;
                 return count < 0;
-            }
+            },
+            [](Event) {}
     );
 
     counter.run(BusCounter::RUN_SERIAL, false);
@@ -54,7 +55,8 @@ TEST_CASE( "Bus Counter runs in parallel", "[libbuscount]" ) {
                        [&count]() -> bool {
                            --count;
                            return count < 0;
-                       }
+                       },
+                       [](Event) {}
     );
 
     counter.run(BusCounter::RUN_PARALLEL, false);
