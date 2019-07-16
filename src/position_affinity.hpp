@@ -8,14 +8,18 @@ class PositionData: public TrackData
 {
     friend class PositionAffinity;
 
+    cv::Rect loc;
+    int xspeed, yspeed;
+
 public:
+    PositionData(cv::Rect loc, int  xspeed, int yspeed);
     ~PositionData() override = default;
 };
 
 class PositionAffinity: public Affinity<PositionData> {
 public:
 
-    PositionAffinity();
+    explicit PositionAffinity(float scale);
 
     ~PositionAffinity() override = default;
 
@@ -28,6 +32,7 @@ public:
     void draw(const PositionData& data, cv::Mat &img) const override;
 
 private:
+    float scale;
 
 };
 
