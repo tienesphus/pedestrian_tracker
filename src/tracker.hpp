@@ -8,7 +8,10 @@
 
 
 /**
- * A class that tracks detections moving
+ * A class that tracks detections moving.
+ *
+ * Child implementations are very free to implement the system however they want.
+ * All an implementation is REQUIRED to do is take some detections in and output the current counts each frame.
  */
 class Tracker
 {

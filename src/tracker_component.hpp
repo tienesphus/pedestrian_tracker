@@ -23,7 +23,10 @@ public:
 };
 
 /**
- * Determines the similarity between a new detection and a track
+ * Pure abstract class which determines the similarity between a new detection and a track.
+ *
+ * TODO Affinities could be used to do more, such as deleting tracks, drawing all state and counting in/out.
+ * It is possible that the Track class can be completely replaced by Affinities
  */
 template <typename T>
 class Affinity {
@@ -31,19 +34,44 @@ public:
 
     virtual ~Affinity() = default;
 
+    /**
+     * Initialises some custom data for a detection. This will always be called for each detection box.
+     * The initialised data will be passed latter into the 'affinity' and 'merge' functions.
+     * @param d the person detected
+     * @param frame the image the person was detected in
+     * @return the initialised custom data
+     */
     virtual std::unique_ptr<T> init(const Detection& d, const cv::Mat& frame) const = 0;
 
+    /**
+     * Determines the affinity between a 'Detection' and a 'Track'.
+     * This will be called on EVERY detection/track combination.
+     * @param detectionData the data recently created in init()
+     * @param trackData data that has been carried over from a previous from through merge()
+     * @return the confidence that these two items are alike (between 0 and 1)
+     */
     virtual float affinity(const T &detectionData, const T &trackData) const = 0;
 
+    /**
+     * Called when it is decided that a detection an a track are the same.
+     * @param detectionData the detection data to merge in
+     * @param trackData the track data to merge into
+     */
     virtual void merge(const T& detectionData, T& trackData) const = 0;
 
+    /**
+     * Draws information about this track.
+     * TODO Affinity::draw is currently never called
+     * @param data the track data
+     * @param img the image to draw onto
+     */
     virtual void draw(const T& data, cv::Mat &img) const = 0;
 };
 
 /**
  * A class that tracks detections moving.
  *
- * This class does not correlate tracks itself, but has "Affinity" components attached to it which do the collelation.
+ * This class does not correlate tracks itself, but has "Affinity" components attached to it which do the correlation.
  * This class really just co-ordinates the affinities.
  */
 class TrackerComp: public Tracker
