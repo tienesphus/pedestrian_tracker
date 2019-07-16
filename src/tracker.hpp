@@ -5,6 +5,7 @@
 
 #include "world.hpp"
 #include "detection.hpp"
+#include "event.hpp"
 
 
 /**
@@ -24,19 +25,18 @@ public:
   
     /**
      * Processes some detections
-     * @returns a snapshot of the new state of the world
+     * @returns all the events that occurred this frame
      */
-    virtual WorldState process(const Detections &detections, const cv::Mat& frame) = 0;
-    
+    virtual std::vector<Event> process(const Detections &detections, const cv::Mat& frame) = 0;
+
     /**
      * Draws the current state
      */
     virtual void draw(cv::Mat &img) const = 0;
     
-private:
     // tracker cannot be copied
-    Tracker(const Tracker& t);
-    Tracker& operator=(const Tracker& t);
+    Tracker(const Tracker& t) = delete;
+    Tracker& operator=(const Tracker& t) = delete;
 };
 
 #endif

@@ -113,7 +113,7 @@ public:
      * Processes some detections
      * @returns a snapshot of the new state of the world
      */
-    WorldState process(const Detections &detections, const cv::Mat& frame) override;
+    std::vector<Event> process(const Detections &detections, const cv::Mat& frame) override;
     
     /**
      * Draws the current state
@@ -126,14 +126,13 @@ private:
     TrackerComp& operator=(const TrackerComp& t);
 
     WorldConfig worldConfig;
-    WorldState state;
     std::vector<std::unique_ptr<Track>> tracks;
     int index_count;
     std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> affinities;
 
     void use_affinity(float weighting, std::unique_ptr<Affinity<TrackData>> affinity);
     void merge(const Detections &detections,  const cv::Mat& frame);
-    void update();
+    std::vector<Event> update();
 };
 
 

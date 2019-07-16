@@ -32,6 +32,7 @@ add_library(buscount OBJECT
 	tracker_component.cpp
 	feature_affinity.cpp
 	position_affinity.cpp
+	event.cpp
 )
 
 target_compile_definitions(buscount PUBLIC

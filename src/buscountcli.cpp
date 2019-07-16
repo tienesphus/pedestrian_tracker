@@ -1,6 +1,4 @@
 #include <iostream>
-#include <tuple>
-#include <vector>
 
 #include <opencv2/highgui.hpp>
 
@@ -86,14 +84,15 @@ int main() {
     WorldConfig world_config = WorldConfig::from_file(cv::Size(640, 480), std::string(SOURCE_DIR) + "/config.csv");
     TrackerComp tracker(world_config);
 
-    tracker.use<FeatureAffinity, FeatureData>(0.5, tracker_config, plugin);
-    tracker.use<PositionAffinity, PositionData>(0.5, 1);
+    tracker.use<FeatureAffinity, FeatureData>(0.6, tracker_config, plugin);
+    tracker.use<PositionAffinity, PositionData>(0.4, 0.7);
 
     BusCounter counter(detector, tracker, world_config,
             [&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
             //[&cv_cap]() -> nonstd::optional<cv::Mat> { cv::Mat frame; cv_cap->read(frame); return frame; },
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
-            []() { return cv::waitKey(20) == 'q'; }
+            []() { return cv::waitKey(20) == 'q'; },
+            [](Event event) {std::cout << "EVENT: " << name(event) << std::endl;}
     );
     counter.run(BusCounter::RUN_PARALLEL, true);
 

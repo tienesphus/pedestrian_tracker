@@ -19,9 +19,9 @@ public:
     Track(cv::Rect box, float conf, int index, std::vector<std::unique_ptr<TrackData>> data);
 
     /**
-     * Updates the status of this Track. Updates the world count.
+     * Updates the status of this Track and stores any events in the given list
      */
-    bool update(const WorldConfig &config, WorldState &world);
+    bool update(const WorldConfig &config, std::vector<Event>& events);
 
     /**
      * Draws the Track onto the given image
@@ -52,7 +52,7 @@ Track::Track(cv::Rect box, float conf, int index, std::vector<std::unique_ptr<Tr
         color(rand() % 256)
 {}
 
-bool Track::update(const WorldConfig &config, WorldState &world)
+bool Track::update(const WorldConfig &config, std::vector<Event>& events)
 {
     // look only at the boxes center point
     int x = box.x + box.width/2;
@@ -67,13 +67,15 @@ bool Track::update(const WorldConfig &config, WorldState &world)
             been_inside = true;
             if (been_outside && !counted_in && !counted_out)
             {
-                world.in_count++;
+                events.push_back(Event::COUNT_IN);
+                //world.in_count++;
                 counted_in = true;
             }
 
             if (been_outside && counted_out)
             {
-                world.out_count--;
+                events.push_back(Event::COUNT_IN);
+                //world.out_count--;
                 counted_out = false;
                 been_outside = false;
             }
@@ -84,13 +86,15 @@ bool Track::update(const WorldConfig &config, WorldState &world)
             been_outside = true;
             if (been_inside && !counted_out && !counted_in)
             {
-                world.out_count++;
+                events.push_back(Event::COUNT_OUT);
+                //world.out_count++;
                 counted_out = true;
             }
 
             if (been_inside && counted_in)
             {
-                world.in_count--;
+                events.push_back(Event::COUNT_OUT);
+                //world.in_count--;
                 counted_in = false;
                 been_inside = false;
             }
@@ -128,7 +132,7 @@ void Track::draw(cv::Mat &img) const {
 //  -----------  TRACKER ---------------
 
 TrackerComp::TrackerComp(WorldConfig world):
-        worldConfig(std::move(world)), state(WorldState(0, 0)), index_count(0)
+        worldConfig(std::move(world)), index_count(0)
 {
 }
 
@@ -138,13 +142,10 @@ void TrackerComp::use_affinity(float weighting, std::unique_ptr<Affinity<TrackDa
     this->affinities.emplace_back(std::move(affinity), weighting);
 }
 
-WorldState TrackerComp::process(const Detections &detections, const cv::Mat& frame)
+std::vector<Event> TrackerComp::process(const Detections &detections, const cv::Mat& frame)
 {
     merge(detections, frame);
-    update();
-
-    // Note: World State is purposely copied out so it is a snapshot
-    return state;
+    return update();
 }
 
 
@@ -340,13 +341,17 @@ void TrackerComp::merge(const Detections &detection_results, const cv::Mat& fram
  * Updates the status of each Track. Updates the world count.
  * Deletes old tracks.
  */
-void TrackerComp::update()
+std::vector<Event> TrackerComp::update()
 {
+    std::vector<Event> events;
+
     this->tracks.erase(std::remove_if(std::begin(this->tracks), std::end(this->tracks),
-                                      [this](std::unique_ptr<Track>& t) {
-                                          return !t->update(this->worldConfig, this->state);
+                                      [this, &events](std::unique_ptr<Track>& t) {
+                                          return !t->update(this->worldConfig, events);
                                       }
     ), std::end(this->tracks));
+
+    return events;
 }
 
 void TrackerComp::draw(cv::Mat& img) const

@@ -36,14 +36,18 @@ BusCounter::BusCounter(
         WorldConfig &wconf,
         std::function<BusCounter::src_cb_t> src,
         std::function<BusCounter::dest_cb_t> dest,
-        std::function<BusCounter::test_exit_t> test_exit
+        std::function<BusCounter::test_exit_t> test_exit,
+        std::function<BusCounter::event_handle_t > event_handle
     ) :
         _src(std::move(src)),
         _dest(std::move(dest)),
         _test_exit(std::move(test_exit)),
+        _event_handle(std::move(event_handle)),
         _detector(detector),
         _tracker(tracker),
-        _world_config(wconf)
+        _world_config(wconf),
+        inside_count(0),
+        outside_count(0)
 {
 }
 
@@ -55,8 +59,25 @@ void BusCounter::run(RunStyle style, bool draw)
         run_serial(draw);
 }
 
+// abbreviation
 template <class T>
 using ptr = std::shared_ptr<T>;
+
+void BusCounter::handle_events(const std::vector<Event>& events)
+{
+    for (Event e : events) {
+        // handle the events internally
+        switch (e) {
+            case COUNT_IN: inside_count++; break;
+            case COUNT_OUT: outside_count++; break;
+            default:
+                throw std::logic_error("Unknown event type");
+        }
+
+        // handle the event externally
+        _event_handle(e);
+    }
+}
 
 //
 // Builds and runs a flow graph with the the given configuration options
@@ -161,13 +182,15 @@ void BusCounter::run_parallel(bool do_draw)
     flow::join_node<joint_output> joint_node(g);
 
     // track: Tracks detections
-    typedef std::tuple<PtrMat, ptr<Detections>, ptr<WorldState>> track_output;
+    typedef std::tuple<PtrMat, ptr<Detections>> track_output;
     flow::function_node<joint_output, track_output> track_node(g, flow::serial,
             [this](joint_output input) -> auto {
                 ScopeLog log("TRACK");
                 auto frame = std::get<0>(input);
                 auto detections = std::get<1>(input);
-                return std::make_tuple(frame, detections, std::make_shared<WorldState>(this->_tracker.process(*detections, *frame)));
+                auto events = this->_tracker.process(*detections, *frame);
+                handle_events(events);
+                return input;
             }
     );
 
@@ -176,9 +199,8 @@ void BusCounter::run_parallel(bool do_draw)
                 ScopeLog log("DRAW");
                 auto frame = std::get<0>(input);
                 auto detections = std::get<1>(input);
-                auto state = std::get<2>(input);
                 detections->draw(*frame);
-                state->draw(*frame);
+                WorldState(inside_count, outside_count).draw(*frame);
                 // TODO possible concurrency issue of tracker updating before getting drawn
                 this->_tracker.draw(*frame);
                 this->_world_config.draw(*frame);
@@ -278,12 +300,14 @@ void BusCounter::run_serial(bool do_draw)
 
         auto frame = *got_frame;
         auto detections = _detector.process(frame);
-        auto state = _tracker.process(detections, frame);
-        
+        auto events = _tracker.process(detections, frame);
+
+        handle_events(events);
+
         if (do_draw) {
             detections.draw(frame);
             _tracker.draw(frame);
-            state.draw(frame);
+            WorldState(inside_count, outside_count).draw(frame);
             _world_config.draw(frame);
         }
 
