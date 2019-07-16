@@ -11,35 +11,7 @@
 
 #include <opencv2/dnn/dnn.hpp>
 
-DetectorOpenCV::NetConfig load_test_config(int preferred_backend, int preferred_target) {
-    return DetectorOpenCV::NetConfig {
-            0.5f,               // thresh
-            15,                 // clazz
-            cv::Size(300, 300), // size
-            2/255.0,            // scale
-            cv::Scalar(127.5, 127.5, 127.5),     // mean
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
-            preferred_backend,  // preferred backend
-            preferred_target,   // preferred device
-    };
-}
-
-void test()
-{
-    //auto test = cv::dnn::haveInfEngine();
-    //std::cout << test << std::endl;
-
-    cv::Mat image = cv::imread(std::string(SOURCE_DIR)+"/tests/skier.jpg");
-    auto net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
-    DetectorOpenCV detector(net_config);
-
-    Detections results = detector.process(image);
-}
-
 int main() {
-
-    //test();
 
     /*DetectorOpenCV::NetConfig net_config {
         0.5f,               // thresh

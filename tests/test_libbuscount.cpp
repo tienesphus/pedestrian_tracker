@@ -13,10 +13,10 @@ class DummyDetector: public Detector {
 };
 
 class DummyTracker: public Tracker {
-    WorldState process(const Detections& detections, const cv::Mat& frame) override {
+    std::vector<Event> process(const Detections& detections, const cv::Mat& frame) override {
         REQUIRE(!frame.empty());
         REQUIRE(detections.get_detections().size() == 1);
-        return WorldState(0, 0);
+        return std::vector<Event>();
     };
     void draw(cv::Mat&) const override {};
 };
@@ -37,7 +37,8 @@ TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
             [&count]() -> bool {
                 --count;
                 return count < 0;
-            }
+            },
+            [](Event) {}
     );
 
     counter.run(BusCounter::RUN_SERIAL, false);
