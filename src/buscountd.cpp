@@ -6,11 +6,23 @@
 #include <gst/rtsp-server/rtsp-server.h>
 
 // Project includes
+#include "rtsp_flexi_media_factory.h"
 #include "detector_opencv.hpp"
 #include "detector_openvino.hpp"
 #include "gstbuscountfilter.hpp"
 
 #define TEST_VIDEO "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4"
+
+Glib::RefPtr<Gst::Pipeline> pipeline;
+
+GstElement* create_elem_from_bin(GstRTSPMediaFactory *factory, const GstRTSPUrl *url)
+{
+    Glib::RefPtr<Gst::Bin> bin = Gst::Bin::create();
+
+    bin->add(pipeline);
+
+    return ((Glib::RefPtr<Gst::Element>)bin)->gobj();
+}
 
 GstRTSPMediaFactory *create_test_factory()
 {
@@ -20,20 +32,25 @@ GstRTSPMediaFactory *create_test_factory()
     // element named pay%d will be another stream for the given rtsp endpoint.
 
     // Test video
-    GstRTSPMediaFactory *test_factory = gst_rtsp_media_factory_new();
+    RtspFlexiMediaFactory *test_factory = rtsp_flexi_media_factory_new();
+    GstRTSPMediaFactory *result = GST_RTSP_MEDIA_FACTORY(test_factory);
+    //GstRTSPMediaFactory *result = gst_rtsp_media_factory_new();
+
+    rtsp_flexi_media_factory_set_create_elem(test_factory, create_elem_from_bin);
+
     gst_rtsp_media_factory_set_launch(
-        test_factory,
+        result,
         "( "
-            "videotestsrc ! video/x-raw,framerate=8/1 ! buscountfilter ! clockoverlay ! "
+            "videotestsrc ! clockoverlay ! "
             "videoconvert ! video/x-raw, format=I420 ! omxh264enc ! "
             "video/x-h264, profile=baseline ! rtph264pay name=pay0 pt=96 "
         ")"
     );
 
     // Set shared so that multiple devices can connect to the same stream
-    gst_rtsp_media_factory_set_shared(test_factory, TRUE);
+    gst_rtsp_media_factory_set_shared(result, TRUE);
 
-    return test_factory;
+    return result;
 }
 
 GstRTSPMediaFactory *create_file_factory()
@@ -112,6 +129,29 @@ int main(int argc, char *argv[])
 
     // Register the gstreamer buscount plugin
     GstBusCount::plugin_init_static();
+
+    // Now create a base pipeline that others can read from, so that video only needs to be
+    // processed once.
+    Glib::RefPtr<Gst::Element> v4l2, bcfilt, vtee, btee, capsfilt;
+
+    pipeline = Gst::Pipeline::create("base-pipeline");
+
+    v4l2     = Gst::ElementFactory::create_element("v4l2src");
+    capsfilt = Gst::ElementFactory::create_element("capsfilter");
+    bcfilt   = Gst::ElementFactory::create_element("buscountfilter");
+    vtee     = Gst::ElementFactory::create_element("tee");
+    btee     = Gst::ElementFactory::create_element("tee");
+
+    Glib::RefPtr<Gst::Caps> caps = Gst::Caps::create_simple(
+        "video/x-raw",
+        "framerate", Gst::Fraction(8, 1),
+        "width",     800,
+        "height",    600
+    );
+
+    capsfilt->property("caps", caps);
+
+    pipeline->add(v4l2)->add(capsfilt)->add(vtee)->add(bcfilt)->add(btee);
 
     // Create a main loop for the current thread
     Glib::RefPtr<Glib::MainLoop> loop = Glib::MainLoop::create();

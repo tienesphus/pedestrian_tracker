@@ -82,7 +82,7 @@ target_link_libraries(gstbuscountplugin
 )
 
 add_executable(buscountcli buscountcli.cpp)
-add_executable(buscountd   buscountd.cpp)
+add_executable(buscountd   buscountd.cpp rtsp_flexi_media_factory.c)
 
 target_link_libraries(buscountcli buscount_static opencv_highgui)
 target_link_libraries(buscountd gstbuscountplugin_static)

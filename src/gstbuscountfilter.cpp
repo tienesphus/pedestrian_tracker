@@ -25,9 +25,13 @@ static const PixelFormat format_descriptions[] = {
 //    { "BGRA", 4, CV_8UC4 }
 };
 
+static const float default_threshold = 0.2;
+
 
 // ******** Static members ******** //
-const WorldConfig GstBusCountFilter::default_world_config = WorldConfig::from_file("../config.csv");
+const WorldConfig GstBusCountFilter::default_world_config = WorldConfig::from_file(
+    cv::Size(640, 480), "../config.csv"
+);
 /*
 (
     Line(cv::Point(0, 1), cv::Point(0, 1)),
@@ -144,7 +148,7 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
         frame_in_queue(Gst::AtomicQueue<cv::Mat>::create(10)),
         frame_out_queue(Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>::create(10)),
         world_config(default_world_config),
-        tracker(world_config),
+        tracker(world_config, default_threshold),
         buscounter(
                 *detector, tracker, world_config,
                 std::bind(&GstBusCountFilter::next_frame, this),
