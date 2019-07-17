@@ -57,8 +57,11 @@ target_link_libraries(buscount_static INTERFACE
 )
 
 
-add_executable(buscountcli buscountcli.cpp)
-add_executable(buscountd   buscountd.cpp)
+add_executable(buscountcli     buscountcli.cpp)
+add_executable(buscountd       buscountd.cpp)
+add_executable(buscountserver  server/buscountserver.cpp)
+
+target_link_libraries(buscountserver drogon trantor uuid pthread jsoncpp dl z)
 
 target_include_directories(buscountd PRIVATE
 	${GSTRTSPSRV_INCLUDE_DIRS}

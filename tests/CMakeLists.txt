@@ -20,5 +20,4 @@ target_link_libraries(tests buscount_static opencv_videoio)
 target_include_directories(tests PUBLIC
     $<TARGET_PROPERTY:buscount_static,SOURCE_DIR>
     ${bus_count_SOURCE_DIR}/include/catch2
-    ${bus_count_SOURCE_DIR}/include/fakeit
 )
