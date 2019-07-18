@@ -2,6 +2,7 @@
 
 #include <json/json.h>
 #include <drogon/drogon.h>
+#include <zconf.h>
 
 #include "../optional.hpp"
 
@@ -137,6 +138,32 @@ struct Config
     {}
 };
 
+/**
+ * Gets the location of the file that is being executed
+ * @return the executable files path
+ */
+std::string getExecutablePath()
+{
+    char szTmp[32];
+    char pBuf[256];
+    size_t len = sizeof(pBuf);
+    sprintf(szTmp, "/proc/%d/exe", getpid());
+    int bytes = std::min(static_cast<unsigned long>(readlink(szTmp, pBuf, len)), len - 1);
+    if(bytes >= 0)
+        pBuf[bytes] = '\0';
+    return std::string(pBuf, bytes);
+}
+
+/**
+ * Gets the directory that the executable is in
+ * @return the executables directory
+ */
+std::string getExecutableDir()
+{
+    std::string path = getExecutablePath();
+    return path.substr(0, path.find_last_of('/'));
+}
+
 int main()
 {
 
@@ -165,6 +192,7 @@ int main()
     app().setLogLevel(trantor::Logger::WARN);
     app().addListener("0.0.0.0", 8080);
     app().setThreadNum(2);
+    app().setDocumentRoot(getExecutableDir());
 
     drogon::app().registerHandler("/sanity",
             [](const drogon::HttpRequestPtr&,

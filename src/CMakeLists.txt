@@ -59,9 +59,6 @@ target_link_libraries(buscount_static INTERFACE
 
 add_executable(buscountcli     buscountcli.cpp)
 add_executable(buscountd       buscountd.cpp)
-add_executable(buscountserver  server/buscountserver.cpp)
-
-target_link_libraries(buscountserver drogon trantor uuid pthread jsoncpp dl z)
 
 target_include_directories(buscountd PRIVATE
 	${GSTRTSPSRV_INCLUDE_DIRS}
@@ -72,3 +69,4 @@ target_compile_definitions(buscountcli PRIVATE SOURCE_DIR="${bus_count_SOURCE_DI
 target_link_libraries(buscountcli buscount_static opencv_highgui)
 target_link_libraries(buscountd ${GSTRTSPSRV_LIBRARIES})
 
+add_subdirectory(server)
