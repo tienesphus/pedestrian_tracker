@@ -49,7 +49,7 @@ sudo apt-get install gstreamer1.0-plugins-base
 
 ### Building
 ```
-git clone https://gitlab.com/buspassengercount/dnn_counting.git
+git clone https://gitlab.com/buspassengercount/cpp_counting.git
 cd cpp_counting
 mkdir build && cd build
 cmake ..
