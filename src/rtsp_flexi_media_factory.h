@@ -5,7 +5,11 @@
 
 G_BEGIN_DECLS
 
-#define TYPE_RTSP_FLEXI_MEDIA_FACTORY              (rtsp_flexi_media_factory_get_type ())
+#define TYPE_RTSP_FLEXI_MEDIA_FACTORY \
+    (rtsp_flexi_media_factory_get_type ())
+
+#define RTSP_FLEXI_MEDIA_FACTORY(obj) \
+    (G_TYPE_CHECK_INSTANCE_CAST((obj), TYPE_RTSP_FLEXI_MEDIA_FACTORY, RtspFlexiMediaFactory))
 
 typedef struct _RtspFlexiMediaFactory RtspFlexiMediaFactory;
 typedef struct _RtspFlexiMediaFactoryClass RtspFlexiMediaFactoryClass;

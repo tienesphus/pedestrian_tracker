@@ -4,9 +4,6 @@
 #include "rtsp_flexi_media_factory.h"
 
 // Important definitions
-#define RTSP_FLEXI_MEDIA_FACTORY_GET_PRIVATE(obj) \
-        (G_TYPE_INSTANCE_GET_PRIVATE ((obj), TYPE_RTSP_FLEXI_MEDIA_FACTORY, RtspFlexiMediaFactoryPrivate))
-
 struct _RtspFlexiMediaFactoryPrivate
 {
     RtspFlexiCreateElemFunc create_element_func;
@@ -15,19 +12,23 @@ struct _RtspFlexiMediaFactoryPrivate
 static GstElement *flexi_create_element(GstRTSPMediaFactory *, const GstRTSPUrl *);
 
 // Define the gobject type
-G_DEFINE_TYPE(RtspFlexiMediaFactory, rtsp_flexi_media_factory, GST_TYPE_RTSP_MEDIA_FACTORY);
+G_DEFINE_TYPE_WITH_PRIVATE(RtspFlexiMediaFactory, rtsp_flexi_media_factory, GST_TYPE_RTSP_MEDIA_FACTORY);
 
 // Class initializer
 static void rtsp_flexi_media_factory_class_init(RtspFlexiMediaFactoryClass *klass)
 {
-    GstRTSPMediaFactoryClass *mf_parent = GST_RTSP_MEDIA_FACTORY_CLASS(klass);
-    mf_parent->create_element = flexi_create_element;
+    GstRTSPMediaFactoryClass *parent_class;
+
+    //g_type_class_add_private(klass, sizeof(RtspFlexiMediaFactoryPrivate));
+
+    parent_class = GST_RTSP_MEDIA_FACTORY_CLASS(klass);
+    parent_class->create_element = flexi_create_element;
 }
 
 // Object initializer
 static void rtsp_flexi_media_factory_init(RtspFlexiMediaFactory *self)
 {
-    RtspFlexiMediaFactoryPrivate *priv = RTSP_FLEXI_MEDIA_FACTORY_GET_PRIVATE(self);
+    RtspFlexiMediaFactoryPrivate *priv = rtsp_flexi_media_factory_get_instance_private(self);
     priv->create_element_func = NULL;
 }
 
@@ -39,18 +40,20 @@ RtspFlexiMediaFactory *rtsp_flexi_media_factory_new(void)
 
 void rtsp_flexi_media_factory_set_create_elem(RtspFlexiMediaFactory *self, RtspFlexiCreateElemFunc func)
 {
-    RtspFlexiMediaFactoryPrivate *priv = RTSP_FLEXI_MEDIA_FACTORY_GET_PRIVATE(self);
+    RtspFlexiMediaFactoryPrivate *priv = rtsp_flexi_media_factory_get_instance_private(self);
     priv->create_element_func = func;
 }
 
 // Private class methods
-static GstElement* flexi_create_element(GstRTSPMediaFactory *self, const GstRTSPUrl *url)
+static GstElement* flexi_create_element(GstRTSPMediaFactory *base, const GstRTSPUrl *url)
 {
-    RtspFlexiMediaFactoryPrivate *priv = RTSP_FLEXI_MEDIA_FACTORY_GET_PRIVATE(self);
+    RtspFlexiMediaFactory *self = RTSP_FLEXI_MEDIA_FACTORY(base);
+    RtspFlexiMediaFactoryPrivate *priv = rtsp_flexi_media_factory_get_instance_private(self);
+
     if (priv->create_element_func == NULL)
-        return GST_RTSP_MEDIA_FACTORY_CLASS(rtsp_flexi_media_factory_parent_class)->create_element(self, url);
+        return GST_RTSP_MEDIA_FACTORY_CLASS(rtsp_flexi_media_factory_parent_class)->create_element(base, url);
     else
-        return priv->create_element_func(self, url);
+        return priv->create_element_func(base, url);
 }
 
 // Private object methods

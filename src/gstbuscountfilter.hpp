@@ -80,11 +80,14 @@ public:
     // Object constructor/instantiator
     explicit GstBusCountFilter(GstElement *gobj);
 
-    // Flow control and events
-    Gst::FlowReturn chain(const Glib::RefPtr<Gst::Pad> &, Glib::RefPtr<Gst::Buffer> &);
-    bool sink_event(const Glib::RefPtr<Gst::Pad> &, Glib::RefPtr<Gst::Event> &);
+    // Element flow control, events, messages
+    Gst::StateChangeReturn change_state_vfunc(Gst::StateChange) override;
 
-    Gst::StateChangeReturn change_state_vfunc(Gst::StateChange transition) override;
+    // Pad flow control, events, messages
+    Gst::FlowReturn chain(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Buffer> &buf);
+    bool pad_event(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Event> &event);
+    bool pad_query(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Query> &query);
+
 
 };
 

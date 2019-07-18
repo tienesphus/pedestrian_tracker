@@ -169,7 +169,10 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
     GST_PAD_SET_PROXY_CAPS(video_out->gobj());
 
     video_in->set_chain_function(sigc::mem_fun(*this, &GstBusCountFilter::chain));
-    video_in->set_event_function(sigc::mem_fun(*this, &GstBusCountFilter::sink_event));
+    video_in->set_event_function(sigc::mem_fun(*this, &GstBusCountFilter::pad_event));
+    video_in->set_query_function(sigc::mem_fun(*this, &GstBusCountFilter::pad_query));
+
+    video_out->set_query_function(sigc::mem_fun(*this, &GstBusCountFilter::pad_query));
 }
 
 // Private methods
@@ -313,27 +316,90 @@ bool GstBusCountFilter::setup_caps(Glib::RefPtr<Gst::Event> &event)
 }
 
 // Events
-bool GstBusCountFilter::sink_event(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Event> &event)
+bool GstBusCountFilter::pad_event(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Event> &event)
 {
     bool result;
 
-    switch (event->get_event_type())
-    {
-        case GST_EVENT_CAPS:
+    GST_DEBUG(
+        "Pad event on [%s] of type '%s'",
+        pad->get_name().c_str(),
+        ((Glib::ustring)Gst::Enums::get_quark(event->get_event_type())).c_str()
+    );
+
+    // Don't deal with pads of unknown direction
+    if (pad->get_direction() == Gst::PAD_UNKNOWN)
+        return pad->event_default(Glib::RefPtr<Gst::Event>(event));
+
+    if (pad->get_direction() == Gst::PAD_SRC)
+        return pad->event_default(Glib::RefPtr<Gst::Event>(event));
+
+    if (pad->get_direction() == Gst::PAD_SINK)
+        switch (event->get_event_type())
         {
-            result = setup_caps(event);
-            result &= pad->event_default(Glib::RefPtr<Gst::Event>(event));
+            case Gst::EVENT_CAPS:
+            {
+                result = setup_caps(event);
+                result &= pad->event_default(Glib::RefPtr<Gst::Event>(event));
+                break;
+            }
+
+            default:
+                result = pad->event_default(Glib::RefPtr<Gst::Event>(event));
+                break;
+
+        }
+
+    return result;
+}
+
+bool GstBusCountFilter::pad_query(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Query> &query)
+{
+    bool result = false;
+
+    GST_DEBUG(
+        "Pad query on [%s] of type '%s'",
+        pad->get_name().c_str(),
+        ((Glib::ustring)Gst::Enums::get_quark(query->get_query_type())).c_str()
+    );
+
+    switch (query->get_query_type())
+    {
+        case Gst::QUERY_LATENCY:
+        {
+            bool live;
+            Gst::ClockTime min, max;
+
+            auto ltncy_query = Glib::RefPtr<Gst::QueryLatency>::cast_static(query);
+
+            ltncy_query->parse(live, min, max);
+
+            GST_DEBUG(
+                "Peer latency: min %" GST_TIME_FORMAT " max %" GST_TIME_FORMAT,
+                GST_TIME_ARGS(min),
+                GST_TIME_ARGS(min)
+            );
+
+            // These are estimates for best case and worst case latencies under normal operating
+            // conditions. These should not be determined by huristics, rather they should be
+            // sane values. For heuristics and jitter fixup, try looking into QoS instead.
+            min += gst_util_uint64_scale(GST_SECOND, 12, 1);
+            if (max != Gst::CLOCK_TIME_NONE)
+                max += gst_util_uint64_scale(GST_SECOND, 5, 1);
+
+
+            ltncy_query->set(live, min, max);
+
             break;
         }
 
         default:
-            result = pad->event_default(Glib::RefPtr<Gst::Event>(event));
-            break;
+            result = pad->query_default(query);
 
     }
 
     return result;
 }
+
 
 // Flow control
 Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Buffer> &buf)
