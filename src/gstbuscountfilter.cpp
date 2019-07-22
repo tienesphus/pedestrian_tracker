@@ -46,6 +46,7 @@ const WorldConfig GstBusCountFilter::default_world_config = WorldConfig::from_fi
 
 Gst::ValueList GstBusCountFilter::formats;
 std::unique_ptr<Detector> GstBusCountFilter::detector;
+std::unique_ptr<Tracker> GstBusCountFilter::tracker;
 
 
 // ******** Function definitions ******** //
@@ -551,8 +552,9 @@ static gboolean plugin_init(GstPlugin* plugin)
         cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // preferred backend
         cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
     };
+    InferenceEngine::InferencePlugin ie_plugin; // initialisation not needed since using OpenCV
 
-    GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config);
+    GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config, ie_plugin);
 
     GST_DEBUG("Initializing plugin");
 
