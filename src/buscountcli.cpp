@@ -48,8 +48,6 @@ int main() {
     auto cv_cap = std::make_shared<cv::VideoCapture>(0);
     cv_cap->set(cv::CAP_PROP_FRAME_WIDTH,640);
     cv_cap->set(cv::CAP_PROP_FRAME_HEIGHT,480);
-    
-    //VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_capture(cv_cap);
 
     std::cout << "Loading plugin" << std::endl;
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");

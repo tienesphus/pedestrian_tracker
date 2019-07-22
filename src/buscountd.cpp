@@ -197,7 +197,6 @@ int main(int argc, char *argv[])
         cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
     };*/
 
-
     DetectorOpenVino::NetConfig net_config {
             0.5f,               // thresh
             15,                 // clazz
@@ -207,9 +206,10 @@ int main(int argc, char *argv[])
 
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
 
-    GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config, plugin);
+    //GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config, plugin);    
+    GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENVINO, &net_config, plugin);
+    
     GstBusCount::GstBusCountFilter::tracker_init(plugin);
-    //GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENVINO, &net_config);
 
     // Register the gstreamer buscount plugin
     GstBusCount::plugin_init_static();

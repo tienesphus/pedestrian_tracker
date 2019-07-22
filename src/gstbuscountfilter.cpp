@@ -33,7 +33,7 @@ static const float default_threshold = 0.2;
 
 // ******** Static members ******** //
 const WorldConfig GstBusCountFilter::default_world_config = WorldConfig::from_file(
-    cv::Size(640, 480), "../config.csv"
+    cv::Size(800, 600), "../config.csv"
 );
 /*
 (
