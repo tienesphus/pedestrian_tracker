@@ -27,13 +27,16 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 add_library(buscount_static STATIC
 	libbuscount.cpp
 	detection.cpp
-	tracker.cpp
 	utils.cpp
 	optional.hpp
 	world.cpp
 	detector.cpp
 	detector_opencv.cpp
 	detector_openvino.cpp
+	tracker_component.cpp
+	feature_affinity.cpp
+	position_affinity.cpp
+	event.cpp
 )
 
 set_property(TARGET buscount_static PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -83,6 +86,8 @@ target_link_libraries(gstbuscountplugin
 
 add_executable(buscountcli buscountcli.cpp)
 add_executable(buscountd   buscountd.cpp rtsp_flexi_media_factory.c)
+
+target_compile_definitions(buscountcli PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
 
 target_link_libraries(buscountcli buscount_static opencv_highgui)
 target_link_libraries(buscountd gstbuscountplugin_static)

@@ -2,6 +2,9 @@
 #include "gstbuscountfilter.hpp"
 #include "detector_opencv.hpp"
 #include "detector_openvino.hpp"
+#include "tracker_component.hpp"
+#include "feature_affinity.hpp"
+#include "position_affinity.hpp"
 
 #include <gstreamermm/wrap_init.h>
 #include <glib.h>
@@ -102,7 +105,7 @@ void GstBusCountFilter::class_init(Gst::ElementClass<GstBusCountFilter> *klass)
     );
 }
 
-void GstBusCountFilter::detector_init(Detector::Type detector_type, void *config)
+void GstBusCountFilter::detector_init(Detector::Type detector_type, void *config, InferenceEngine::InferencePlugin& plugin)
 {
     if (!detector)
     {
@@ -119,10 +122,33 @@ void GstBusCountFilter::detector_init(Detector::Type detector_type, void *config
             case Detector::DETECTOR_OPENVINO:
                 GST_DEBUG("Using OpenViNO detector");
                 detector = std::unique_ptr<DetectorOpenVino>(
-                    new DetectorOpenVino(*static_cast<DetectorOpenVino::NetConfig*>(config))
+                    new DetectorOpenVino(*static_cast<DetectorOpenVino::NetConfig*>(config), plugin)
                 );
                 break;
         }
+    }
+}
+
+void GstBusCountFilter::tracker_init(InferenceEngine::InferencePlugin& plugin)
+{
+    if (!tracker)
+    {
+        GST_INFO("Initializing tracker");
+
+        // TODO allow tracker to be configured
+
+        FeatureAffinity::NetConfig feature_config {
+                "../models/Reidentify0031/person-reidentification-retail-0031.xml", // config
+                "../models/Reidentify0031/person-reidentification-retail-0031.bin", // model
+                cv::Size(48, 96),    // input size
+                0.6,                 // similarity thresh
+        };
+
+        auto* track_ptr = new TrackerComp(default_world_config);
+        track_ptr->use<FeatureAffinity, FeatureData>(0.6, feature_config, plugin);
+        track_ptr->use<PositionAffinity, PositionData>(0.4, 0.7);
+
+        tracker = std::unique_ptr<TrackerComp>(track_ptr);
     }
 }
 
@@ -148,12 +174,12 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
         frame_in_queue(Gst::AtomicQueue<cv::Mat>::create(10)),
         frame_out_queue(Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>::create(10)),
         world_config(default_world_config),
-        tracker(world_config, default_threshold),
         buscounter(
-                *detector, tracker, world_config,
+                *detector, *tracker, world_config,
                 std::bind(&GstBusCountFilter::next_frame, this),
                 std::bind(&GstBusCountFilter::push_frame, this, std::placeholders::_1),
-                std::bind(&GstBusCountFilter::test_quit, this)
+                std::bind(&GstBusCountFilter::test_quit, this),
+                [](Event){}
         ),
         buscount_running(false),
         pixel_size(format_descriptions[0].size),

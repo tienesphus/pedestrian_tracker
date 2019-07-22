@@ -14,6 +14,7 @@ public:
     using src_cb_t = nonstd::optional<cv::Mat>();
     using dest_cb_t = void(const cv::Mat&);
     using test_exit_t = bool();
+    using event_handle_t = void(Event e);
 
     enum RunStyle {
         RUN_PARALLEL,
@@ -26,7 +27,8 @@ public:
             WorldConfig& wconf,
             std::function<BusCounter::src_cb_t> src,
             std::function<BusCounter::dest_cb_t> dest,
-            std::function<BusCounter::test_exit_t> test_exit
+            std::function<BusCounter::test_exit_t> test_exit,
+            std::function<BusCounter::event_handle_t> event_handle
     );
 
     void run(RunStyle style, bool draw);
@@ -36,16 +38,19 @@ private:
     std::function<src_cb_t> _src;
     std::function<dest_cb_t> _dest;
     std::function<test_exit_t> _test_exit;
+    std::function<event_handle_t> _event_handle;
 
     // Internal data structures
     Detector& _detector;
     Tracker& _tracker;
     WorldConfig& _world_config;
 
+    int inside_count, outside_count;
+
     // How to execute the pipeline.
     void run_parallel(bool draw);
     void run_serial(bool draw);
-
+    void handle_events(const std::vector<Event>& events);
 };
 
 #endif

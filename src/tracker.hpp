@@ -1,57 +1,42 @@
 #ifndef TRACKER_H
 #define TRACKER_H
 
-#include <opencv2/core/cvstd.hpp>
 #include <opencv2/core/mat.hpp>
 
-#include "detection.hpp"
 #include "world.hpp"
+#include "detection.hpp"
+#include "event.hpp"
 
-/** 
- * A jumble of data that follows a detection result around 
- */
-class Track;
 
 /**
- * Persistent data needed to know how to track different objects across frames
+ * A class that tracks detections moving.
+ *
+ * Child implementations are very free to implement the system however they want.
+ * All an implementation is REQUIRED to do is take some detections in and output the current counts each frame.
  */
 class Tracker
 {
     
 public:
-    /**
-     * Constructs a Tracker from the given data
-     * @param config the world in/out lines
-     * @param threshold the max distance before tracks are considered different
-     */
-    Tracker(WorldConfig config, float threshold);
 
-    ~Tracker();
+    Tracker() = default;
+
+    virtual ~Tracker() = default;
   
     /**
      * Processes some detections
-     * @returns a snapshot of the new state of the world
+     * @returns all the events that occurred this frame
      */
-    WorldState process(const Detections &detections, const cv::Mat& frame);
-    
+    virtual std::vector<Event> process(const Detections &detections, const cv::Mat& frame) = 0;
+
     /**
      * Draws the current state
      */
-    void draw(cv::Mat &img) const;
+    virtual void draw(cv::Mat &img) const = 0;
     
-private:
     // tracker cannot be copied
-    Tracker(const Tracker& t);
-    Tracker& operator=(const Tracker& t);
-
-    WorldConfig config;
-    WorldState state;
-    std::vector<Track*> tracks;
-    int index_count;
-    float threshold;
-    
-    void merge(const Detections &detections,  const cv::Size& frame_size);
-    void update();
+    Tracker(const Tracker& t) = delete;
+    Tracker& operator=(const Tracker& t) = delete;
 };
 
 #endif

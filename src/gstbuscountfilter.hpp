@@ -8,6 +8,7 @@
 
 #include <gstreamermm.h>
 #include <gstreamermm/private/element_p.h>
+#include <cpp/ie_plugin_cpp.hpp>
 
 namespace GstBusCount {
 
@@ -22,6 +23,7 @@ class GstBusCountFilter : public Gst::Element
 
     static Gst::ValueList formats;
     static std::unique_ptr<Detector> detector;
+    static std::unique_ptr<Tracker> tracker;
 
     /******** Object members ********/
 
@@ -44,7 +46,6 @@ class GstBusCountFilter : public Gst::Element
     std::mutex cond_m;
 
     WorldConfig world_config;
-    Tracker tracker;
     BusCounter buscounter;
 
     std::thread buscount_thread;
@@ -70,7 +71,8 @@ public:
 
     // Class constructor
     static void class_init(Gst::ElementClass<GstBusCountFilter> *klass);
-    static void detector_init(Detector::Type detector_type, void *config);
+    static void detector_init(Detector::Type detector_type, void *config, InferenceEngine::InferencePlugin& plugin);
+    static void tracker_init(InferenceEngine::InferencePlugin& plugin);
 
     // Registration function
     static bool register_buscount_filter(GstPlugin *plugin);

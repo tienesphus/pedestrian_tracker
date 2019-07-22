@@ -6,6 +6,8 @@
 
 /**
  * The current global state of the world
+ * TODO delete this WorldState class
+ * (it is only used for the draw method which should get merged into libbuscount)
  */
 struct WorldState {
     int in_count;
