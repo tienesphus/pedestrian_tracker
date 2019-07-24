@@ -6,6 +6,7 @@
 #include <json/json.h>
 
 #include "../optional.hpp"
+#include "../utils.hpp"
 
 namespace server {
 
@@ -15,31 +16,12 @@ namespace server {
 
         Feed(std::string name, std::string location);
 
-        Json::Value to_json() const;
-
-        static nonstd::optional<Feed> from_json(const Json::Value &data);
-    };
-
-    struct Point {
-        float x, y;
-
-        Point(float x, float y);
-    };
-
-    struct Line {
-        Point a, b;
-
-        Line(const Point &a, const Point &b);
-
-        Json::Value to_json() const;
-
-        static nonstd::optional<Line> from_json(const Json::Value &json);
     };
 
     struct OpenCVConfig {
-        Line crossing;
+        utils::Line crossing;
 
-        explicit OpenCVConfig(const Line &crossing);
+        explicit OpenCVConfig(const utils::Line &crossing);
     };
 
     struct Config {

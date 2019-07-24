@@ -1,7 +1,10 @@
 #include "server.hpp"
 
+#include "../utils.hpp"
+
 #include <drogon/drogon.h>
 #include <zconf.h>
+
 
 namespace server {
 
@@ -9,15 +12,15 @@ namespace server {
             name(std::move(name)), location(std::move(location))
     {}
 
-    Json::Value Feed::to_json() const
+    Json::Value to_json(const Feed& feed)
     {
         Json::Value json;
-        json["name"] = name;
-        json["location"] = location;
+        json["name"] = feed.name;
+        json["location"] = feed.location;
         return json;
     }
 
-    nonstd::optional<Feed> Feed::from_json(const Json::Value& data)
+    nonstd::optional<Feed> feed_from_json(const Json::Value& data)
     {
         Json::Value name = data["name"];
         Json::Value location = data["location"];
@@ -39,26 +42,23 @@ namespace server {
 
         Device(std::string name, std::string id, const trantor::InetAddress& ip, Feed default_feed);
 
-        Json::Value to_json() const;
-
-        static nonstd::optional<Device> from_json(Json::Value json, trantor::InetAddress ip);
     };
 
     Device::Device(std::string name, std::string id, const trantor::InetAddress& ip, Feed default_feed):
             name(std::move(name)), id(std::move(id)), ip(ip), default_feed(std::move(default_feed))
     {}
 
-    Json::Value Device::to_json() const
+    Json::Value to_json(const Device& device)
     {
         Json::Value json;
-        json["ip"] = ip.toIp();
-        json["id"] = id;
-        json["name"] = name;
-        json["default_feed"] = default_feed.to_json();
+        json["ip"] = device.ip.toIp();
+        json["id"] = device.id;
+        json["name"] = device.name;
+        json["default_feed"] = to_json(device.default_feed);
         return json;
     }
 
-    nonstd::optional<Device> Device::from_json(Json::Value json, trantor::InetAddress ip)
+    nonstd::optional<Device> device_from_json(Json::Value json, trantor::InetAddress ip)
     {
 
         Json::Value id = json["id"];
@@ -71,7 +71,7 @@ namespace server {
         } else {
             std::string s_id = id.asString();
             std::string s_name = name.asString();
-            nonstd::optional<Feed> def_feed = Feed::from_json(default_feed);
+            nonstd::optional<Feed> def_feed = feed_from_json(default_feed);
 
             if (def_feed)
                 return Device(s_name, s_id, ip, *def_feed);
@@ -80,24 +80,17 @@ namespace server {
         }
     }
 
-    Point::Point(float x, float y): x(x), y(y)
-    {}
-
-    Line::Line(const Point& a, const Point& b):
-            a(a), b(b)
-    {}
-
-    Json::Value Line::to_json() const
+    Json::Value to_json(const utils::Line& l)
     {
         Json::Value json;
-        json["x1"] = a.x;
-        json["y1"] = a.y;
-        json["x2"] = b.x;
-        json["y2"] = b.y;
+        json["x1"] = l.a.x;
+        json["y1"] = l.a.y;
+        json["x2"] = l.b.x;
+        json["y2"] = l.b.y;
         return json;
     }
 
-    nonstd::optional<Line> Line::from_json(const Json::Value& json)
+    nonstd::optional<utils::Line> line_from_json(const Json::Value& json)
     {
         Json::Value x1 = json["x1"];
         Json::Value y1 = json["y1"];
@@ -106,9 +99,9 @@ namespace server {
 
         if (x1.isDouble() && y1.isDouble() && x2.isDouble() && y2.isDouble())
         {
-            Line line(
-                    Point(x1.asDouble(), y1.asDouble()),
-                    Point(x2.asDouble(), y2.asDouble())
+            utils::Line line(
+                    utils::Point(x1.asDouble(), y1.asDouble()),
+                    utils::Point(x2.asDouble(), y2.asDouble())
             );
             return line;
         } else {
@@ -117,7 +110,7 @@ namespace server {
         }
     }
 
-    OpenCVConfig::OpenCVConfig(const Line& crossing):
+    OpenCVConfig::OpenCVConfig(const utils::Line& crossing):
             crossing(crossing)
     {}
 
@@ -246,7 +239,7 @@ namespace server {
                         callback(resp);
                     } else {
                         trantor::InetAddress ip = req->getPeerAddr();
-                        nonstd::optional<Device> device = Device::from_json(*data, ip);
+                        nonstd::optional<Device> device = device_from_json(*data, ip);
                         if (!device) {
                             auto resp=HttpResponse::newHttpResponse();
                             resp->setContentTypeCode(CT_TEXT_PLAIN);
@@ -271,7 +264,7 @@ namespace server {
                     Json::Value json;
 
                     for (const Device& d : devices)
-                        json.append(d.to_json());
+                        json.append(to_json(d));
 
                     auto resp=HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
@@ -282,64 +275,62 @@ namespace server {
 
     void init_slave(const std::function<Config()>& getConfig, const std::function<void(OpenCVConfig)>& setConfig)
     {
-        using namespace drogon;
-
-        app().registerHandler("/get_config",
+        drogon::app().registerHandler("/get_config",
                 [getConfig](const drogon::HttpRequestPtr&,
-                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
+                        std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&) {
                     Json::Value json;
 
                     Config config = getConfig();
 
                     Json::Value feeds;
                     for (const Feed& feed : config.feeds)
-                        feeds.append(feed.to_json());
+                        feeds.append(to_json(feed));
                     json["feeds"] = feeds;
 
-                    json["crossing"] = config.cvConfig.crossing.to_json();
+                    json["crossing"] = to_json(config.cvConfig.crossing);
 
-                    auto resp=HttpResponse::newHttpJsonResponse(json);
+                    auto resp=drogon::HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
                 },
-                {Get}
+                {drogon::Get}
         );
 
 
-        app().registerHandler("/set_config",
+        drogon::app().registerHandler("/set_config",
                 [setConfig](const drogon::HttpRequestPtr& req,
-                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
+                        std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&) {
                     std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
                     if (!json_ptr)
                     {
-                        auto resp=HttpResponse::newHttpResponse();
-                        resp->setContentTypeCode(CT_TEXT_PLAIN);
-                        resp->setStatusCode(k400BadRequest);
+                        auto resp=drogon::HttpResponse::newHttpResponse();
+                        resp->setContentTypeCode(drogon::CT_TEXT_PLAIN);
+                        resp->setStatusCode(drogon::k400BadRequest);
                         resp->setBody("Invalid JSON");
 
                         callback(resp);
                     } else {
                         const Json::Value& json = *json_ptr;
-                        nonstd::optional<Line> crossing = Line::from_json(json["crossing"]);
+                        nonstd::optional<utils::Line> crossing = line_from_json(json["crossing"]);
 
                         if (crossing)
                         {
                             OpenCVConfig config(*crossing);
                             setConfig(config);
 
-                            auto resp=HttpResponse::newHttpResponse();
-                            resp->setStatusCode(k200OK);
+                            auto resp=drogon::HttpResponse::newHttpResponse();
+                            resp->setStatusCode(drogon::k200OK);
 
                             callback(resp);
                         } else {
-                            auto resp=HttpResponse::newHttpResponse();
-                            resp->setContentTypeCode(CT_TEXT_PLAIN);
-                            resp->setStatusCode(k400BadRequest);
+                            auto resp=drogon::HttpResponse::newHttpResponse();
+                            resp->setContentTypeCode(drogon::CT_TEXT_PLAIN);
+                            resp->setStatusCode(drogon::k400BadRequest);
                             resp->setBody("In/out lines not specified correctly");
                             callback(resp);
                         }
                     }
                 },
-                {Post}
+                {drogon::Post}
         );
     }
 }

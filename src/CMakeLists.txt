@@ -66,7 +66,7 @@ target_include_directories(buscountd PRIVATE
 
 target_compile_definitions(buscountcli PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
 
-target_link_libraries(buscountcli buscount_static opencv_highgui server_static)
+target_link_libraries(buscountcli buscount_static server_static opencv_highgui)
 target_link_libraries(buscountd ${GSTRTSPSRV_LIBRARIES})
 
 add_subdirectory(server)

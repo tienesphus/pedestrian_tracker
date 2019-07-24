@@ -11,8 +11,7 @@ int main()
     feeds.emplace_back("dirty", "/dirty");
     Config config(
             OpenCVConfig(
-                    Line(Point(0.4, 0), Point(0.4, 1)),
-                    Line(Point(0.6, 0), Point(0.6, 1))
+                    utils::Line(utils::Point(0.5, 0.4), utils::Point(0.5, 0.6))
             ),
             feeds
     );
