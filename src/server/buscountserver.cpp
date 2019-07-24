@@ -2,6 +2,8 @@
 
 int main()
 {
+    using namespace server;
+
     // fake slave state
     std::vector<Feed> feeds;
     feeds.emplace_back("live", "/live");
@@ -23,5 +25,5 @@ int main()
             [&config](OpenCVConfig oldConfig) {
                 config.cvConfig = oldConfig;
             });
-    start_server();
+    start();
 }

@@ -84,7 +84,7 @@ public:
      * The created tracker will do nothing by default. Must call "use" to add tracking components
      * @param world the world configuration
      */
-    explicit TrackerComp(WorldConfig world);
+    explicit TrackerComp(const WorldConfig& world);
 
     ~TrackerComp() override;
 
@@ -125,7 +125,7 @@ private:
     TrackerComp(const TrackerComp& t);
     TrackerComp& operator=(const TrackerComp& t);
 
-    WorldConfig worldConfig;
+    const WorldConfig& worldConfig;
     std::vector<std::unique_ptr<Track>> tracks;
     int index_count;
     std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> affinities;

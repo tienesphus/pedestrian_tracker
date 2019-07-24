@@ -9,6 +9,8 @@
 #include "detector_opencv.hpp"
 #include "video_sync.hpp"
 
+#include "server/server.hpp"
+
 #include <opencv2/dnn/dnn.hpp>
 
 int main() {
@@ -66,6 +68,41 @@ int main() {
             []() { return cv::waitKey(20) == 'q'; },
             [](Event event) {std::cout << "EVENT: " << name(event) << std::endl;}
     );
+
+
+    server::init_master();
+    server::init_slave(
+            [&world_config]() -> server::Config {
+                std::vector<server::Feed> feeds;
+                feeds.emplace_back("test", "/test");
+                feeds.emplace_back("live", "/live");
+                return server::Config(
+                        server::OpenCVConfig(
+                                server::Line(
+                                        server::Point(world_config.inside.a.x, world_config.inside.a.y),
+                                        server::Point(world_config.inside.b.x, world_config.inside.b.y)
+                                ),
+                                server::Line(
+                                        server::Point(world_config.outside.a.x, world_config.outside.a.y),
+                                        server::Point(world_config.outside.b.x, world_config.outside.b.y)
+                                )
+                        ),
+                        feeds);
+            },
+            [&world_config](server::OpenCVConfig config) {
+                // TODO ugly conversion between server::Line and utils::Line
+                world_config.inside.a.x = config.in.a.x;
+                world_config.inside.a.y = config.in.a.y;
+                world_config.inside.b.x = config.in.b.x;
+                world_config.inside.b.y = config.in.b.y;
+                world_config.outside.a.x = config.out.a.x;
+                world_config.outside.a.y = config.out.a.y;
+                world_config.outside.b.x = config.out.b.x;
+                world_config.outside.b.y = config.out.b.y;
+            }
+    );
+    std::thread server_thread(server::start);
+
     counter.run(BusCounter::RUN_PARALLEL, true);
 
     return 0;

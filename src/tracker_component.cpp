@@ -131,8 +131,8 @@ void Track::draw(cv::Mat &img) const {
 
 //  -----------  TRACKER ---------------
 
-TrackerComp::TrackerComp(WorldConfig world):
-        worldConfig(std::move(world)), index_count(0)
+TrackerComp::TrackerComp(const WorldConfig& world):
+        worldConfig(world), index_count(0)
 {
 }
 
