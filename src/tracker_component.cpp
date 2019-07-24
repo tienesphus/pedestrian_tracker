@@ -16,7 +16,7 @@ public:
      * @param conf the confidence that the track still exists
      * @param index a unique index for the track
      */
-    Track(cv::Rect box, float conf, int index, std::vector<std::unique_ptr<TrackData>> data);
+    Track(cv::Rect2f box, float conf, int index, std::vector<std::unique_ptr<TrackData>> data);
 
     /**
      * Updates the status of this Track and stores any events in the given list
@@ -28,7 +28,7 @@ public:
      */
     void draw(cv::Mat &img) const;
 
-    cv::Rect box;
+    cv::Rect2f box;
     float confidence;
     int index;
 
@@ -40,11 +40,11 @@ public:
     std::vector<std::unique_ptr<TrackData>> data;
 
     int8_t color; // the hue of the path
-    std::vector<cv::Point> path;
+    std::vector<utils::Point> path;
 
 };
 
-Track::Track(cv::Rect box, float conf, int index, std::vector<std::unique_ptr<TrackData>> data):
+Track::Track(cv::Rect2f box, float conf, int index, std::vector<std::unique_ptr<TrackData>> data):
         box(std::move(box)),
         confidence(conf),
         index(index),
@@ -55,14 +55,14 @@ Track::Track(cv::Rect box, float conf, int index, std::vector<std::unique_ptr<Tr
 bool Track::update(const WorldConfig &config, std::vector<Event>& events)
 {
     // look only at the boxes center point
-    int x = box.x + box.width/2;
-    int y = box.y + box.height/4;
-    cv::Point p(x, y);
+    float x = box.x + box.width/2;
+    float y = box.y + box.height/4;
+    utils::Point p(x, y);
 
     if (config.in_bounds(p))
     {
         // Count the people based on which direction they pass
-        if (config.inside.side(p))
+        if (config.inside(p))
         {
             been_inside = true;
             if (been_outside && !counted_in && !counted_out)
@@ -81,7 +81,7 @@ bool Track::update(const WorldConfig &config, std::vector<Event>& events)
             }
         }
 
-        if (config.outside.side(p))
+        if (config.outside(p))
         {
             been_outside = true;
             if (been_inside && !counted_out && !counted_in)
@@ -109,21 +109,24 @@ bool Track::update(const WorldConfig &config, std::vector<Event>& events)
 }
 
 void Track::draw(cv::Mat &img) const {
-    cv::Scalar clr = hsv2rgb(cv::Scalar(color, 255, confidence*255));
-    cv::rectangle(img, box, clr, 1);
+    float w = img.cols;
+    float h = img.rows;
+    cv::Scalar clr = utils::hsv2rgb(cv::Scalar(color, 255, confidence*255));
 
-    int x = box.x + box.width/2;
-    int y = box.y + box.height/4;
-    cv::Point p(x, y);
+    cv::rectangle(img, cv::Rect2f(box.x*w, box.y*h, box.width*w, box.height*h), clr, 1);
+
+    float x = box.x + box.width/2;
+    float y = box.y + box.height/4;
+    cv::Point2f p(x*w, y*h);
     cv::circle(img, p, 3, clr, 2);
 
     std::string txt = std::to_string(index);
-    cv::Point txt_loc(box.x+5, box.y+15);
+    cv::Point2f txt_loc((box.x*w)+5, (box.y*h)+15);
     cv::putText(img, txt, txt_loc, cv::FONT_HERSHEY_SIMPLEX, 0.5, clr, 2);
 
-    cv::Point last = path.front();
-    for (const cv::Point& pt : path) {
-        cv::line(img, pt, last, clr);
+    utils::Point last = path.front();
+    for (const utils::Point& pt : path) {
+        cv::line(img, cv::Point2f(pt.x*w, pt.x*h), cv::Point2f(last.x*w, last.x*h), clr);
         last = pt;
     }
 }
@@ -131,8 +134,8 @@ void Track::draw(cv::Mat &img) const {
 
 //  -----------  TRACKER ---------------
 
-TrackerComp::TrackerComp(const WorldConfig& world):
-        worldConfig(world), index_count(0)
+TrackerComp::TrackerComp(const WorldConfig& world, float merge_thresh):
+        worldConfig(world), merge_thresh(merge_thresh), index_count(0)
 {
 }
 
@@ -219,7 +222,7 @@ std::vector<MergeOption> calculate_affinities(std::vector<DetectionExtra>& detec
 }
 
 void merge_top(std::vector<MergeOption> merges,
-         const std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>>& affinities)
+         const std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>>& affinities, float merge_thresh)
  {
 
      // TODO tracker merging code is a mess
@@ -240,7 +243,7 @@ void merge_top(std::vector<MergeOption> merges,
 
         // threshold box's that are too different
         // TODO remove hardcoded tracker threshold
-        if (merge.confidence < 0.3) {
+        if (merge.confidence < merge_thresh) {
             std::cout << " Differences too high" << std::endl;
             break;
         }
@@ -332,7 +335,7 @@ void TrackerComp::merge(const Detections &detection_results, const cv::Mat& fram
 
     std::vector<DetectionExtra> detections = initialise_detections(detection_results.get_detections(), frame, this->affinities);
     std::vector<MergeOption> merges = calculate_affinities(detections, this->tracks, this->affinities);
-    merge_top(merges, this->affinities);
+    merge_top(merges, this->affinities, this->merge_thresh);
     add_new_tracks(detections, this->tracks, this->index_count);
     delete_overlapping_tracks(this->tracks, this->affinities);
 }

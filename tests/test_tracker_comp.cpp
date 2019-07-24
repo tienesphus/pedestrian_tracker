@@ -59,7 +59,8 @@ public:
 
 TEST_CASE( "Tracker gives correct data", "[tracker_comp]" ) {
 
-    TrackerComp tracker(WorldConfig::from_file(cv::Size(640, 480), std::string(SOURCE_DIR)+"/config.csv"));
+    auto config = WorldConfig::from_file(std::string(SOURCE_DIR)+"/config.csv");
+    TrackerComp tracker(config, 0.5);
 
     TestTracker* tracker_a = new TestTracker(1);
     TestTracker* tracker_b = new TestTracker(2);
@@ -70,8 +71,8 @@ TEST_CASE( "Tracker gives correct data", "[tracker_comp]" ) {
     cv::Mat frame = load_test_image();
 
     tracker.process(Detections({
-                Detection(cv::Rect(1, 2, 3, 4), 0.5),
-                Detection(cv::Rect(6, 7, 8, 9), 0.10)
+                Detection(cv::Rect2f(.1f, .2f, .3f, .4f), 0.5),
+                Detection(cv::Rect2f(.6f, .7f, .8f, .9f), 0.10)
             }), frame);
 
     REQUIRE(tracker_a->detector_calls.size() == 2);

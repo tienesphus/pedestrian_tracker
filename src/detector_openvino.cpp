@@ -101,9 +101,6 @@ Detections DetectorOpenVino::process(const cv::Mat &frame)
     std::cout << "Waiting for inference request" << std::endl;
     request->Wait(IInferRequest::WaitMode::RESULT_READY);
 
-    int width = frame.cols;
-    int height = frame.rows;
-
     std::cout << "Interpreting results" << std::endl;
     std::vector<Detection> results;
     const float *detections = request->GetBlob(outputName)->buffer().as<PrecisionTrait<Precision::FP32>::value_type*>();
@@ -111,17 +108,17 @@ Detections DetectorOpenVino::process(const cv::Mat &frame)
         float id  = detections[i * objectSize + 0];
         float lbl = detections[i * objectSize + 1];
         float con = detections[i * objectSize + 2];
-        float x1  = detections[i * objectSize + 3] * width;
-        float y1  = detections[i * objectSize + 4] * height;
-        float x2  = detections[i * objectSize + 5] * width;
-        float y2  = detections[i * objectSize + 6] * height;
+        float x1  = detections[i * objectSize + 3];
+        float y1  = detections[i * objectSize + 4];
+        float x2  = detections[i * objectSize + 5];
+        float y2  = detections[i * objectSize + 6];
 
         if (id < 0) {
             // negative id signifies end of valid proposals
             break;
         }
 
-        cv::Rect r(cv::Point(x1, y1), cv::Point(x2, y2));
+        cv::Rect2f r(cv::Point2f(x1, y1), cv::Point2f(x2, y2));
 
         if (lbl == config.clazz && con > config.thresh) {
             std::cout << "    Found: " << id << " " << lbl << "(" << con*100 << "%) - " << r << std::endl;

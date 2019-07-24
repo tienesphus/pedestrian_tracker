@@ -1,9 +1,7 @@
-#include <utility>
-
-#include <utility>
-
 #include "world.hpp"
+#include "optional.hpp"
 
+#include <utility>
 #include <fstream>
 #include <iostream>
 
@@ -29,59 +27,75 @@ void WorldState::draw(cv::Mat& display) const
 
 //  ----------- WORLD CONFIG ---------------
 
-WorldConfig::WorldConfig(Line inside, Line outside,
-        Line inner_bounds_a, Line inner_bounds_b):
-    inside(std::move(inside)), outside(std::move(outside)),
-    inner_bounds_a(std::move(inner_bounds_a)), inner_bounds_b(std::move(inner_bounds_b))
+WorldConfig::WorldConfig(const utils::Line& crossing, std::vector<utils::Line> bounds):
+    crossing(crossing), bounds(std::move(bounds))
 {
 }
 
-WorldConfig WorldConfig::from_file(const cv::Size& world_size, const std::string& fname)
+nonstd::optional<utils::Line> read_line(std::fstream& stream)
+{
+    float ax, ay, bx, by;
+    if (stream >> ax >> ay >> bx >> by)
+        return utils::Line(utils::Point(ax, ay), utils::Point(bx, by));
+    else
+        return nonstd::nullopt;
+}
+
+WorldConfig WorldConfig::from_file(const std::string& fname)
 {
     std::fstream config_file(fname);
     if (!config_file.is_open()) 
-        throw "Cannot find config file: '" + fname + "'";
-    
-    float iax, iay, ibx, iby; // input line
-    float oax, oay, obx, oby; // output line
-    float b1ax, b1ay, b1bx, b1by; // bounds 1 line
-    float b2ax, b2ay, b2bx, b2by; // bounds 2 line
-    
-    config_file >> iax >> iay >> ibx >> iby;
-    config_file >> oax >> oay >> obx >> oby;
-    config_file >> b1ax >> b1ay >> b1bx >> b1by;
-    config_file >> b2ax >> b2ay >> b2bx >> b2by;
-    
+        throw std::logic_error("Cannot find config file: '" + fname + "'");
+
+    // read the crossing line
+    nonstd::optional<utils::Line> line = read_line(config_file);
+    if (!line)
+        throw std::logic_error("File does not contain a crossing line");
+    utils::Line crossing = *line;
+
+    // Read the bounds
+    std::vector<utils::Line> bounds;
+    while ((line = read_line(config_file))) {
+        bounds.push_back(*line);
+    }
+
     config_file.close();
 
-    int w = world_size.width;
-    int h = world_size.height;
-
-    // setup the world and persistent data
-    return {
-        // inside, outside:
-        Line(cv::Point(iax*w, iay*h), cv::Point(ibx*w, iby*h)),
-        Line(cv::Point(oax*w, oay*h), cv::Point(obx*w, oby*h)),
-
-        // inner bounds:
-        Line(cv::Point(b1ax*w, b1ay*h), cv::Point(b1bx*w, b1by*h)),
-        Line(cv::Point(b2ax*w, b2ay*h), cv::Point(b2bx*w, b2by*h))
-    };
+    return WorldConfig(crossing, bounds);
 }
 
 void WorldConfig::draw(cv::Mat &img) const
-{    
-    inside.draw(img);
-    outside.draw(img);
-    
-    inner_bounds_a.draw(img);
-    inner_bounds_b.draw(img);
-    
-    std::cout << "DRAWED STUFF" << std::endl;
+{
+    crossing.draw(img);
+
+    crossing.normal(crossing.a).draw(img);
+    crossing.normal(crossing.b).draw(img);
+
+    for (const utils::Line& bound: bounds) {
+        bound.draw(img);
+        bound.normal((bound.a+bound.b)/2);
+    }
+
+    std::cout << "DRAWN STUFF" << std::endl;
 }
   
-bool WorldConfig::in_bounds(const cv::Point &p) const
+bool WorldConfig::in_bounds(const utils::Point &p) const
 {
-    return inner_bounds_a.side(p) && inner_bounds_b.side(p);
+    for (const utils::Line& line : bounds) {
+        if (!line.side(p))
+            return false;
+    }
+    return true;
+}
+
+bool WorldConfig::inside(const utils::Point &p) const {
+
+    utils::Line norm = crossing.normal(crossing.a);
+    return norm.side(p);
+}
+
+bool WorldConfig::outside(const utils::Point &p) const {
+    utils::Line norm = crossing.normal(crossing.b);
+    return !norm.side(p);
 }
 

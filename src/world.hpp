@@ -31,20 +31,18 @@ struct WorldState {
  */
 struct WorldConfig
 {
-    Line inside;
-    Line outside;
-  
-    Line inner_bounds_a;
-    Line inner_bounds_b;
-    
+    utils::Line crossing;
+
+    std::vector<utils::Line> bounds;
+
     /**
      * Reads configuration data from a csv file.
      * The csv file must use only whitespace to seperate values (no commas).
      * It's data must be ordered as:
-     * - inside line
-     * - outside line
-     * - bounds_a line
-     * - bounds_a line
+     * - crossing line
+     * - bounds 1 line
+     * - bounds 2 line
+     * - ...
      * 
      * Each line should be ordered as:
      *  - x1
@@ -60,15 +58,24 @@ struct WorldConfig
      * @param the filename to read from
      * @returns a new WorldConfig
      */
-    static WorldConfig from_file(const cv::Size& world_size, const std::string& fname);
+    static WorldConfig from_file(const std::string& fname);
     
-    WorldConfig(Line inside, Line outside,
-            Line inner_bounds_a, Line inner_bounds_b);
-    
+    WorldConfig(const utils::Line& crossing, std::vector<utils::Line> bounds);
+
     /**
-     * Tests if a point is inside the world boulds
+     * Tests if a point is on the IN side
      */
-    bool in_bounds(const cv::Point& p) const;
+    bool inside(const utils::Point& p) const;
+
+    /**
+     * Tests if a point is on the OUT side
+     */
+    bool outside(const utils::Point& p) const;
+
+    /**
+     * Tests if a point is inside the world bounds
+     */
+    bool in_bounds(const utils::Point& p) const;
     
     /**
      * Draws the config data to the given image

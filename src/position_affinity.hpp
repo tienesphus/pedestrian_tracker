@@ -8,11 +8,11 @@ class PositionData: public TrackData
 {
     friend class PositionAffinity;
 
-    cv::Rect loc;
-    int xspeed, yspeed;
+    cv::Rect2f loc;
+    float xSpeed, ySpeed;
 
 public:
-    PositionData(cv::Rect loc, int  xspeed, int yspeed);
+    PositionData(cv::Rect2f loc, float xspeed, float yspeed);
     ~PositionData() override = default;
 };
 

@@ -29,9 +29,12 @@ TEST_CASE( "Features_are_similar", "[affinity_features]" ) {
     cv::Mat frame = cv::imread(std::string(SOURCE_DIR)+"/tests/people.png");
     REQUIRE(!frame.empty());
 
-    Detection d1(cv::Rect(7, 7, 89, 177), 1.0);
-    Detection d2(cv::Rect(139, 7, 89, 177), 1.0); // same guy
-    Detection d3(cv::Rect(809, 7, 89, 177), 1.0); // different guy
+    float w = frame.cols;
+    float h = frame.rows;
+
+    Detection d1(cv::Rect2f(  7/w, 7/h, 89/w, 177/h), 1.0);
+    Detection d2(cv::Rect2f(139/w, 7/h, 89/w, 177/h), 1.0); // same guy
+    Detection d3(cv::Rect2f(809/w, 7/h, 89/w, 177/h), 1.0); // different guy
 
     auto t1 = affinity.init(d1, frame);
     auto t2 = affinity.init(d2, frame);

@@ -10,13 +10,15 @@
 
 //  ----------- DETECTION ---------------
 
-Detection::Detection(cv::Rect  box, float confidence):
+Detection::Detection(cv::Rect2f  box, float confidence):
     box(std::move(box)), confidence(confidence)
 {}
 
 void Detection::draw(cv::Mat& display) const
 {
-    cv::rectangle(display, this->box, cv::Scalar(0, 0, this->confidence*255), 3);
+    int w = display.cols;
+    int h = display.rows;
+    cv::rectangle(display, cv::Rect2d(box.x*w, box.y*h, box.width*w, box.height*h), cv::Scalar(0, 0, this->confidence*255), 3);
 }
 
 

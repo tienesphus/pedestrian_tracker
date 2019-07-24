@@ -2,6 +2,7 @@ find_package(OpenCV 4.0 REQUIRED)
 
 add_executable(tests
     testing_utils.cpp
+    test_utils.cpp
     tests_main.cpp
     test_detection.cpp
     test_detector_openvino.cpp
@@ -11,7 +12,7 @@ add_executable(tests
     test_tracker_comp.cpp
     test_affinity_features.cpp
     test_detector_opencv.cpp # must be last
-)
+        test_world.cpp)
 
 target_compile_definitions(tests PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
 

@@ -8,6 +8,7 @@
 #include "../optional.hpp"
 
 namespace server {
+
     struct Feed {
         std::string name;
         std::string location;
@@ -36,9 +37,9 @@ namespace server {
     };
 
     struct OpenCVConfig {
-        Line in, out;
+        Line crossing;
 
-        OpenCVConfig(const Line &in, const Line &out);
+        explicit OpenCVConfig(const Line &crossing);
     };
 
     struct Config {

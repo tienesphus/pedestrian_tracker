@@ -6,12 +6,13 @@
 
 /**
  * Represents a single detection output
+ * The box points are scaled between 0 and 1
  */
 struct Detection {
-    cv::Rect box;
+    cv::Rect2f box;
     float confidence;
 
-    Detection(cv::Rect  box, float confidence);
+    Detection(cv::Rect2f box, float confidence);
     
     /**
      * Draws this detection onto the image

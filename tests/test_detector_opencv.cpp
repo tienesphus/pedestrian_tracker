@@ -38,7 +38,7 @@ TEST_CASE( "Sanity check - independent network detect", "[detector_opencv]" ) {
     net.setInput(blob);
     cv::Mat result = net.forward();
 
-    Detections results = static_post_process(result, config.clazz, config.thresh, cv::Size(image.cols, image.rows));
+    Detections results = static_post_process(result, config.clazz, config.thresh);
     require_detections_in_spec(results);
 }
 

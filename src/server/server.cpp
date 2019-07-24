@@ -117,8 +117,8 @@ namespace server {
         }
     }
 
-    OpenCVConfig::OpenCVConfig(const Line& in, const Line& out):
-            in(in), out(out)
+    OpenCVConfig::OpenCVConfig(const Line& crossing):
+            crossing(crossing)
     {}
 
     Config::Config(const OpenCVConfig& cvConfig, std::vector<Feed> feeds):
@@ -296,8 +296,7 @@ namespace server {
                         feeds.append(feed.to_json());
                     json["feeds"] = feeds;
 
-                    json["line_in"] = config.cvConfig.in.to_json();
-                    json["line_out"] = config.cvConfig.out.to_json();
+                    json["crossing"] = config.cvConfig.crossing.to_json();
 
                     auto resp=HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
@@ -320,12 +319,11 @@ namespace server {
                         callback(resp);
                     } else {
                         const Json::Value& json = *json_ptr;
-                        nonstd::optional<Line> in = Line::from_json(json["line_in"]);
-                        nonstd::optional<Line> out = Line::from_json(json["line_out"]);
+                        nonstd::optional<Line> crossing = Line::from_json(json["crossing"]);
 
-                        if (in && out)
+                        if (crossing)
                         {
-                            OpenCVConfig config(*in, *out);
+                            OpenCVConfig config(*crossing);
                             setConfig(config);
 
                             auto resp=HttpResponse::newHttpResponse();

@@ -27,7 +27,6 @@ DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
 
 Detections DetectorOpenCV::process(const cv::Mat &frame) {
     cv::Mat blob = cv::dnn::blobFromImage(frame, config.scale, config.networkSize, this->config.mean);
-    cv::Size size(frame.cols, frame.rows);
 
     cv::Mat result;
     {
@@ -35,10 +34,10 @@ Detections DetectorOpenCV::process(const cv::Mat &frame) {
         this->net.setInput(blob);
         result = this->net.forward();
     }
-    return static_post_process(result, config.clazz, config.thresh, size);
+    return static_post_process(result, config.clazz, config.thresh);
 }
 
-Detections static_post_process(const cv::Mat &data, int clazz, float thresh, const cv::Size &image_size)
+Detections static_post_process(const cv::Mat &data, int clazz, float thresh)
 {
     // result is of size [nimages, nchannels, a, b]
     // nimages = 1 (as only one image at a time)
@@ -57,18 +56,16 @@ Detections static_post_process(const cv::Mat &data, int clazz, float thresh, con
     cv::Mat detections(data.size[2], data.size[3], CV_32F, (void*)data.ptr<float>());
 
     std::vector<Detection> results;
-    int w = image_size.width;
-    int h = image_size.height;
 
     for (int i = 0; i < detections.size[0]; i++) {
         float confidence = detections.at<float>(i, 2);
         if (confidence > thresh) {
             int id = int(detections.at<float>(i, 1));
-            int x1 = int(detections.at<float>(i, 3) * w);
-            int y1 = int(detections.at<float>(i, 4) * h);
-            int x2 = int(detections.at<float>(i, 5) * w);
-            int y2 = int(detections.at<float>(i, 6) * h);
-            cv::Rect r(cv::Point(x1, y1), cv::Point(x2, y2));
+            float x1 = detections.at<float>(i, 3);
+            float y1 = detections.at<float>(i, 4);
+            float x2 = detections.at<float>(i, 5);
+            float y2 = detections.at<float>(i, 6);
+            cv::Rect2d r(cv::Point2d(x1, y1), cv::Point2d(x2, y2));
 
             std::cout << "    Found: " << id << "(" << confidence << "%) - " << r << std::endl;
             if (id == clazz)

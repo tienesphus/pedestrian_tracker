@@ -1,97 +1,143 @@
-#include <cmath>
-
 #include "utils.hpp"
+
+#include <cmath>
 
 #include <opencv2/imgproc.hpp>
 
+namespace utils {
+
+//  ----------- POINT ---------------
+
+    Point::Point(float x, float y) :
+            x(x), y(y) {}
+
+    Point &Point::operator+=(const Point &other) {
+        this->x += other.x;
+        this->y += other.y;
+        return *this;
+    }
+
+    Point Point::operator+(const Point &other) const {
+        return Point(*this) += other;
+    }
+
+    Point &Point::operator-=(const Point &other) {
+        this->x -= other.x;
+        this->y -= other.y;
+        return *this;
+    }
+
+    Point Point::operator-(const Point &other) const {
+        return Point(*this) -= other;
+    }
+
+    Point &Point::operator*=(float value) {
+        this->x *= value;
+        this->y *= value;
+        return *this;
+    }
+
+    Point Point::operator*(float value) const {
+        return Point(*this) *= value;
+    }
+
+    Point &Point::operator/=(float value) {
+        this->x /= value;
+        this->y /= value;
+        return *this;
+    }
+
+    Point Point::operator/(float value) const {
+        return Point(*this) /= value;
+    }
+
+    bool Point::operator==(const Point &other) const {
+        return x == other.x && y == other.y;
+    }
+
 //  ----------- LINE ---------------
 
-Line::Line(const cv::Point &a, const cv::Point &b): 
-    a(a), b(b)
-{
-    // calculate the normal
-    int dx = b.x - a.x;
-    int dy = b.y - a.y;
+    Line::Line(const Point &a, const Point &b) :
+            a(a), b(b) {
+    }
 
-    // div 20 makes the drawn length look about right (FIXME)
-    int ndx = dy / 20; 
-    int ndy = -dx / 20;
-    
-    cv::Point center = na = (a+b)/2;
+    void Line::draw(cv::Mat &img) const {
+        int w = img.cols;
+        int h = img.rows;
+        cv::Point _a(static_cast<int>(a.x * w), static_cast<int>(a.y * h));
+        cv::Point _b(static_cast<int>(b.x * w), static_cast<int>(b.y * h));
+        cv::line(img, _a, _b, cv::Scalar(180, 180, 180));
+    }
 
-    // define the normal to be on the positive side
-    nb = cv::Point(center.x+ndx, center.y+ndy);
-    if (!side(nb))
-        nb = cv::Point(center.x-ndx, center.y-ndy);
-}
+    bool Line::side(const Point &p) const {
+        // magic maths
+        return ((p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x)) < 0;
+    }
 
-void Line::draw(cv::Mat &img) const {
-    cv::line(img, a, b, cv::Scalar(180, 180, 180));
-    cv::line(img, na, nb, cv::Scalar(0, 0, 255));
-}
-
-bool Line::side(const cv::Point &p) const {
-    return ((p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x)) < 0;
-}
+    Line Line::normal(const Point &p) const {
+        float dx = b.x - a.x;
+        float dy = b.y - a.y;
+        return Line(Point(p.x, p.y), Point(p.x-dy, p.y+dx));
+    }
 
 
 //  ----------- HELPER METHODS ---------------
 
-float IoU(const cv::Rect &a, const cv::Rect &b) {
-  cv::Rect intersect = intersection(a, b);
+    float IoU(const cv::Rect2f &a, const cv::Rect2f &b) {
+        cv::Rect2f intersect = intersection(a, b);
 
-  int i_area = intersect.area();
+        float i_area = intersect.area();
 
-  if (intersect.area() <= 0) {
-    return 0;
-  }
+        if (intersect.area() <= 0) {
+            return 0;
+        }
 
-  int u_area = a.area() + b.area() - i_area;
-  
-  return static_cast<float>(i_area) / u_area;
-}
+        float u_area = a.area() + b.area() - i_area;
 
-
-float cosine_similarity(const std::vector<float>& a, const std::vector<float> &b) {
-    // See https://en.wikipedia.org/wiki/Cosine_similarity
-    float dot = 0;
-    float denom_a = 0;
-    float denom_b = 0;
-
-    for (size_t i = 0; i < a.size(); i++) {
-        float a_val = a[i];
-        float b_val = b[i];
-        dot     += a_val * b_val;
-        denom_a += a_val * a_val;
-        denom_b += b_val * b_val;
+        return i_area / u_area;
     }
 
-    return dot / (std::sqrt(denom_a) * std::sqrt(denom_b) + 0.0001);
 
-}
+    float cosine_similarity(const std::vector<float> &a, const std::vector<float> &b) {
+        // See https://en.wikipedia.org/wiki/Cosine_similarity
+        float dot = 0;
+        float denom_a = 0;
+        float denom_b = 0;
 
-cv::Rect intersection(const cv::Rect& a, const cv::Rect& b) {
-    int i_x1 = std::max(a.x, b.x);
-    int i_y1 = std::max(a.y, b.y);
-    int i_x2 = std::min(a.x+a.width,  b.x+b.width);
-    int i_y2 = std::min(a.y+a.height, b.y+b.height);
+        for (size_t i = 0; i < a.size(); i++) {
+            float a_val = a[i];
+            float b_val = b[i];
+            dot += a_val * b_val;
+            denom_a += a_val * a_val;
+            denom_b += b_val * b_val;
+        }
 
-    int w = std::max(i_x2-i_x1, 0);
-    int h = std::max(i_y2-i_y1, 0);
+        return dot / (std::sqrt(denom_a) * std::sqrt(denom_b) + 0.0001);
 
-    return { i_x1, i_y1, w, h };
-}
+    }
 
-cv::Scalar hsv2rgb(const cv::Scalar& hsv)
-{
-    cv::Mat m_rgb;
-    cv::Mat m_hsv(1, 1, CV_8UC3, hsv);
+    cv::Rect2f intersection(const cv::Rect2f &a, const cv::Rect2f &b) {
+        float i_x1 = std::max(a.x, b.x);
+        float i_y1 = std::max(a.y, b.y);
+        float i_x2 = std::min(a.x + a.width, b.x + b.width);
+        float i_y2 = std::min(a.y + a.height, b.y + b.height);
 
-    cvtColor(m_hsv, m_rgb, cv::COLOR_HSV2BGR);
+        float w = std::max(i_x2 - i_x1, 0.0f);
+        float h = std::max(i_y2 - i_y1, 0.0f);
 
-    return {
-            static_cast<double>(m_rgb.at<cv::Vec3b>(0, 0)[0]),
-            static_cast<double>(m_rgb.at<cv::Vec3b>(0, 0)[1]),
-            static_cast<double>(m_rgb.at<cv::Vec3b>(0, 0)[2])
-    };
+        return {i_x1, i_y1, w, h};
+    }
+
+    cv::Scalar hsv2rgb(const cv::Scalar &hsv) {
+        cv::Mat m_rgb;
+        cv::Mat m_hsv(1, 1, CV_8UC3, hsv);
+
+        cvtColor(m_hsv, m_rgb, cv::COLOR_HSV2BGR);
+
+        return {
+                static_cast<double>(m_rgb.at<cv::Vec3b>(0, 0)[0]),
+                static_cast<double>(m_rgb.at<cv::Vec3b>(0, 0)[1]),
+                static_cast<double>(m_rgb.at<cv::Vec3b>(0, 0)[2])
+        };
+    }
 }

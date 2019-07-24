@@ -84,7 +84,7 @@ public:
      * The created tracker will do nothing by default. Must call "use" to add tracking components
      * @param world the world configuration
      */
-    explicit TrackerComp(const WorldConfig& world);
+    explicit TrackerComp(const WorldConfig& world, float merge_thresh);
 
     ~TrackerComp() override;
 
@@ -120,13 +120,14 @@ public:
      */
     void draw(cv::Mat &img) const override;
 
-private:
     // tracker cannot be copied
-    TrackerComp(const TrackerComp& t);
-    TrackerComp& operator=(const TrackerComp& t);
+    TrackerComp(const TrackerComp& t) = delete;
+    TrackerComp& operator=(const TrackerComp& t) = delete;
 
+private:
     const WorldConfig& worldConfig;
     std::vector<std::unique_ptr<Track>> tracks;
+    float merge_thresh;
     int index_count;
     std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> affinities;
 

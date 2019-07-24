@@ -52,13 +52,17 @@ FeatureAffinity::~FeatureAffinity() = default;
 
 std::unique_ptr<FeatureData> FeatureAffinity::init(const Detection& d, const cv::Mat& frame) const
 {
-    cv::Mat crop = frame(intersection(d.box, cv::Rect(0, 0, frame.cols, frame.rows)));
+    int w = frame.cols;
+    int h = frame.rows;
+    cv::Rect2f person(d.box.x*w, d.box.y*h, d.box.width*w, d.box.height*h);
+    person = utils::intersection(person, cv::Rect2f(0, 0, frame.cols, frame.rows));
+    cv::Mat crop = frame(person);
     return std::make_unique<FeatureData>(identify(crop));
 }
 
 float FeatureAffinity::affinity(const FeatureData &detectionData, const FeatureData &trackData) const
 {
-    return cosine_similarity(detectionData.features, trackData.features);
+    return utils::cosine_similarity(detectionData.features, trackData.features);
 }
 
 void FeatureAffinity::merge(const FeatureData& detectionData, FeatureData& trackData) const

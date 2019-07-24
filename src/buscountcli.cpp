@@ -55,8 +55,8 @@ int main() {
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
 
     DetectorOpenVino detector(net_config, plugin);
-    WorldConfig world_config = WorldConfig::from_file(cv::Size(640, 480), std::string(SOURCE_DIR) + "/config.csv");
-    TrackerComp tracker(world_config);
+    WorldConfig world_config = WorldConfig::from_file(std::string(SOURCE_DIR) + "/config.csv");
+    TrackerComp tracker(world_config, 0.5);
 
     tracker.use<FeatureAffinity, FeatureData>(0.6, tracker_config, plugin);
     tracker.use<PositionAffinity, PositionData>(0.4, 0.7);
@@ -79,31 +79,24 @@ int main() {
                 return server::Config(
                         server::OpenCVConfig(
                                 server::Line(
-                                        server::Point(world_config.inside.a.x, world_config.inside.a.y),
-                                        server::Point(world_config.inside.b.x, world_config.inside.b.y)
-                                ),
-                                server::Line(
-                                        server::Point(world_config.outside.a.x, world_config.outside.a.y),
-                                        server::Point(world_config.outside.b.x, world_config.outside.b.y)
+                                        server::Point(world_config.crossing.a.x, world_config.crossing.a.y),
+                                        server::Point(world_config.crossing.b.x, world_config.crossing.b.y)
                                 )
                         ),
                         feeds);
             },
             [&world_config](server::OpenCVConfig config) {
                 // TODO ugly conversion between server::Line and utils::Line
-                world_config.inside.a.x = config.in.a.x;
-                world_config.inside.a.y = config.in.a.y;
-                world_config.inside.b.x = config.in.b.x;
-                world_config.inside.b.y = config.in.b.y;
-                world_config.outside.a.x = config.out.a.x;
-                world_config.outside.a.y = config.out.a.y;
-                world_config.outside.b.x = config.out.b.x;
-                world_config.outside.b.y = config.out.b.y;
+                world_config.crossing.a.x = config.crossing.a.x;
+                world_config.crossing.a.y = config.crossing.a.y;
+                world_config.crossing.b.x = config.crossing.b.x;
+                world_config.crossing.b.y = config.crossing.b.y;
             }
     );
-    std::thread server_thread(server::start);
 
-    counter.run(BusCounter::RUN_PARALLEL, true);
+    //std::thread server_thread(server::start);
+
+    counter.run(BusCounter::RUN_SERIAL, true);
 
     return 0;
 }

@@ -38,6 +38,6 @@ private:
     std::mutex lock;
 };
 
-Detections static_post_process(const cv::Mat &data, int clazz, float thresh, const cv::Size &image_size);
+Detections static_post_process(const cv::Mat &data, int clazz, float thresh);
 
 #endif //BUS_COUNT_DETECTOR_OPENCV_HPP
