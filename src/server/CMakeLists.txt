@@ -1,4 +1,7 @@
-add_executable(buscountserver  buscountserver.cpp)
+add_executable(buscountserver
+        buscountserver.cpp
+        server.cpp
+)
 
 target_link_libraries(buscountserver drogon trantor uuid pthread jsoncpp dl z)
 
