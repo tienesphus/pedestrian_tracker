@@ -118,37 +118,11 @@ namespace server {
             cvConfig(cvConfig), feeds(std::move(feeds))
     {}
 
-    /**
-     * Gets the location of the file that is being executed
-     * @return the executable files path
-     */
-    std::string getExecutablePath()
-    {
-        char szTmp[32];
-        char pBuf[256];
-        size_t len = sizeof(pBuf);
-        sprintf(szTmp, "/proc/%d/exe", getpid());
-        int bytes = std::min(static_cast<unsigned long>(readlink(szTmp, pBuf, len)), len - 1);
-        if(bytes >= 0)
-            pBuf[bytes] = '\0';
-        return std::string(pBuf, bytes);
-    }
-
-    /**
-     * Gets the directory that the executable is in
-     * @return the executables directory
-     */
-    std::string getExecutableDir()
-    {
-        std::string path = getExecutablePath();
-        return path.substr(0, path.find_last_of('/'));
-    }
-
     void start()
     {
         using namespace drogon;
 
-            // Simple page to check if something is working
+        // Simple page to check if something is working
         app().registerHandler("/sanity",
                 [](const drogon::HttpRequestPtr&,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
@@ -161,14 +135,33 @@ namespace server {
                 {Post, Get}
         );
 
+        app().registerHandler("/kill",
+                [](const drogon::HttpRequestPtr&,
+                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
+                    auto resp = HttpResponse::newHttpResponse();
+                    resp->setStatusCode(k200OK);
+                    resp->setContentTypeCode(CT_TEXT_PLAIN);
+                    resp->setBody("System dying");
+                    callback(resp);
+
+                    app().quit();
+                },
+                {Post, Get}
+        );
+
         app().setLogPath("./");
         app().setLogLevel(trantor::Logger::WARN);
         app().addListener("0.0.0.0", 8080);
         app().setThreadNum(2);
-        app().setDocumentRoot(getExecutableDir());
+        app().setDocumentRoot(std::string(SOURCE_DIR) + "/src/server/");
 
         std::cout << "Server running at http://localhost:8080" << std::endl;
         app().run();
+    }
+
+    void quit()
+    {
+        drogon::app().quit();
     }
 
     void init_master()
@@ -179,6 +172,8 @@ namespace server {
         static int count = 0;
         static std::vector<Device> devices;
 
+        // TODO move these lambdas into separate files
+        // I just threw them here because it was easy, but, its a bit clunky
         drogon::app().registerHandler("/count",
                 [](const drogon::HttpRequestPtr&,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {

@@ -69,7 +69,6 @@ int main() {
             [](Event event) {std::cout << "EVENT: " << name(event) << std::endl;}
     );
 
-
     server::init_master();
     server::init_slave(
             [&world_config]() -> server::Config {
@@ -87,9 +86,14 @@ int main() {
             }
     );
 
-    //std::thread server_thread(server::start);
+    std::thread bus_counter([&counter]() {
+        counter.run(BusCounter::RUN_PARALLEL, true);
+        server::quit();
+    });
 
-    counter.run(BusCounter::RUN_SERIAL, true);
+    server::start();
+
+    bus_counter.join();
 
     return 0;
 }

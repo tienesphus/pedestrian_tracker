@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include <opencv2/imgproc.hpp>
+#include <deque>
 
 
 //  ----------- TRACK ---------------
@@ -40,7 +41,7 @@ public:
     std::vector<std::unique_ptr<TrackData>> data;
 
     int8_t color; // the hue of the path
-    std::vector<utils::Point> path;
+    std::deque<utils::Point> path;
 
 };
 
@@ -102,6 +103,8 @@ bool Track::update(const WorldConfig &config, std::vector<Event>& events)
     }
 
     path.push_back(p);
+    if (path.size() > 50)
+        path.pop_front();
 
     // decrease the confidence (will increase when merging with a detection)
     confidence -= 0.01;
@@ -126,7 +129,7 @@ void Track::draw(cv::Mat &img) const {
 
     utils::Point last = path.front();
     for (const utils::Point& pt : path) {
-        cv::line(img, cv::Point2f(pt.x*w, pt.x*h), cv::Point2f(last.x*w, last.x*h), clr);
+        cv::line(img, cv::Point2f(pt.x*w, pt.y*h), cv::Point2f(last.x*w, last.y*h), clr);
         last = pt;
     }
 }
