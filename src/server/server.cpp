@@ -256,7 +256,7 @@ namespace server {
         drogon::app().registerHandler("/devices",
                 [](const drogon::HttpRequestPtr&,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
-                    Json::Value json;
+                    Json::Value json = Json::arrayValue;
 
                     for (const Device& d : devices)
                         json.append(to_json(d));
@@ -277,7 +277,7 @@ namespace server {
 
                     Config config = getConfig();
 
-                    Json::Value feeds;
+                    Json::Value feeds = Json::arrayValue;
                     for (const Feed& feed : config.feeds)
                         feeds.append(to_json(feed));
                     json["feeds"] = feeds;
