@@ -5,7 +5,7 @@ project(bus_count VERSION 0.2)
 set(CMAKE_CXX_STANDARD 14)
 
 add_compile_options(
-    -Wall -Wextra
+    -Wall -Wextra -Wno-psabi
     $<$<CONFIG:Debug>:-Wfatal-errors>
     $<$<NOT:$<CONFIG:Debug>>:-O3>
 )

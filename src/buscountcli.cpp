@@ -19,7 +19,8 @@
 
 int main() {
 
-    /*DetectorOpenCV::NetConfig net_config {
+    /*
+    DetectorOpenCV::NetConfig net_config {
         0.5f,               // thresh
         15,                 // clazz
         cv::Size(300, 300), // size
@@ -31,7 +32,8 @@ int main() {
         //"../models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
         cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // preferred backend
         cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
-    };*/
+    };
+    */
 
     DetectorOpenVino::NetConfig net_config {
             0.6f,               // thresh
@@ -52,8 +54,6 @@ int main() {
     auto cv_cap = std::make_shared<cv::VideoCapture>(0);
     cv_cap->set(cv::CAP_PROP_FRAME_WIDTH,640);
     cv_cap->set(cv::CAP_PROP_FRAME_HEIGHT,480);
-    
-    VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_capture(cv_cap);
 
     std::cout << "Loading plugin" << std::endl;
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
@@ -86,6 +86,7 @@ int main() {
                 }
             }
     );
+
 
     std::atomic_bool running = { true };
 
@@ -143,7 +144,7 @@ int main() {
         }
     });
 
-    counter.run(BusCounter::RUN_PARALLEL, true);
+    counter.run(BusCounter::RUN_SERIAL, true);
 
     if (db) {
         std::cout << "Closing SQL" << std::endl;

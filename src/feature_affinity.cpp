@@ -1,5 +1,6 @@
 #include "feature_affinity.hpp"
 
+#include <opencv2/imgproc.hpp>
 
 FeatureData::FeatureData(std::vector<float> features): features(std::move(features))
 {}
@@ -107,13 +108,19 @@ static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
 std::vector<float> FeatureAffinity::identify(const cv::Mat &person) const {
     using namespace InferenceEngine;
 
-    InferRequest request = const_cast<FeatureAffinity*>(this)->network.CreateInferRequest();
-    Blob::Ptr inputBlob = wrapMat2Blob(person.clone()); // clone is needed so the Mat is dense
-    request.SetBlob(inputName, inputBlob);
+    std::cout << "Identify started" << std::endl;
 
+    InferRequest request = const_cast<FeatureAffinity*>(this)->network.CreateInferRequest();
+    cv::Mat person_scaled;
+    // TODO if the person input image is too big, the reid network starts segfaulting?
+    // Thus, I manually scale here. Only occurs on Pi with images taking nearly entire frame.
+    cv::resize(person, person_scaled, cv::Size(48, 96));
+    cv::Mat person_clone = person_scaled.clone(); // clone is needed so the Mat is dense
+    Blob::Ptr inputBlob = wrapMat2Blob(person_clone);
+    request.SetBlob(inputName, inputBlob);
     request.StartAsync();
     request.Wait(IInferRequest::WaitMode::RESULT_READY);
-
+    
     Blob::Ptr attribsBlob = request.GetBlob(outputName);
 
     auto numOfChannels = attribsBlob->getTensorDesc().getDims().at(1);
@@ -122,7 +129,8 @@ std::vector<float> FeatureAffinity::identify(const cv::Mat &person) const {
         throw std::logic_error("Output size (" + std::to_string(numOfChannels) + ") "
                                                                                  "of the Person Reidentification network is not equal to 256");
     }
-
+    
     auto outputValues = attribsBlob->buffer().as<float*>();
+    std::cout << "Identify finished" << std::endl;
     return std::vector<float>(outputValues, outputValues + 256);
 }

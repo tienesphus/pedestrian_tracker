@@ -5,7 +5,6 @@
 
 
 DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
-        Detector(),
         config(config),
         net(cv::dnn::readNet(config.model, config.meta))
 {
@@ -24,6 +23,8 @@ DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
     net.setPreferableBackend(config.preferableBackend);
     net.setPreferableTarget(config.preferableTarget);
 }
+
+DetectorOpenCV::~DetectorOpenCV() {}
 
 Detections DetectorOpenCV::process(const cv::Mat &frame) {
     cv::Mat blob = cv::dnn::blobFromImage(frame, config.scale, config.networkSize, this->config.mean);

@@ -1,8 +1,9 @@
 # cmake files
-build
-release
-debug
+build*
+release*
+debug*
 
 # IDE files
+*.swp
 .idea/*
 cmake-build-debug/*

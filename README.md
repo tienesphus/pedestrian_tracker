@@ -49,7 +49,7 @@ sudo apt-get install gstreamer1.0-plugins-base
 
 ### Building
 ```
-git clone https://gitlab.com/buspassengercount/dnn_counting.git
+git clone https://gitlab.com/buspassengercount/cpp_counting.git
 cd cpp_counting
 mkdir build && cd build
 cmake ..
@@ -65,12 +65,22 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 From within the build directory:
 
 ```
-./bin/buscountcli
+bin/buscountcli
 ```
 
-To run the daemon (currently only a simple RTSP server):
+To run the daemon:
 ```
-./bin/buscountd
+bin/buscountd
 ```
 
-Note: At this stage, the daemon does not yet make use of OpenCV, and is only a simple implementation of an RTSP server.
+The gstreamer buscount plugin may also be used outside of `buscountd`. You may use any gstreamer command (`gst-launch-1.0`, `gst-inspect-1.0`, etc) as follows:
+```
+gst-inspect-1.0 --gst-plugin-load=lib/libgstbuscountplugin.so buscountfilter
+```
+
+Verbosity of messages printed to the screen by the GStreamer portion of the daemon and any gstreamer related commands (`gst-inspect-1.0`, `gst-launch-1.0`, etc) can be increased by setting the `GST_DEBUG` environment variable. Verbosity can be increased for individual log categories, or for all categories. Multiple related categories may also be set by using a wildcard `*`. Here is a simple example:
+```
+GST_DEBUG=3,buscount:5 bin/buscountd
+```
+
+For more information on the `GST_DEBUG` environment variable, take a look at the [relevant gstreamer documentation](https://gstreamer.freedesktop.org/documentation/tutorials/basic/debugging-tools.html#basic-tutorial-11-debugging-tools)

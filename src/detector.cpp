@@ -2,6 +2,7 @@
 #include <opencv2/dnn.hpp>
 #include <iostream>
 
+Detector::~Detector() {};
 // TODO Detector is just wrapper around std::future. Perhaps the caller should handle that instead?
 
 Detector::intermediate Detector::start_async(const cv::Mat &frame)

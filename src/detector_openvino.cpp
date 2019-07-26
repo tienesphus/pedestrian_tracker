@@ -89,6 +89,8 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::Inf
     std::cout << "End Loading detector" << std::endl;
 }
 
+DetectorOpenVino::~DetectorOpenVino() {}
+
 Detections DetectorOpenVino::process(const cv::Mat &frame)
 {
     std::cout << "Preprocess" << std::endl;
