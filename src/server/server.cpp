@@ -4,6 +4,7 @@
 
 #include <drogon/drogon.h>
 #include <zconf.h>
+#include <sqlite3.h>
 
 
 namespace server {
@@ -110,10 +111,6 @@ namespace server {
         }
     }
 
-    OpenCVConfig::OpenCVConfig(const utils::Line& crossing):
-            crossing(crossing)
-    {}
-
     Config::Config(const OpenCVConfig& cvConfig, std::vector<Feed> feeds):
             cvConfig(cvConfig), feeds(std::move(feeds))
     {}
@@ -159,18 +156,13 @@ namespace server {
         app().run();
     }
 
-    void quit()
-    {
-        drogon::app().quit();
-    }
-
     void init_master()
     {
         using namespace drogon;
 
-        // TODO store count events in database
         static int count = 0;
         static std::vector<Device> devices;
+
 
         // TODO move these lambdas into separate files
         // I just threw them here because it was easy, but, its a bit clunky
@@ -254,12 +246,16 @@ namespace server {
         );
 
         drogon::app().registerHandler("/devices",
-                [](const drogon::HttpRequestPtr&,
+                [](const drogon::HttpRequestPtr& req,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
                     Json::Value json = Json::arrayValue;
 
                     for (const Device& d : devices)
                         json.append(to_json(d));
+
+                    // Assume I'm a client and add myself
+                    // TODO don't hardcode myself in
+                    json.append(to_json(Device("master", "master", req->localAddr(), Feed("live", "/live"))));
 
                     auto resp=HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
