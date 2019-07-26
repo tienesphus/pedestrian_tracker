@@ -14,8 +14,6 @@ add_executable(tests
     test_detector_opencv.cpp # must be last
         test_world.cpp)
 
-target_compile_definitions(tests PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
-
 target_link_libraries(tests buscount_static opencv_videoio)
 
 target_include_directories(tests PUBLIC

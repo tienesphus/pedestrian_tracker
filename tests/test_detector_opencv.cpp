@@ -14,8 +14,8 @@ DetectorOpenCV::NetConfig load_test_config(int preferred_backend, int preferred_
             cv::Size(300, 300), // size
             2/255.0,            // scale
             cv::Scalar(127.5, 127.5, 127.5),     // mean
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
+            SOURCE_DIR "/models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
+            SOURCE_DIR "/models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
             preferred_backend,  // preferred backend
             preferred_target,   // preferred device
     };

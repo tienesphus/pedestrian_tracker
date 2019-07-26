@@ -18,15 +18,15 @@ TEST_CASE( "Features_are_similar", "[affinity_features]" ) {
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
 
     FeatureAffinity::NetConfig tracker_config {
-            std::string(SOURCE_DIR) + "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
-            std::string(SOURCE_DIR) + "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
+            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
+            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
             cv::Size(48, 96),    // input size
             0.3,                 // similarity thresh
     };
 
     FeatureAffinity affinity(tracker_config, plugin);
 
-    cv::Mat frame = cv::imread(std::string(SOURCE_DIR)+"/tests/people.png");
+    cv::Mat frame = cv::imread(SOURCE_DIR "/tests/people.png");
     REQUIRE(!frame.empty());
 
     float w = frame.cols;

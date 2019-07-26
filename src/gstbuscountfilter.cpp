@@ -32,9 +32,7 @@ static const float default_threshold = 0.2;
 
 
 // ******** Static members ******** //
-const WorldConfig GstBusCountFilter::default_world_config = WorldConfig::from_file(
-    cv::Size(800, 600), "../config.csv"
-);
+const WorldConfig GstBusCountFilter::default_world_config = WorldConfig::from_file(SOURCE_DIR "/config.csv");
 /*
 (
     Line(cv::Point(0, 1), cv::Point(0, 1)),
@@ -139,13 +137,13 @@ void GstBusCountFilter::tracker_init(InferenceEngine::InferencePlugin& plugin)
         // TODO allow tracker to be configured
 
         FeatureAffinity::NetConfig feature_config {
-                "../models/Reidentify0031/person-reidentification-retail-0031.xml", // config
-                "../models/Reidentify0031/person-reidentification-retail-0031.bin", // model
+                SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
+                SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
                 cv::Size(48, 96),    // input size
                 0.6,                 // similarity thresh
         };
 
-        auto* track_ptr = new TrackerComp(default_world_config);
+        auto* track_ptr = new TrackerComp(default_world_config, 0.6);
         track_ptr->use<FeatureAffinity, FeatureData>(0.6, feature_config, plugin);
         track_ptr->use<PositionAffinity, PositionData>(0.4, 0.7);
 
@@ -547,8 +545,8 @@ static gboolean plugin_init(GstPlugin* plugin)
         cv::Size(300, 300), // size
         1, //2/255.0,            // scale
         cv::Scalar(1,1,1),//cv::Scalar(127.5, 127.5, 127.5),     // mean
-        "../models/MobileNetSSD_IE/MobileNetSSD.xml", // config
-        "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
+        SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+        SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
         cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // preferred backend
         cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
     };

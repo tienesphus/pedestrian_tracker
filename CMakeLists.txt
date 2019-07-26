@@ -10,5 +10,7 @@ add_compile_options(
     $<$<NOT:$<CONFIG:Debug>>:-O3>
 )
 
+add_compile_options(-D SOURCE_DIR="${bus_count_SOURCE_DIR}")
+
 add_subdirectory(src)
 add_subdirectory(tests)

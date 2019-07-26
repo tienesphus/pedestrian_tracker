@@ -13,6 +13,3 @@ add_executable(buscountserver
 target_link_libraries(server_static PUBLIC drogon trantor uuid pthread jsoncpp dl z ssl crypto sqlite3 opencv_core opencv_highgui)
 
 target_link_libraries(buscountserver server_static)
-
-target_compile_definitions(buscountserver PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
-target_compile_definitions(server_static PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")

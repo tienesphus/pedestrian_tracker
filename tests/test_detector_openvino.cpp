@@ -15,8 +15,8 @@ DetectorOpenVino::NetConfig load_test_config_ie() {
     return DetectorOpenVino::NetConfig {
             0.5f,               // thresh
             15,                 // clazz
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
-            std::string(SOURCE_DIR)+"/models/MobileNetSSD_IE/MobileNetSSD.bin",  // model
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin",  // model
     };
 }
 

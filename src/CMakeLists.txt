@@ -96,8 +96,6 @@ target_link_libraries(buscountcli buscount_static opencv_highgui sqlite3 jsoncpp
 add_executable(buscountd       buscountd.cpp rtsp_flexi_media_factory.c)
 target_link_libraries(buscountd gstbuscountplugin_static)
 
-target_compile_definitions(buscountcli PRIVATE SOURCE_DIR="${bus_count_SOURCE_DIR}")
-
 # Buscount must be built with different arch type on Pis to work with OpenVino
 execute_process(COMMAND uname -m OUTPUT_VARIABLE SYS_ARCH)
 string(STRIP "${SYS_ARCH}" SYS_ARCH)

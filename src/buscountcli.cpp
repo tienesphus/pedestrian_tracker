@@ -39,13 +39,13 @@ int main() {
     DetectorOpenVino::NetConfig net_config {
             0.6f,               // thresh
             15,                 // clazz
-            std::string(SOURCE_DIR) + "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
-            std::string(SOURCE_DIR) + "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
     };
 
     FeatureAffinity::NetConfig tracker_config {
-            std::string(SOURCE_DIR) + "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
-            std::string(SOURCE_DIR) + "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
+            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
+            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
             cv::Size(48, 96),    // input size
             0.6,                 // similarity thresh
     };
@@ -60,14 +60,14 @@ int main() {
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
 
     DetectorOpenVino detector(net_config, plugin);
-    WorldConfig world_config = WorldConfig::from_file(std::string(SOURCE_DIR) + "/config.csv");
+    WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config.csv");
     TrackerComp tracker(world_config, 0.5);
 
     tracker.use<FeatureAffinity, FeatureData>(0.6, tracker_config, plugin);
     tracker.use<PositionAffinity, PositionData>(0.4, 0.7);
 
     sqlite3* db;
-    std::string database_source = (std::string(SOURCE_DIR) + "/data/database.db");
+    std::string database_source = (SOURCE_DIR "/data/database.db");
     if (sqlite3_open(database_source.c_str(), &db) != SQLITE_OK) {
         throw std::logic_error("Cannot open database");
     }

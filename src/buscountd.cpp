@@ -12,7 +12,7 @@
 #include "gstbuscountfilter.hpp"
 #include "rtsp_flexi_media_factory.h"
 
-#define DEFAULT_TEST_VIDEO "../../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4"
+#define DEFAULT_TEST_VIDEO SOURCE_DIR "../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4"
 
 Glib::RefPtr<Gst::Pipeline> pipeline;
 
@@ -200,8 +200,8 @@ int main(int argc, char *argv[])
     DetectorOpenVino::NetConfig net_config {
             0.5f,               // thresh
             15,                 // clazz
-            "../models/MobileNetSSD_IE/MobileNetSSD.xml", // config
-            "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
     };
 
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");

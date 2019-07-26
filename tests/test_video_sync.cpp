@@ -49,7 +49,7 @@ TEST_CASE( "Video Sync skips the correct number of frames", "[video_sync]" ) {
 TEST_CASE( "Video Sync does not segfault with video", "[video_sync]" ) {
 
     VideoSync<cv::Mat> sync = VideoSync<cv::Mat>::from_video(
-            std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4");
+            SOURCE_DIR "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4");
 
     nonstd::optional<cv::Mat> frame;
     frame = sync.next();

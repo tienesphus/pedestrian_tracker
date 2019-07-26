@@ -6,7 +6,7 @@
 #include <opencv2/dnn.hpp>
 
 cv::Mat load_test_image() {
-    cv::Mat image = cv::imread(std::string(SOURCE_DIR)+"/tests/skier.jpg");
+    cv::Mat image = cv::imread(SOURCE_DIR "/tests/skier.jpg");
     REQUIRE(!image.empty());
     return image;
 }
