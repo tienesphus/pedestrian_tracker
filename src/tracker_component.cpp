@@ -75,7 +75,7 @@ bool Track::update(const WorldConfig &config, std::vector<Event>& events)
 
             if (been_outside && counted_out)
             {
-                events.push_back(Event::COUNT_IN);
+                events.push_back(Event::BACK_IN);
                 //world.out_count--;
                 counted_out = false;
                 been_outside = false;
@@ -94,7 +94,7 @@ bool Track::update(const WorldConfig &config, std::vector<Event>& events)
 
             if (been_inside && counted_in)
             {
-                events.push_back(Event::COUNT_OUT);
+                events.push_back(Event::BACK_OUT);
                 //world.in_count--;
                 counted_in = false;
                 been_inside = false;

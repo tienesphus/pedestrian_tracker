@@ -68,8 +68,10 @@ void BusCounter::handle_events(const std::vector<Event>& events)
     for (Event e : events) {
         // handle the events internally
         switch (e) {
-            case COUNT_IN: inside_count++; break;
+            case COUNT_IN:  inside_count++;  break;
             case COUNT_OUT: outside_count++; break;
+            case BACK_IN:   outside_count--; break;
+            case BACK_OUT:  inside_count--;  break;
             default:
                 throw std::logic_error("Unknown event type");
         }

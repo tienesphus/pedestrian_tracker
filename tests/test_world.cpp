@@ -37,7 +37,3 @@ TEST_CASE( "No bounds is in_bounds", "[world]" ) {
 
     REQUIRE(config.in_bounds(Point(1, 2)));
 }
-
-
-
-

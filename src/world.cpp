@@ -64,20 +64,62 @@ WorldConfig WorldConfig::from_file(const std::string& fname)
     return WorldConfig(crossing, bounds);
 }
 
+/**
+ * Gets the point of intersection between two lines
+ * Will crash if the two lines are parallel
+ */
+utils::Point getIntersection(utils::Line l1, utils::Line l2)
+{
+    float dx1 = l1.b.x -l1.a.x;
+    float dy1 = l1.b.y -l1.a.y;
+    float dx2 = l2.b.x -l2.a.x;
+    float dy2 = l2.b.y -l2.a.y;
+    // ahh, maths...
+    float s = (dx2 * (l1.a.y - l2.a.y) + dy2 * (l2.a.x - l1.a.x)) / (dx1 * dy2 - dx2 * dy1);
+    return utils::Point(l1.a.x + dx1 * s, l1.a.y + dy1 * s);
+}
+
+/**
+    * Extends a line so that it extends to screen edges. Note: the lines may end up slightly
+    * past the edge of the screen
+*/
+utils::Line extend(const utils::Line& line)
+{
+    using namespace utils;
+
+    // Choose whether to use top/bottom or left/right edges based on ratio of dx:dy
+    // note that its okay if the points are outside the boundaries
+    float dx = abs(line.a.x - line.b.x);
+    float dy = abs(line.a.y - line.b.y);
+    if (dx > dy) {
+        // use left/right intercepts
+        Point leftInt = getIntersection(line, Line(Point(0, 0), Point(0, 1)));
+        Point rightInt = getIntersection(line, Line(Point(1, 0), Point(1, 1)));
+        return Line(leftInt, rightInt);
+    } else {
+        // use top/bot intercepts
+        Point topInt = getIntersection(line, Line(Point(0, 0), Point(1, 0)));
+        Point botInt = getIntersection(line, Line(Point(0, 1), Point(1, 1)));
+        return Line(topInt, botInt);
+    }
+}
+
+
 void WorldConfig::draw(cv::Mat &img) const
 {
     crossing.draw(img);
 
-    crossing.normal(crossing.a).draw(img);
-    crossing.normal(crossing.b).draw(img);
+    extend(crossing.normal(crossing.a)).draw(img);
+    extend(crossing.normal(crossing.b)).draw(img);
 
     for (const utils::Line& bound: bounds) {
         bound.draw(img);
-        bound.normal((bound.a+bound.b)/2);
+        //extend(bound.normal((bound.a+bound.b)/2)).draw(img);
     }
 
     std::cout << "DRAWN STUFF" << std::endl;
 }
+
   
 bool WorldConfig::in_bounds(const utils::Point &p) const
 {
