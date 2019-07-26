@@ -7,6 +7,7 @@
 
 #include "../optional.hpp"
 #include "../utils.hpp"
+#include "server_client.hpp"
 
 namespace server {
 
@@ -16,12 +17,6 @@ namespace server {
 
         Feed(std::string name, std::string location);
 
-    };
-
-    struct OpenCVConfig {
-        utils::Line crossing;
-
-        explicit OpenCVConfig(const utils::Line &crossing);
     };
 
     struct Config {
