@@ -31,7 +31,7 @@ namespace server {
      * Initialises the server with the master config
      * It is okay to initialise the server as both master and slave
      */
-    void init_master();
+    void init_master(const std::function<int()>& getCount, const std::function<void(int)>& addCount);
 
     /**
      * Initialises the server as a slave

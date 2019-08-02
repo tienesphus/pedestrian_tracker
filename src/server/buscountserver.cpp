@@ -58,8 +58,8 @@ int main()
                 char* error;
                 Json::StreamWriterBuilder builder;
                 std::string output = Json::writeString(builder, to_json(new_config));
-                if (sqlite3_exec(db, ("INSERT INTO ConfigUpdate(Config) VALUES ('" + output + "')").c_str(), nullptr,
-                                 nullptr, &error) != SQLITE_OK) {
+                if (sqlite3_exec(db, ("INSERT INTO ConfigUpdate(Config) VALUES ('" + output + "')").c_str(),
+                            nullptr, nullptr, &error) != SQLITE_OK) {
                     std::cout << "SQL ERROR insert config update: " << error << std::endl;
                     sqlite3_free(error);
                 }
@@ -67,7 +67,38 @@ int main()
     );
 
 
-    init_master();
+    init_master(
+            [&db]() -> int {
+                char* error;
+
+                int in_out[] = {0, 0};
+
+                if (sqlite3_exec(db, "SELECT SUM(DeltaIn) as 'CountIn', SUM(DeltaOut) as 'CountOut' FROM CountEvents",
+                                 [](void* in_out, int, char** argv, char**) -> int {
+                                     std::string in = argv[0];
+                                     std::string out = argv[1];
+                                     int in_count = std::stoi(argv[0]);
+                                     int out_count = std::stoi(argv[1]);
+                                     ((int*)in_out)[0] = in_count;
+                                     ((int*)in_out)[1] = out_count;
+                                     return 0;
+                                 }, in_out, &error) != SQLITE_OK) {
+                    std::cout << "SELECT count ERROR: " << error << std::endl;
+                    sqlite3_free(error);
+                }
+
+                return in_out[0] - in_out[1];
+            },
+            [&db](int delta) {
+                char* error;
+
+                if (sqlite3_exec(db, ("INSERT INTO CountEvents (name, DeltaIn) VALUES ('Manual', " + std::to_string(delta) + ")").c_str(),
+                                 nullptr, nullptr, &error) != SQLITE_OK) {
+                    std::cout << "INSERT count ERROR: " << error << std::endl;
+                    sqlite3_free(error);
+                }
+            }
+    );
     start();
 
     std::cout << "Buscount server finished (does this ever get run?)" << std::endl;

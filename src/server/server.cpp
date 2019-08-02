@@ -3,8 +3,6 @@
 #include "../utils.hpp"
 
 #include <drogon/drogon.h>
-#include <zconf.h>
-#include <sqlite3.h>
 
 
 namespace server {
@@ -156,21 +154,20 @@ namespace server {
         app().run();
     }
 
-    void init_master()
+    void init_master(const std::function<int()>& getCount, const std::function<void(int)>& addCount)
     {
         using namespace drogon;
 
-        static int count = 0;
         static std::vector<Device> devices;
 
 
         // TODO move these lambdas into separate files
         // I just threw them here because it was easy, but, its a bit clunky
         drogon::app().registerHandler("/count",
-                [](const drogon::HttpRequestPtr&,
+                [getCount](const drogon::HttpRequestPtr&,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
                     Json::Value json;
-                    json["count"] = std::to_string(count);
+                    json["count"] = std::to_string(getCount());
                     auto resp=HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
                 },
@@ -178,7 +175,7 @@ namespace server {
         );
 
         drogon::app().registerHandler("/status_update",
-                [](const drogon::HttpRequestPtr& req,
+                [addCount](const drogon::HttpRequestPtr& req,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
                     std::cout << "status_update" << std::endl;
                     std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
@@ -203,8 +200,7 @@ namespace server {
                             callback(resp);
                         } else {
                             int change = delta.asInt();
-                            count += change;
-
+                            addCount(change);
                             auto resp=HttpResponse::newHttpResponse();
                             resp->setStatusCode(k200OK);
                             callback(resp);

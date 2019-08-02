@@ -50,9 +50,9 @@ int main() {
             0.6,                 // similarity thresh
     };
 
-    //std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
-    //VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
-    auto cv_cap = std::make_shared<cv::VideoCapture>(0);
+    std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
+    //auto cv_cap = std::make_shared<cv::VideoCapture>(0);
     //cv_cap->set(cv::CAP_PROP_FRAME_WIDTH,640);
     //cv_cap->set(cv::CAP_PROP_FRAME_HEIGHT,480);
 
@@ -73,19 +73,27 @@ int main() {
     }
 
     BusCounter counter(detector, tracker, world_config,
-            //[&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
-            [&cv_cap]() -> nonstd::optional<cv::Mat> {
-		cv::Mat frame;
-		cv_cap->read(frame);
-		cv::resize(frame, frame, cv::Size(640, 480));
-         	return frame;
-	    },
+            [&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
+            /*[&cv_cap]() -> nonstd::optional<cv::Mat> {
+                cv::Mat frame;
+                cv_cap->read(frame);
+                cv::resize(frame, frame, cv::Size(640, 480));
+                return frame;
+            },*/
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
             []() { return cv::waitKey(20) == 'q'; },
             [&db](Event event) {
                 std::cout << "EVENT: " << name(event) << std::endl;
                 char* error = nullptr;
-                std::string sql = "INSERT INTO Events(Name) VALUES ('" + name(event) + "')";
+                int deltaIn = 0, deltaOut = 0;
+                switch (event) {
+                    case Event::COUNT_IN:  deltaIn  =  1; break;
+                    case Event::COUNT_OUT: deltaOut =  1; break;
+                    case Event::BACK_IN:   deltaOut = -1; break;
+                    case Event::BACK_OUT:  deltaIn  = -1; break;
+                    default: throw std::logic_error("Unknown event type");
+                }
+                std::string sql = "INSERT INTO CountEvents(Name, DeltaIn, DeltaOut) VALUES ('" + name(event) + "', " + std::to_string(deltaIn) + ", " + std::to_string(deltaOut) + ")";
                 if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &error) != SQLITE_OK) {
                     std::cout << "SQL ERROR: " << error << std::endl;
                     sqlite3_free(error);
@@ -124,7 +132,7 @@ int main() {
                 if (sqlite3_exec(db, ("SELECT Config FROM ConfigUpdate WHERE Time='"+latest_update+"'").c_str(),
                         [](void* worldConfig, int argc, char** data, char**) -> int {
                             if (argc != 1)
-                                throw std::logic_error("SELECT config muist return one column");
+                                throw std::logic_error("SELECT config must return one column");
                             Json::Reader reader;
                             Json::Value json;
                             bool success = reader.parse(data[0], json);
