@@ -189,10 +189,10 @@ int main(int argc, char *argv[])
         cv::Size(300, 300), // size
         1, //2/255.0,            // scale
         cv::Scalar(1,1,1),//cv::Scalar(127.5, 127.5, 127.5),     // mean
-        "../models/MobileNetSSD_IE/MobileNetSSD.xml", // config
-        "../models/MobileNetSSD_IE/MobileNetSSD.bin", // model
-        //"../models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
-        //"../models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
+        SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+        SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
+        //SOURCE_DIR "/models/MobileNetSSD_caffe/MobileNetSSD.prototxt", // config
+        //SOURCE_DIR "/models/MobileNetSSD_caffe/MobileNetSSD.caffemodel",  // model
         cv::dnn::DNN_BACKEND_INFERENCE_ENGINE,  // preferred backend
         cv::dnn::DNN_TARGET_MYRIAD,  // preferred device
     };*/

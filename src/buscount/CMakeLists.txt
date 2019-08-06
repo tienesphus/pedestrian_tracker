@@ -84,7 +84,7 @@ target_link_libraries(gstbuscountplugin
     PRIVATE buscount_static
 )
 
-add_executable(buscountcli buscountcli.cpp ../server/json_convert.cpp)
+add_executable(buscountcli buscountcli.cpp)
 target_link_libraries(buscountcli buscount_static opencv_highgui)
 
 add_executable(buscountd buscountd.cpp rtsp_flexi_media_factory.c)

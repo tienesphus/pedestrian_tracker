@@ -3,9 +3,9 @@
 
 #include <opencv2/core/mat.hpp>
 
-#include "../../common/config.hpp"
+#include <config.hpp>
+#include <event.hpp>
 #include "../detection/detection.hpp"
-#include "../../common/event.hpp"
 
 
 /**

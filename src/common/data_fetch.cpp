@@ -7,8 +7,6 @@
 #include <iostream>
 #include <json/json.h>
 
-//#include "../server/json_convert.hpp"
-
 DataFetch::DataFetch(const std::string& file):
     db(nullptr), last_count_update("")
 {
