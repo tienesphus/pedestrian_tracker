@@ -1,15 +1,29 @@
 add_library(server_static
         server.cpp
-        server_client.cpp
-        ../utils.cpp
+        json_convert.cpp
+)
+
+target_link_libraries(server_static PUBLIC
+        common
+        drogon
+        trantor
+        uuid
+        pthread
+        jsoncpp
+        dl
+        z
+        ssl
+        crypto
+)
+
+# allow common header files to be used
+target_include_directories(server_static PUBLIC
+        $<TARGET_PROPERTY:common,SOURCE_DIR>
 )
 
 add_executable(buscountserver
         buscountserver.cpp
-)
-
-
-# TODO remove opencv_core from server (currently only linked for utils.cpp)
-target_link_libraries(server_static PUBLIC drogon trantor uuid pthread jsoncpp dl z ssl crypto sqlite3 opencv_core opencv_highgui)
+        )
 
 target_link_libraries(buscountserver server_static)
+

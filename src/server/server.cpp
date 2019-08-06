@@ -1,50 +1,25 @@
 #include "server.hpp"
 
-#include "../utils.hpp"
+#include <geom.hpp>
 
 #include <drogon/drogon.h>
 
 
 namespace server {
 
-    Feed::Feed(std::string name, std::string location):
-            name(std::move(name)), location(std::move(location))
-    {}
-
-    Json::Value to_json(const Feed& feed)
-    {
-        Json::Value json;
-        json["name"] = feed.name;
-        json["location"] = feed.location;
-        return json;
-    }
-
-    nonstd::optional<Feed> feed_from_json(const Json::Value& data)
-    {
-        Json::Value name = data["name"];
-        Json::Value location = data["location"];
-
-        if (name.isString() && location.isString()) {
-            return Feed(name.asString(), location.asString());
-        } else {
-            std::cout << "Feed name or location is not a string" << std::endl;
-            return nonstd::nullopt;
-        }
-    }
 
     struct Device
     {
         std::string name;
         std::string id;
         trantor::InetAddress ip;
-        Feed default_feed;
 
-        Device(std::string name, std::string id, const trantor::InetAddress& ip, Feed default_feed);
+        Device(std::string name, std::string id, const trantor::InetAddress& ip);
 
     };
 
-    Device::Device(std::string name, std::string id, const trantor::InetAddress& ip, Feed default_feed):
-            name(std::move(name)), id(std::move(id)), ip(ip), default_feed(std::move(default_feed))
+    Device::Device(std::string name, std::string id, const trantor::InetAddress& ip):
+            name(std::move(name)), id(std::move(id)), ip(ip)
     {}
 
     Json::Value to_json(const Device& device)
@@ -53,7 +28,7 @@ namespace server {
         json["ip"] = device.ip.toIp();
         json["id"] = device.id;
         json["name"] = device.name;
-        json["default_feed"] = to_json(device.default_feed);
+        json["default_feed"] = "/live";
         return json;
     }
 
@@ -70,16 +45,11 @@ namespace server {
         } else {
             std::string s_id = id.asString();
             std::string s_name = name.asString();
-            nonstd::optional<Feed> def_feed = feed_from_json(default_feed);
-
-            if (def_feed)
-                return Device(s_name, s_id, ip, *def_feed);
-            else
-                return nonstd::nullopt;
+            return Device(s_name, s_id, ip);
         }
     }
 
-    Json::Value to_json(const utils::Line& l)
+    Json::Value to_json(const geom::Line& l)
     {
         Json::Value json;
         json["x1"] = l.a.x;
@@ -89,7 +59,7 @@ namespace server {
         return json;
     }
 
-    nonstd::optional<utils::Line> line_from_json(const Json::Value& json)
+    nonstd::optional<geom::Line> line_from_json(const Json::Value& json)
     {
         Json::Value x1 = json["x1"];
         Json::Value y1 = json["y1"];
@@ -98,9 +68,9 @@ namespace server {
 
         if (x1.isDouble() && y1.isDouble() && x2.isDouble() && y2.isDouble())
         {
-            utils::Line line(
-                    utils::Point(x1.asDouble(), y1.asDouble()),
-                    utils::Point(x2.asDouble(), y2.asDouble())
+            geom::Line line(
+                    geom::Point(x1.asDouble(), y1.asDouble()),
+                    geom::Point(x2.asDouble(), y2.asDouble())
             );
             return line;
         } else {
@@ -109,9 +79,6 @@ namespace server {
         }
     }
 
-    Config::Config(const OpenCVConfig& cvConfig, std::vector<Feed> feeds):
-            cvConfig(cvConfig), feeds(std::move(feeds))
-    {}
 
     void start()
     {
@@ -251,7 +218,7 @@ namespace server {
 
                     // Assume I'm a client and add myself
                     // TODO don't hardcode myself in
-                    json.append(to_json(Device("master", "master", req->localAddr(), Feed("live", "/live"))));
+                    json.append(to_json(Device("master", "master", req->localAddr())));
 
                     auto resp=HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
@@ -260,21 +227,14 @@ namespace server {
         );
     }
 
-    void init_slave(const std::function<Config()>& getConfig, const std::function<void(OpenCVConfig)>& setConfig)
+    void init_slave(const std::function<WorldConfig()>& getConfig, const std::function<void(WorldConfig)>& setConfig)
     {
         drogon::app().registerHandler("/get_config",
                 [getConfig](const drogon::HttpRequestPtr&,
                         std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&) {
-                    Json::Value json;
 
-                    Config config = getConfig();
-
-                    Json::Value feeds = Json::arrayValue;
-                    for (const Feed& feed : config.feeds)
-                        feeds.append(to_json(feed));
-                    json["feeds"] = feeds;
-
-                    json["crossing"] = to_json(config.cvConfig.crossing);
+                    WorldConfig config = getConfig();
+                    Json::Value json = to_json(config);
 
                     auto resp=drogon::HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
@@ -297,12 +257,11 @@ namespace server {
                         callback(resp);
                     } else {
                         const Json::Value& json = *json_ptr;
-                        nonstd::optional<utils::Line> crossing = line_from_json(json["crossing"]);
+                        nonstd::optional<WorldConfig> config = config_from_json(json);
 
-                        if (crossing)
+                        if (config)
                         {
-                            OpenCVConfig config(*crossing);
-                            setConfig(config);
+                            setConfig(*config);
 
                             auto resp=drogon::HttpResponse::newHttpResponse();
                             resp->setStatusCode(drogon::k200OK);

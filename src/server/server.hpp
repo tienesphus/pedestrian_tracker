@@ -5,27 +5,13 @@
 
 #include <json/json.h>
 
-#include "../optional.hpp"
-#include "../utils.hpp"
-#include "server_client.hpp"
+#include "json_convert.hpp"
+
+#include <optional.hpp>
+#include <geom.hpp>
+#include <config.hpp>
 
 namespace server {
-
-    struct Feed {
-        std::string name;
-        std::string location;
-
-        Feed(std::string name, std::string location);
-
-    };
-
-    struct Config {
-        OpenCVConfig cvConfig;
-        std::vector<Feed> feeds;
-
-        Config(const OpenCVConfig &cvConfig, std::vector<Feed> feeds);
-    };
-
 
     /**
      * Initialises the server with the master config
@@ -37,7 +23,7 @@ namespace server {
      * Initialises the server as a slave
      * It is okay to initialise the server as both master and slave
      */
-    void init_slave(const std::function<Config()> &getConfig, const std::function<void(OpenCVConfig)> &setConfig);
+    void init_slave(const std::function<WorldConfig()> &getConfig, const std::function<void(WorldConfig)> &setConfig);
 
     /**
      * Starts the server (blocking).
