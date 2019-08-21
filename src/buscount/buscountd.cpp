@@ -13,6 +13,8 @@ int main(int argc, char *argv[])
     // Initialise gstreamermm
     Gst::init(argc, argv);
 
+    //spdlog::default_logger()->set_level(spdlog::level::debug);
+
     /*
     DetectorOpenCV::NetConfig net_config {
         0.5f,               // thresh

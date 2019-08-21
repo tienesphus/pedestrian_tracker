@@ -16,7 +16,7 @@ Glib::RefPtr<Gst::Element> EncoderBin::omx_in_filter()
     );
 
     Glib::RefPtr<Gst::Element> elem = Gst::ElementFactory::create_element("capsfilter");
-    elem->property("caps", caps);
+    elem->set_property("caps", caps);
 
     return elem;
 }
@@ -90,7 +90,7 @@ GstRTSPMediaFactory *RtspServer::create_live_factory(Glib::RefPtr<Gst::Element> 
             overlay->link(convert);
             convert->link(encoder_bin);
 
-            proxy->property("proxysink", proxysink);
+            proxy->set_property("proxysink", proxysink);
 
             return ((Glib::RefPtr<Gst::Element>)bin)->gobj_copy();
         }
@@ -196,6 +196,9 @@ void RtspServer::init_buscount_pipeline()
     v4l2->link(cnvt, caps);
     cnvt->link(bcfilt);
     bcfilt->link(bprox);
+
+    // Set video device
+    //v4l2->set_property<Glib::ustring>("device", "/dev/video1");
 
     // Set clock
     Glib::RefPtr<Gst::Clock> clock = Gst::SystemClock::obtain();

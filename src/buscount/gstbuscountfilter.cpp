@@ -422,6 +422,8 @@ bool GstBusCountFilter::pad_query(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPt
 
             ltncy_query->set(live, min, max);
 
+            result = true;
+
             break;
         }
 
