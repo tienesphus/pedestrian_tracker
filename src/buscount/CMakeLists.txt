@@ -24,18 +24,20 @@ find_package(Threads REQUIRED)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+set(DEFAULT_ENC_TYPE "ENC_OMXH264" CACHE STRING "Sets the default encoder. Should be either ENC_OMXH264 or ENC_X264.")
+
 ### libbuscount object files.
   # Compiling as a library speeds up the compile process as we're only compiling things once.
 add_library(buscount_static STATIC
-		libbuscount.cpp
-        detection/detection.cpp
-        detection/detector.cpp
-        detection/detector_opencv.cpp
-        detection/detector_openvino.cpp
-		tracking/tracker_component.cpp
-		tracking/feature_affinity.cpp
-		tracking/position_affinity.cpp
-        cv_utils.cpp
+    libbuscount.cpp
+    detection/detection.cpp
+    detection/detector.cpp
+    detection/detector_opencv.cpp
+    detection/detector_openvino.cpp
+    tracking/tracker_component.cpp
+    tracking/feature_affinity.cpp
+    tracking/position_affinity.cpp
+    cv_utils.cpp
 )
 
 set_property(TARGET buscount_static PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -72,6 +74,7 @@ target_include_directories(gstbuscountplugin_obj PUBLIC
     $<TARGET_PROPERTY:gstbuscountplugin_obj_if,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
+
 # Static library is for linking directly with gstreamer. Dynamic library is only for
 # debugging with gst-launch-1.0 and gst-inspect-1.0
 add_library(gstbuscountplugin_static STATIC $<TARGET_OBJECTS:gstbuscountplugin_obj>)
@@ -95,7 +98,7 @@ add_executable(buscountd
 target_link_libraries(buscountcli buscount_static opencv_highgui)
 target_link_libraries(buscountd gstbuscountplugin_static)
 
-target_compile_definitions(buscountd PUBLIC DEFAULT_ENC_TYPE=ENC_OMXH264)
+target_compile_definitions(buscountd PUBLIC DEFAULT_ENC_TYPE=${DEFAULT_ENC_TYPE})
 
 # Buscount must be built with different arch type on Pis to work with OpenVino
 execute_process(COMMAND uname -m OUTPUT_VARIABLE SYS_ARCH)

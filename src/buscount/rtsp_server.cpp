@@ -43,7 +43,7 @@ EncoderBin::EncoderBin(const Glib::ustring& name, EncoderType type)
             break;
 
         case ENC_X264:
-            add(in = to_link = Gst::ElementFactory::create_element("omxh264enc"));
+            add(in = to_link = Gst::ElementFactory::create_element("x264enc"));
             break;
     }
 
@@ -168,7 +168,7 @@ void RtspServer::create_mounts()
 void RtspServer::init_buscount_pipeline()
 {
 
-    Glib::RefPtr<Gst::Element> v4l2, bcfilt, vtee, btee;
+    Glib::RefPtr<Gst::Element> v4l2, cnvt, bcfilt, vtee, btee;
 
     // Register the gstreamer buscount plugin
     GstBusCount::plugin_init_static();
@@ -186,13 +186,15 @@ void RtspServer::init_buscount_pipeline()
     // Create/add elements to pipeline
     buscountpipe->add(v4l2 = Gst::ElementFactory::create_element("v4l2src"))
                     ->add(bcfilt = Gst::ElementFactory::create_element("buscountfilter"))
+                    ->add(cnvt = Gst::ElementFactory::create_element("videoconvert"))
                     //->add(vtee = Gst::ElementFactory::create_element("tee"))
                     //->add(btee = Gst::ElementFactory::create_element("tee"))
                     //->add(vprox = Gst::ElementFactory::create_element("proxysink"))
                     ->add(bprox = Gst::ElementFactory::create_element("proxysink"));
 
     // Link elements together
-    v4l2->link(bcfilt, caps);
+    v4l2->link(cnvt, caps);
+    cnvt->link(bcfilt);
     bcfilt->link(bprox);
 
     // Set clock
