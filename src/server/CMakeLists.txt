@@ -1,19 +1,21 @@
+find_package(Drogon REQUIRED)
+
 add_library(server_static
-        server.cpp
-        json_convert.cpp
+    server.cpp
+    json_convert.cpp
 )
 
 target_link_libraries(server_static PUBLIC
-        common
-        drogon
-        trantor
-        uuid
-        pthread
-        jsoncpp
-        dl
-        z
-        ssl
-        crypto
+    Drogon::Drogon
+    common
+    trantor
+    uuid
+    pthread
+    jsoncpp
+    dl
+    z
+    ssl
+    crypto
 )
 
 # allow common header files to be used

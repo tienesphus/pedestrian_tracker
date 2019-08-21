@@ -3,10 +3,16 @@
 
 #include "rtsp_flexi_media_factory.h"
 
+#define RTSP_FLEXI_MEDIA_FACTORY_GET_LOCK(f)       (&(RTSP_FLEXI_MEDIA_FACTORY_CAST(f)->priv->lock))
+#define RTSP_FLEXI_MEDIA_FACTORY_LOCK(f)           (g_mutex_lock(RTSP_FLEXI_MEDIA_FACTORY_GET_LOCK(f)))
+#define RTSP_FLEXI_MEDIA_FACTORY_UNLOCK(f)         (g_mutex_unlock(RTSP_FLEXI_MEDIA_FACTORY_GET_LOCK(f)))
+
 // Important definitions
 struct _RtspFlexiMediaFactoryPrivate
 {
+    GMutex lock;
     RtspFlexiCreateElemFunc create_element_func;
+    GObject *extra_data;
 };
 
 static GstElement *flexi_create_element(GstRTSPMediaFactory *, const GstRTSPUrl *);
@@ -42,6 +48,33 @@ void rtsp_flexi_media_factory_set_create_elem(RtspFlexiMediaFactory *self, RtspF
 {
     RtspFlexiMediaFactoryPrivate *priv = rtsp_flexi_media_factory_get_instance_private(self);
     priv->create_element_func = func;
+}
+
+void rtsp_flexi_media_factory_set_extra_data(RtspFlexiMediaFactory *self, GObject *data)
+{
+    RtspFlexiMediaFactoryPrivate *priv = rtsp_flexi_media_factory_get_instance_private(self);
+
+    GObject *old;
+
+    // LOCK
+    if ((old = priv->extra_data) != data)
+        priv->extra_data = data ? g_object_ref(data) : NULL;
+    else
+        old = NULL;
+    // UNLOCK
+
+    if (old)
+        g_object_unref(old);
+}
+
+GObject* rtsp_flexi_media_factory_get_extra_data(RtspFlexiMediaFactory *self)
+{
+    RtspFlexiMediaFactoryPrivate *priv = rtsp_flexi_media_factory_get_instance_private(self);
+
+    if (priv->extra_data)
+        g_object_ref (priv->extra_data);
+
+    return priv->extra_data;
 }
 
 // Private class methods

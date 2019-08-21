@@ -1,19 +1,24 @@
+// Standard includes
 #include <utility>
-
-#include "libbuscount.hpp"
-#include "tick_counter.hpp"
-#include "cv_utils.hpp"
-
-#include <iostream>
 #include <vector>
+
+// Posix includes
 #include <unistd.h>
+
+// C++ includes
+#include <opencv2/highgui.hpp>
+
+#include <spdlog/spdlog.h>
 
 #include <tbb/concurrent_queue.h>
 #include <tbb/flow_graph.h>
 #include <tbb/mutex.h>
 #include <tbb/tick_count.h>
 
-#include <opencv2/highgui.hpp>
+// Project includes
+#include "libbuscount.hpp"
+#include "tick_counter.hpp"
+#include "cv_utils.hpp"
 
 /**
  * A simple logging class that logs when it is created and when it is destroyed.
@@ -21,10 +26,10 @@
 class ScopeLog {
 public:
     explicit ScopeLog(std::string tag):tag(std::move(tag)) {
-        std::cout << "START " << this->tag << std::endl;
+        spdlog::debug("START {:s}", this->tag);
     }
     ~ScopeLog() {
-        std::cout << "END " << this->tag << std::endl;
+        spdlog::debug("END {:s}", this->tag);
     }
 
 private:
@@ -133,7 +138,7 @@ void BusCounter::run_parallel(bool do_draw)
     tbb::concurrent_queue<PtrMat> display_queue;
     TickCounter<> counter;
 
-    std::cout << "Init functions" << std::endl;
+    spdlog::info("Init functions");
 
     flow::source_node<PtrMat> src_node(g,
             [this, &stop](PtrMat &frame) -> bool {
@@ -149,7 +154,7 @@ void BusCounter::run_parallel(bool do_draw)
     );
 
 
-    std::cout << "Init limiter" << std::endl;
+    spdlog::info("Init limiter");
 
     // throttle: by default, infinite frames can be in the graph at one.
     //           This node will limit the graph so that only MAX_FRAMES
@@ -232,11 +237,11 @@ void BusCounter::run_parallel(bool do_draw)
             [&counter](flow::continue_msg) -> void {
                 ScopeLog log("TICK");
                 auto fps = counter.process_tick();
-                std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
+                spdlog::info("FPS: {:f}", (fps ? *fps : -1));
             }
     );
     
-    std::cout << "making edges" << std::endl;
+    spdlog::info("making edges");
 
     // Setup flow dependencies
     flow::make_edge(src_node,         throttle_node);
@@ -260,9 +265,9 @@ void BusCounter::run_parallel(bool do_draw)
     flow::make_edge(fps_node,     throttle_node.decrement);
     
     // Begin running stuff
-    std::cout << "Starting video" << std::endl;
+    spdlog::info("Starting video");
     src_node.activate();
-    std::cout << "Video started" << std::endl;
+    spdlog::info("Video started");
     
     // The display code _must_ be run on the main thread. Thus, we pass
     // display frames here through a queue
@@ -315,7 +320,7 @@ void BusCounter::run_serial(bool do_draw)
         }
 
         auto fps = counter.process_tick();
-        std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
+        spdlog::info("FPS: {:f}", (fps ? *fps : -1));
 
         _dest(frame);
         if (_test_exit())

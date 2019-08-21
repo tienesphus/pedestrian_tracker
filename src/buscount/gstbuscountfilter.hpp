@@ -39,8 +39,8 @@ class GstBusCountFilter : public Gst::Element
     //Glib::Property<Glib::ustring> line_bounds_b_property;
 
     // Owned objects
-    Glib::RefPtr<Gst::AtomicQueue<cv::Mat>> frame_in_queue;
-    Glib::RefPtr<Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>> frame_out_queue;
+    Glib::RefPtr<Gst::AtomicQueue<cv::Mat>> mat_queue;
+    Glib::RefPtr<Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>> buf_queue;
     std::condition_variable frame_queue_pushed;
     std::condition_variable frame_queue_popped;
     std::mutex cond_m;

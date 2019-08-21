@@ -16,15 +16,18 @@ add_executable(tests
 
 # TODO why do I need to include opencv_imgcodecs here but not in buscountcli?
 # and why did I only start needing it when I restructured the project?
-target_link_libraries(tests buscount_static server_static opencv_videoio opencv_imgcodecs)
+target_link_libraries(tests
+    Catch2
+    buscount_static
+    opencv_videoio
+    opencv_imgcodecs
+)
 
 target_include_directories(tests PUBLIC
         $<TARGET_PROPERTY:buscount_static,SOURCE_DIR>
         $<TARGET_PROPERTY:common,SOURCE_DIR>
         $<TARGET_PROPERTY:server_static,SOURCE_DIR>
-        ${bus_count_SOURCE_DIR}/include/catch2
 )
-
 
 # TODO make each test module should its own library
 # trouble is that catch2 doesn't seem to pick up on the tests when in a library

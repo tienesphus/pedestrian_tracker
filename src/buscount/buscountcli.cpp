@@ -1,19 +1,24 @@
+// Standard includes
+#include <iostream>
+#include <tuple>
+#include <vector>
+
+// C++ includes
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+// C includes
+#include <unistd.h>
+#include <sqlite3.h>
+
+// Project includes
 #include "libbuscount.hpp"
 #include "tracking/feature_affinity.hpp"
 #include "tracking/position_affinity.hpp"
 #include "detection/detector_openvino.hpp"
 #include "detection/detector_opencv.hpp"
 #include "video_sync.hpp"
-
-#include <data_fetch.hpp>
-
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-
-#include <sqlite3.h>
-
-#include <iostream>
-#include <unistd.h>
+#include "data_fetch.hpp"
 
 
 int main() {
@@ -48,7 +53,7 @@ int main() {
             0.6,                 // similarity thresh
     };
 
-    //std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    //std::string input = SOURCE_DIR "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
     //VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
     auto cv_cap = std::make_shared<cv::VideoCapture>(0);
 

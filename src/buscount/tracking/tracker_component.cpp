@@ -1,11 +1,16 @@
+// Standard includes
+#include <utility>
+
+// C++ includes
+#include <deque>
+#include <opencv2/imgproc.hpp>
+#include <spdlog/spdlog.h>
+
+// Project includes
 #include "tracker_component.hpp"
 #include "../cv_utils.hpp"
 
-#include <utility>
-#include <iostream>
 
-#include <opencv2/imgproc.hpp>
-#include <deque>
 
 
 //  ----------- TRACK ---------------
@@ -188,7 +193,7 @@ struct MergeOption {
 std::vector<DetectionExtra> initialise_detections(const std::vector<Detection> &detection_results, const cv::Mat &frame,
                                 const std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> &affinities)
 {
-    std::cout << "  Initialise detection info" << std::endl;
+    spdlog::info("  Initialise detection info");
     std::vector<DetectionExtra> detections;
     int index = 0;
     for (const Detection& detection : detection_results) {
@@ -206,7 +211,7 @@ std::vector<DetectionExtra> initialise_detections(const std::vector<Detection> &
 std::vector<MergeOption> calculate_affinities(std::vector<DetectionExtra>& detections, const std::vector<std::unique_ptr<Track>>& tracks,
         const std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>>& affinities)
 {
-    std::cout << "  Calculating affinities" << std::endl;
+    spdlog::debug("Calculating affinities");
     std::vector<MergeOption> merges;
     for (DetectionExtra &extra : detections) {
         for (const std::unique_ptr<Track> &track : tracks) {
@@ -218,7 +223,7 @@ std::vector<MergeOption> calculate_affinities(std::vector<DetectionExtra>& detec
 
                 confidence += weight * affinity.affinity(*extra.data[i], *track->data[i]);
             }
-            std::cout << "      d" << extra.index << " x t" << track->index << ": " << confidence << std::endl;
+            spdlog::debug(" d{} x t{}: {}", extra.index, track->index, confidence);
             merges.emplace_back(confidence, track.get(), &extra);
         }
     }
@@ -232,13 +237,13 @@ void merge_top(std::vector<MergeOption> merges,
      // TODO tracker merging code is a mess
 
     // Sort the merges so best merges are first
-    std::cout << "    Sorting differences" << std::endl;
+    spdlog::debug("Sorting differences");
     std::sort(merges.begin(), merges.end(),
               [](const MergeOption &a, const MergeOption &b) -> auto { return a.confidence > b.confidence; }
     );
-    std::cout << "    Sorted Merges: " << std::endl;
+    spdlog::debug("Sorted Merges: ");
     for (const MergeOption &m : merges) {
-        std::cout << "      d" << m.extra->index << " x t" << m.track->index << ": " << m.confidence << std::endl;
+        spdlog::debug(" d{} x t{}: {}", m.extra->index, m.track->index, m.confidence);
     }
 
     // iteratively merge the closest of the detection/track combinations
@@ -248,14 +253,14 @@ void merge_top(std::vector<MergeOption> merges,
         // threshold box's that are too different
         // TODO remove hardcoded tracker threshold
         if (merge.confidence < merge_thresh) {
-            std::cout << " Differences too high" << std::endl;
+            spdlog::info(" Differences too high");
             break;
         }
 
         const Detection& d = merge.extra->detection;
         Track* track = merge.track;
 
-        std::cout << "Merging d" << merge.extra->index <<  " and t" << track->index << std::endl;
+        spdlog::debug("Merging d{} and t{}", merge.extra->index, track->index);
 
         // Merge the data
         track->box = d.box;
@@ -270,7 +275,7 @@ void merge_top(std::vector<MergeOption> merges,
         for (size_t j = i+1; j < merges.size(); j++) {
             const MergeOption& merge2 = merges[j];
             if (merge2.track == track || merge2.extra->merged) {
-                std::cout << " Ignore option " << j << std::endl;
+                spdlog::debug(" Ignore option {}", j);
                 merges.erase(merges.begin()+j);
                 j--;
             }
@@ -280,13 +285,19 @@ void merge_top(std::vector<MergeOption> merges,
 
 void add_new_tracks(std::vector<DetectionExtra>& detections, std::vector<std::unique_ptr<Track>>& tracks, int& index_count)
 {
-    std::cout << "Adding new tracks" << std::endl;
+    spdlog::debug("Adding new tracks");
     // Make new tracks for detections that have not merged
     for (DetectionExtra &extra : detections) {
         bool dealt_with = extra.merged;
         if (!dealt_with) {
             const Detection &d = extra.detection;
-            std::cout << "Making a new box for detection " << d.box << std::endl;
+            spdlog::debug(
+                "Making a new box for detection ({},{}) [{},{}]",
+                d.box.x,
+                d.box.y,
+                d.box.width,
+                d.box.height
+            );
 
             tracks.push_back(std::make_unique<Track>(d.box, d.confidence, index_count++, std::move(extra.data)));
         }
@@ -299,7 +310,8 @@ void delete_overlapping_tracks(std::vector<std::unique_ptr<Track>>&,
     // Delete tracks with very high overlap
     // This occurs when two detections are produced for the same person
     // TODO how to delete overlapping tracks
-    /*std::cout << "Deleting similar tracks " << std::endl;
+    /*
+    spdlog::debug("Deleting similar tracks ");
     for (size_t i = 0; i < this->tracks.size(); i++) {
         std::unique_ptr<Track> &track_i = this->tracks[i];
         for (size_t j = i+1; j < this->tracks.size(); j++) {
@@ -308,11 +320,11 @@ void delete_overlapping_tracks(std::vector<std::unique_ptr<Track>>&,
             if (IoU(track_i->box, track_j->box) > 0.95 &&
                 cosine_similarity(track_i->data, track_j->data) > netConfig.thresh) {
                 if (track_i->confidence > track_j->confidence) {
-                    std::cout << "Deleting j: " << j << std::endl;
+                    spdlog::debug("Deleting j: {}", j);
                     this->tracks.erase(this->tracks.begin()+j);
                     --j;
                 } else {
-                    std::cout << "Deleting i: " << i << std::endl;
+                    spdlog::debug("Deleting i: {}", i);
                     this->tracks.erase(this->tracks.begin()+i);
                     --i;
                     break;
@@ -335,7 +347,7 @@ void TrackerComp::merge(const Detections &detection_results, const cv::Mat& fram
     // - merge the top detection/track combinations
     // - add new tracks for unmerged detections
 
-    std::cout << "MERGING" << std::endl;
+    spdlog::debug("MERGING");
 
     std::vector<DetectionExtra> detections = initialise_detections(detection_results.get_detections(), frame, this->affinities);
     std::vector<MergeOption> merges = calculate_affinities(detections, this->tracks, this->affinities);

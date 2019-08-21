@@ -48,6 +48,7 @@ target_link_libraries(buscount_static PUBLIC
     opencv_core opencv_dnn
     IE::inference_engine
     Threads::Threads
+    spdlog::spdlog
     common
 )
 
@@ -85,10 +86,16 @@ target_link_libraries(gstbuscountplugin
 )
 
 add_executable(buscountcli buscountcli.cpp)
-target_link_libraries(buscountcli buscount_static opencv_highgui)
+add_executable(buscountd
+    buscountd.cpp
+    rtsp_server.cpp
+    rtsp_flexi_media_factory.c
+)
 
-add_executable(buscountd buscountd.cpp rtsp_flexi_media_factory.c)
+target_link_libraries(buscountcli buscount_static opencv_highgui)
 target_link_libraries(buscountd gstbuscountplugin_static)
+
+target_compile_definitions(buscountd PUBLIC DEFAULT_ENC_TYPE=ENC_OMXH264)
 
 # Buscount must be built with different arch type on Pis to work with OpenVino
 execute_process(COMMAND uname -m OUTPUT_VARIABLE SYS_ARCH)
