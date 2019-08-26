@@ -49,7 +49,7 @@ int main() {
     tracker.use<TimedAffinity<FeatureData>, FeatureData>(0.5, cached_features, &time, 1/20.0);
     tracker.use<PositionAffinity, PositionData>(0.5, 0.7);
 
-    BusCounter counter(cached_detector, tracker, world_config,
+    BusCounter counter(timedDetector, tracker, world_config,
             [&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
             []() { return cv::waitKey(20) == 'q'; },
