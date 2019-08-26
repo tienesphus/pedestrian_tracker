@@ -59,13 +59,6 @@ public:
      */
     virtual void merge(const T& detectionData, T& trackData) const = 0;
 
-    /**
-     * Draws information about this track.
-     * TODO Affinity::draw is currently never called
-     * @param data the track data
-     * @param img the image to draw onto
-     */
-    virtual void draw(const T& data, cv::Mat &img) const = 0;
 };
 
 /**
@@ -164,11 +157,6 @@ public:
 
     void merge(const TrackData& detectionData, TrackData& trackData) const override {
         delegate->merge(dynamic_cast<const T&>(detectionData), dynamic_cast<T&>(trackData));
-    }
-
-    void draw(const TrackData& data, cv::Mat &img) const override
-    {
-        delegate->draw(dynamic_cast<const T&>(data), img);
     }
 
 };

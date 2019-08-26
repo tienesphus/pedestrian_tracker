@@ -9,6 +9,13 @@
  * The box points are scaled between 0 and 1
  */
 struct Detection {
+private:
+    static inline bool _approx_equals(float a, float b, float tolerance) {
+        return (a > (b - tolerance)) && (a < (b + tolerance));
+    }
+
+public:
+
     cv::Rect2f box;
     float confidence;
 
@@ -18,6 +25,18 @@ struct Detection {
      * Draws this detection onto the image
      */
     void draw(cv::Mat &display) const;
+
+    inline bool operator==(const Detection& other) const  {
+        return _approx_equals(box.x, other.box.x, 0.005)
+               && _approx_equals(box.y, other.box.y, 0.005)
+               && _approx_equals(box.width, other.box.width, 0.005)
+               && _approx_equals(box.height, other.box.height, 0.005)
+               && _approx_equals(confidence, other.confidence, 0.005);
+    }
+
+    inline bool operator!=(const Detection& other) const {
+        return !(operator==(other));
+    }
 };
 
 /**

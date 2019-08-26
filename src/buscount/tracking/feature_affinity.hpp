@@ -6,8 +6,7 @@
 
 class FeatureData: public TrackData
 {
-    friend class FeatureAffinity;
-
+public:
     std::vector<float> features;
 
 public:
@@ -35,8 +34,6 @@ public:
     float affinity(const FeatureData &detectionData, const FeatureData &trackData) const override;
 
     void merge(const FeatureData& detectionData, FeatureData& trackData) const override;
-
-    void draw(const FeatureData& data, cv::Mat &img) const override;
 
 private:
 

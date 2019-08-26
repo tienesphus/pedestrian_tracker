@@ -51,9 +51,6 @@ public:
         REQUIRE(trackData.owner == number);
     }
 
-    void draw(const TestData &data, cv::Mat&) const override {
-        REQUIRE(data.owner == number);
-    }
 };
 
 TEST_CASE( "Tracker gives correct data", "[tracker_comp]" ) {

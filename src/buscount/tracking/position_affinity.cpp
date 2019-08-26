@@ -44,7 +44,4 @@ void PositionAffinity::merge(const PositionData& detection, PositionData& track)
     track.loc = detection.loc;
 }
 
-void PositionAffinity::draw(const PositionData&, cv::Mat&) const
-{
-}
 

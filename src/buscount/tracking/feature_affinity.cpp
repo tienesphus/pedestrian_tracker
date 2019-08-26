@@ -72,10 +72,6 @@ void FeatureAffinity::merge(const FeatureData& detectionData, FeatureData& track
     trackData.features = detectionData.features;
 }
 
-void FeatureAffinity::draw(const FeatureData&, cv::Mat&) const
-{
-}
-
 /**
  * @brief Wraps data stored inside of a passed cv::Mat object by new Blob pointer.
  * @note: No memory allocation is happened. The blob just points to already existing

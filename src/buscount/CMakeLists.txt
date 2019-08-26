@@ -101,3 +101,5 @@ target_compile_options(buscount_static PUBLIC
 target_include_directories(buscount_static PUBLIC
         $<TARGET_PROPERTY:common,SOURCE_DIR>
 )
+
+add_subdirectory(metrics)

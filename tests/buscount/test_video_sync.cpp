@@ -54,13 +54,13 @@ TEST_CASE( "Video Sync does not segfault with video", "[video_sync]" ) {
     nonstd::optional<cv::Mat> frame;
     frame = sync.next();
     REQUIRE(frame.has_value());
-    REQUIRE(!(*frame).empty());
+    REQUIRE(!frame->empty());
 
     usleep(1000*100);
 
     frame = sync.next();
     REQUIRE(frame.has_value());
-    REQUIRE(!(*frame).empty());
+    REQUIRE(!frame->empty());
 
     // Really, this test case is just to make sure it doesn't crash
 

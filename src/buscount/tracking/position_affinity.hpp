@@ -29,8 +29,6 @@ public:
 
     void merge(const PositionData& detectionData, PositionData& trackData) const override;
 
-    void draw(const PositionData& data, cv::Mat &img) const override;
-
 private:
     float scale;
 

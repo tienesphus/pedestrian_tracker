@@ -6,6 +6,7 @@ add_library(common STATIC
         geom.cpp
         data_fetch.cpp
         config.cpp
+        sql_helper.cpp
 )
 
 target_link_libraries(common sqlite3 jsoncpp)

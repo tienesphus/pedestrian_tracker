@@ -10,13 +10,17 @@ add_executable(tests
         buscount/test_tracker_comp.cpp
         buscount/test_affinity_features.cpp
         buscount/test_world.cpp
-        buscount/test_detector_opencv.cpp # must be last
         common/test_geom.cpp
+        metrics/test_read_simulator.cpp
+        metrics/test_detection_cache.cpp
+        metrics/test_feature_cache.cpp
+        # all opencv detection must be after openvino detection
+        buscount/test_detector_opencv.cpp
 )
 
 # TODO why do I need to include opencv_imgcodecs here but not in buscountcli?
 # and why did I only start needing it when I restructured the project?
-target_link_libraries(tests buscount_static server_static opencv_videoio opencv_imgcodecs)
+target_link_libraries(tests buscount_static server_static metrics opencv_videoio opencv_imgcodecs)
 
 target_include_directories(tests PUBLIC
         $<TARGET_PROPERTY:buscount_static,SOURCE_DIR>
