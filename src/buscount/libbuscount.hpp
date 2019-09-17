@@ -11,10 +11,10 @@
 
 class BusCounter {
 public:
-    using src_cb_t = nonstd::optional<cv::Mat>();
+    using src_cb_t = nonstd::optional<std::tuple<cv::Mat, int>>();
     using dest_cb_t = void(const cv::Mat&);
     using test_exit_t = bool();
-    using event_handle_t = void(Event e);
+    using event_handle_t = void(Event e, const cv::Mat& frame, int frame_no);
 
     enum RunStyle {
         RUN_PARALLEL,
@@ -50,7 +50,7 @@ private:
     // How to execute the pipeline.
     void run_parallel(bool draw);
     void run_serial(bool draw);
-    void handle_events(const std::vector<Event>& events);
+    void handle_events(const std::vector<Event>& events, const cv::Mat& frame, int frame_no);
 };
 
 #endif

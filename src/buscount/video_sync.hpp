@@ -39,7 +39,7 @@ public:
     /**
      * Grabs the next frame from the stream. Drops frames if we are behind
      */
-    nonstd::optional<T> next() {
+    nonstd::optional<std::tuple<T, int>> next() {
 
         // Calculate how many frames we need to read to catch up
         int catchup = 1;
@@ -54,12 +54,15 @@ public:
         }
 
         // read a bunch of frames out
-        nonstd::optional<T> frame;
+        nonstd::optional<std::tuple<T, int>> frame;
         do {
-            // current_frame_no will eventually overflow, but that's okay because we only ever
-            // take a difference of values
             ++current_frame_no;
-            frame = src();
+            auto img = src();
+
+            if (img)
+                frame = std::make_tuple(*img, current_frame_no);
+            else
+                frame = nonstd::nullopt;
         } while (frame && --catchup > 0);
 
         // record our new state
@@ -87,7 +90,7 @@ public:
      * @param cap the video capture to wrap
      * @return the syncronised video
      */
-    static VideoSync<cv::Mat, averaging> from_capture(const std::shared_ptr<cv::VideoCapture> cap) {
+    static VideoSync<cv::Mat, averaging> from_capture(const std::shared_ptr<cv::VideoCapture>& cap) {
         int src_fps = static_cast<int>(cap->get(cv::CAP_PROP_FPS));
         return VideoSync([cap]() -> auto {
             cv::Mat frame;
@@ -102,7 +105,7 @@ private:
     std::function<src_cb_t> src;
 
     std::vector<std::tuple<Time::time_point, size_t>> src_time;
-    uint16_t current_frame_no;
+    int current_frame_no;
 };
 
 #endif //BUS_COUNT_VIDEO_SYNC_HPP

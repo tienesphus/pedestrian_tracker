@@ -14,29 +14,23 @@ TEST_CASE( "Detections are cached and retrieved", "[detection_cache]" )
             SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
             SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
     };
-    CacheDetections cache_write(SOURCE_DIR "/data/metrics.db", "unit_tests");
+    DetectionCache cache_write(SOURCE_DIR "/data/metrics.db", "unit_tests");
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
     DetectorOpenVino detector(net_config, plugin);
-    CachedDetectorWriter writer(cache_write, detector);
+    CachedDetector cachedDetector(cache_write, detector, 0.0f);
 
     // Write the detections
     cache_write.clear();
     cv::Mat input = load_test_image();
-    Detections write_detections_0 = writer.process(input);
-    Detections write_detections_1 = writer.process(input);
+    Detections write_detections_0 = cachedDetector.process(input, 0);
+    Detections write_detections_1 = cachedDetector.process(input, 1);
 
-
-    // Setup the reader
-    CacheDetections cache_read(SOURCE_DIR "/data/metrics.db", "unit_tests");
-    CachedDetectorReader reader(cache_read, 0.0);
-    double time = 0;
-    ReadSimulator<> sym([]() -> cv::Mat {return cv::Mat(2, 2, CV_32F); }, 1, &time);
 
     // Read the detections back
-    cv::Mat fake_input = *sym.next();
-    Detections read_detections_0 = reader.process(fake_input);
-    time += 1;
-    Detections read_detections_1 = reader.process(fake_input);
+    // We use a different image, so, if the detections are cached, only the frame_no should matter
+    cv::Mat fake_input = cv::Mat(2, 2, CV_32F);
+    Detections read_detections_0 = cachedDetector.process(fake_input, 0);
+    Detections read_detections_1 = cachedDetector.process(fake_input, 1);
 
     int read_size_0 = read_detections_0.get_detections().size();
     int read_size_1 = read_detections_1.get_detections().size();

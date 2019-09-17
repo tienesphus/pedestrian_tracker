@@ -32,7 +32,13 @@ TEST_CASE( "Video Sync skips the correct number of frames", "[video_sync]" ) {
         REQUIRE(one_wait);
 
         // Get where VideoSync thinks we should be
-        uint32_t frame_index = *sync.next();
+        std::tuple<uint32_t, int> frame_result = *sync.next();
+        uint32_t frame_index = std::get<0>(frame_result);
+        uint32_t frame_no_res = std::get<1>(frame_result);
+
+        // frame_no and frame_index should be the same since both start from 0 and count each frame
+        REQUIRE(frame_index == frame_no_res);
+
 
         // it should actually be every n frames
         float use_every_n_frames = fps_set/fps_call;
@@ -51,16 +57,15 @@ TEST_CASE( "Video Sync does not segfault with video", "[video_sync]" ) {
     VideoSync<cv::Mat> sync = VideoSync<cv::Mat>::from_video(
             SOURCE_DIR "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4");
 
-    nonstd::optional<cv::Mat> frame;
-    frame = sync.next();
+    auto frame = sync.next();
     REQUIRE(frame.has_value());
-    REQUIRE(!frame->empty());
+    REQUIRE(!std::get<0>(*frame).empty());
 
     usleep(1000*100);
 
     frame = sync.next();
     REQUIRE(frame.has_value());
-    REQUIRE(!frame->empty());
+    REQUIRE(!std::get<0>(*frame).empty());
 
     // Really, this test case is just to make sure it doesn't crash
 

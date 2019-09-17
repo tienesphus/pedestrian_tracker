@@ -10,11 +10,11 @@
 #include <iostream>
 
 
-class CacheDetections {
+class DetectionCache {
 public:
-    CacheDetections(const std::string& location, std::string tag);
+    DetectionCache(const std::string& location, std::string tag);
 
-    ~CacheDetections();
+    ~DetectionCache();
 
     nonstd::optional<Detections> fetch(int frame);
 
@@ -30,42 +30,23 @@ private:
     void store(const Detection& d, int frame);
 };
 
-class CachedDetectorWriter: public Detector {
+class CachedDetector: public Detector {
 public:
     /**
      * Constructs a detector from the given NetConfig
      */
-    CachedDetectorWriter(CacheDetections& cache, Detector& base);
-    ~CachedDetectorWriter() override;
+    CachedDetector(DetectionCache& cache, Detector& base, float conf);
+    ~CachedDetector() override;
 
-    Detections process(const cv::Mat &frame) override;
+    Detections process(const cv::Mat &frame, int frame_no) override;
 
 private:
     // disallow copying
-    CachedDetectorWriter(const CachedDetectorWriter&);
-    CachedDetectorWriter& operator=(const CachedDetectorWriter&);
+    CachedDetector(const CachedDetector&);
+    CachedDetector& operator=(const CachedDetector&);
 
     Detector& base;
-    CacheDetections& cache;
-    uint32_t frame_no;
-};
-
-class CachedDetectorReader: public Detector {
-public:
-    /**
-     * Constructs a detector from the given NetConfig
-     */
-    explicit CachedDetectorReader(CacheDetections& cache, float conf);
-    ~CachedDetectorReader() override;
-
-    Detections process(const cv::Mat &frame) override;
-
-private:
-    // disallow copying
-    CachedDetectorReader(const CachedDetectorReader&);
-    CachedDetectorReader& operator=(const CachedDetectorReader&);
-
-    CacheDetections& cache;
+    DetectionCache& cache;
     float conf;
 };
 

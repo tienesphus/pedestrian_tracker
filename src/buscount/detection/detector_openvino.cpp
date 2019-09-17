@@ -89,9 +89,9 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::Inf
     std::cout << "End Loading detector" << std::endl;
 }
 
-DetectorOpenVino::~DetectorOpenVino() {}
+DetectorOpenVino::~DetectorOpenVino() = default;
 
-Detections DetectorOpenVino::process(const cv::Mat &frame)
+Detections DetectorOpenVino::process(const cv::Mat &frame, int)
 {
     std::cout << "Preprocess" << std::endl;
     InferRequest::Ptr request = this->network.CreateInferRequestPtr();

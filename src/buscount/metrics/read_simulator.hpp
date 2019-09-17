@@ -25,22 +25,21 @@ public:
             current_frame_no(-1)
     {}
 
-    nonstd::optional<cv::Mat> next() {
+    nonstd::optional<std::tuple<cv::Mat, int>> next() {
 
         uint32_t frame_no_needed = std::round(*time * src_fps);
 
-        nonstd::optional<cv::Mat> frame;
+        nonstd::optional<std::tuple<cv::Mat, int>> frame;
         do {
             // Must always read at-least one frame
             ++current_frame_no;
-            frame = src();
+            auto img = src();
+            if (img) {
+                frame = std::make_tuple(*img, current_frame_no);
+            } else {
+                frame = nonstd::nullopt;
+            }
         } while (current_frame_no < frame_no_needed);
-
-        // Write the frame number in the first pixel
-        // Note: we don't care what Mat's actual datatype is - we can just treat it as a unint32 type.
-        if (frame) {
-            frame->at<uint32_t>(0, 0) = current_frame_no;
-        }
 
         return frame;
     }

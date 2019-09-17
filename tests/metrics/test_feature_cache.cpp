@@ -70,26 +70,26 @@ TEST_CASE( "Features Cache Wrapper works okay", "[feature_cache]" )
     cv::Mat test_image = load_test_image();
     cv::Mat fake_image = cv::Mat(test_image.rows, test_image.cols, test_image.type());
 
-    // put the same frame number in both images
-    test_image.at<uint32_t>(0, 0) = 12;
-    fake_image.at<uint32_t>(0, 0) = 12;
-
     Detection test_area_1(cv::Rect2f(0.1, 0.1, 0.2f, 0.5f), 0.6f);
     Detection test_area_2(cv::Rect2f(0.3, 0.6, 0.2f, 0.4f), 0.6f);
 
-    auto data_test_1 = cached_features.init(test_area_1, test_image);
-    auto data_test_2 = cached_features.init(test_area_2, test_image);
+    auto data_test_1 = cached_features.init(test_area_1, test_image, 1);
+    auto data_test_2 = cached_features.init(test_area_2, test_image, 2);
 
-    auto data_fake_1 = cached_features.init(test_area_1, fake_image);
-    auto data_fake_2 = cached_features.init(test_area_2, fake_image);
+    auto data_fake_1 = cached_features.init(test_area_1, fake_image, 1);
+    auto data_fake_2 = cached_features.init(test_area_2, fake_image, 2);
 
 
     // if the results are cached, then the fake_image should never have been queried,
     // so it shouldn't have noticed that the image was different. Thus, the features should
     // be exactly identical
+    uint32_t same = 0;
     for (size_t i = 0; i < data_test_1->features.size(); i++) {
         REQUIRE(data_test_1->features[i] == data_fake_1->features[i]);
         REQUIRE(data_test_2->features[i] == data_fake_2->features[i]);
-        REQUIRE(data_test_1->features[i] != data_test_2->features[i]);
+        if (data_test_1->features[i] == data_test_2->features[i])
+            ++same;
     }
+    // data_test_1 and data_test_2 must be mostly different (although a few elements can be the same)
+    REQUIRE(same < 10);
 }

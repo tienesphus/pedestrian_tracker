@@ -48,7 +48,7 @@ TEST_CASE( "Basic detection with Detector", "[detector_opencv]" ) {
     auto net_config = load_test_config(cv::dnn::DNN_BACKEND_OPENCV, cv::dnn::DNN_TARGET_CPU);
     DetectorOpenCV detector(net_config);
 
-    Detections results = detector.process(image);
+    Detections results = detector.process(image, 0);
 
     require_detections_in_spec(results);
 }
@@ -61,7 +61,7 @@ TEST_CASE( "Basic detection with Detector on Myraid", "[detector_opencv]" ) {
     auto net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
     DetectorOpenCV detector(net_config);
 
-    Detections results = detector.process(image);
+    Detections results = detector.process(image, 0);
 
     require_detections_in_spec(results);
 }
@@ -72,7 +72,7 @@ TEST_CASE( "Detection with aysnc and myraid", "[detector_opencv]" ) {
     auto net_config = load_test_config(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE, cv::dnn::DNN_TARGET_MYRIAD);
     DetectorOpenCV detector(net_config);
 
-    Detections results = detector.wait_async(detector.start_async(image));
+    Detections results = detector.wait_async(detector.start_async(image, 0));
 
     require_detections_in_spec(results);
 }
@@ -87,7 +87,7 @@ TEST_CASE( "Multiprocessing with async and Myraid", "[detector_opencv]" ) {
 
     for (int i = 0; i < iterations; i++) {
         cv::Mat image = load_test_image();
-        futures.push_back(detector.start_async(image));
+        futures.push_back(detector.start_async(image, 0));
     }
 
     for (int i = 0; i < iterations; i++) {

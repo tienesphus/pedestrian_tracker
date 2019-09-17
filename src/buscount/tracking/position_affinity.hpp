@@ -23,7 +23,7 @@ public:
 
     ~PositionAffinity() override = default;
 
-    std::unique_ptr<PositionData> init(const Detection& d, const cv::Mat& frame) const override;
+    std::unique_ptr<PositionData> init(const Detection& d, const cv::Mat& frame, int frame_no) const override;
 
     float affinity(const PositionData &detectionData, const PositionData &trackData) const override;
 

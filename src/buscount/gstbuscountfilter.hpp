@@ -60,7 +60,7 @@ class GstBusCountFilter : public Gst::Element
 
     /******** Object methods ********/
 
-    nonstd::optional<cv::Mat> next_frame();
+    nonstd::optional<std::tuple<cv::Mat, int>> next_frame();
     void push_frame(const cv::Mat &frame);
     bool test_quit();
 

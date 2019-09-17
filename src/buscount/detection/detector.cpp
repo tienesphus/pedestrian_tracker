@@ -6,11 +6,11 @@
 
 Detector::~Detector() = default;
 
-Detector::intermediate Detector::start_async(const cv::Mat &frame)
+Detector::intermediate Detector::start_async(const cv::Mat &frame, int frame_no)
 {
     return std::async(
             [=]() -> auto {
-                return this->process(frame);
+                return this->process(frame, frame_no);
             }
     );
 }

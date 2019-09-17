@@ -149,9 +149,9 @@ void TrackerComp::use_affinity(float weighting, std::unique_ptr<Affinity<TrackDa
     this->affinities.emplace_back(std::move(affinity), weighting);
 }
 
-std::vector<Event> TrackerComp::process(const Detections &detections, const cv::Mat& frame)
+std::vector<Event> TrackerComp::process(const Detections &detections, const cv::Mat& frame, int frame_no)
 {
-    merge(detections, frame);
+    merge(detections, frame, frame_no);
     return update();
 }
 
@@ -185,7 +185,7 @@ struct MergeOption {
     {}
 };
 
-std::vector<DetectionExtra> initialise_detections(const std::vector<Detection> &detection_results, const cv::Mat &frame,
+std::vector<DetectionExtra> initialise_detections(const std::vector<Detection> &detection_results, const cv::Mat &frame, int frame_no,
                                 const std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> &affinities)
 {
     std::cout << "  Initialise detection info" << std::endl;
@@ -195,7 +195,7 @@ std::vector<DetectionExtra> initialise_detections(const std::vector<Detection> &
         std::vector<std::unique_ptr<TrackData>> data;
         for (const std::tuple<std::unique_ptr<Affinity<TrackData>>, float>& tuple : affinities) {
             const std::unique_ptr<Affinity<TrackData>>& affinity = std::get<0>(tuple);
-            data.emplace_back(affinity->init(detection, frame));
+            data.emplace_back(affinity->init(detection, frame, frame_no));
         }
         // Add the extra detection info
         detections.emplace_back(detection, std::move(data), index++);
@@ -326,7 +326,7 @@ void delete_overlapping_tracks(std::vector<std::unique_ptr<Track>>&,
  * Looks for detections that are near current tracks. If there is something
  * close by, then the detection will be merged into it.
  */
-void TrackerComp::merge(const Detections &detection_results, const cv::Mat& frame)
+void TrackerComp::merge(const Detections &detection_results, const cv::Mat& frame, int frame_no)
 {
 
     // The basic process is:
@@ -337,7 +337,7 @@ void TrackerComp::merge(const Detections &detection_results, const cv::Mat& fram
 
     std::cout << "MERGING" << std::endl;
 
-    std::vector<DetectionExtra> detections = initialise_detections(detection_results.get_detections(), frame, this->affinities);
+    std::vector<DetectionExtra> detections = initialise_detections(detection_results.get_detections(), frame, frame_no, this->affinities);
     std::vector<MergeOption> merges = calculate_affinities(detections, this->tracks, this->affinities);
     merge_top(merges, this->affinities, this->merge_thresh);
     add_new_tracks(detections, this->tracks, this->index_count);

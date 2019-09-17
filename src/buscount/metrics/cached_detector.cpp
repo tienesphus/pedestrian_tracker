@@ -6,21 +6,21 @@
 
 const Detection DUMMY_DETECTION(cv::Rect2f(0.0f, 0.0f, 1.0f, 1.0f), 0.0f);
 
-CacheDetections::CacheDetections(const std::string& location, std::string tag):
+DetectionCache::DetectionCache(const std::string& location, std::string tag):
         db(nullptr), tag(std::move(tag)) {
     if (sqlite3_open(location.c_str(), &db) != SQLITE_OK) {
         throw std::logic_error("Cannot open database");
     }
 }
 
-CacheDetections::~CacheDetections() {
+DetectionCache::~DetectionCache() {
     if (db) {
         sqlite3_close(db);
     }
 }
 
 
-nonstd::optional<Detections> CacheDetections::fetch(int frame)
+nonstd::optional<Detections> DetectionCache::fetch(int frame)
 {
     std::vector<Detection> detections;
 
@@ -51,7 +51,7 @@ nonstd::optional<Detections> CacheDetections::fetch(int frame)
     }
 }
 
-void CacheDetections::clear(int frame)
+void DetectionCache::clear(int frame)
 {
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Detections WHERE frame = ? AND tag = ?", -1, &stmt, nullptr) != SQLITE_OK) {
@@ -68,7 +68,7 @@ void CacheDetections::clear(int frame)
 
 }
 
-void CacheDetections::clear()
+void DetectionCache::clear()
 {
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Detections WHERE tag = ?", -1, &stmt, nullptr) != SQLITE_OK) {
@@ -83,7 +83,7 @@ void CacheDetections::clear()
     }
 }
 
-void CacheDetections::store(const Detection& d, int frame)
+void DetectionCache::store(const Detection& d, int frame)
 {
     if (!exec(db, std::string("INSERT INTO Detections (frame, tag, x, y, w, h, c) VALUES (")
                   + "'" + std::to_string(frame) + "', "
@@ -97,7 +97,7 @@ void CacheDetections::store(const Detection& d, int frame)
     }
 }
 
-void CacheDetections::store(const Detections& detections, int frame) {
+void DetectionCache::store(const Detections& detections, int frame) {
     // Delete any existing detections
     clear(frame);
 
@@ -118,36 +118,25 @@ void CacheDetections::store(const Detections& detections, int frame) {
 
 
 
-CachedDetectorWriter::CachedDetectorWriter(CacheDetections& cache, Detector& base):
-    base(base), cache(cache), frame_no(0)
+CachedDetector::CachedDetector(DetectionCache& cache, Detector& base, float conf):
+    base(base), cache(cache), conf(conf)
 {}
 
-CachedDetectorWriter::~CachedDetectorWriter() = default;
+CachedDetector::~CachedDetector() = default;
 
-Detections CachedDetectorWriter::process(const cv::Mat &frame) {
-    auto detections = base.process(frame);
-    cache.store(detections, frame_no++);
-    return detections;
-}
-
-CachedDetectorReader::CachedDetectorReader(CacheDetections& cache, float conf):
-        cache(cache), conf(conf)
-{}
-
-CachedDetectorReader::~CachedDetectorReader() = default;
-
-Detections CachedDetectorReader::process(const cv::Mat &frame) {
-    u_int32_t frame_no = frame.at<uint32_t>(0, 0);
-    auto cached_detections = cache.fetch(frame_no);
-    if (cached_detections) {
-        std::vector<Detection> detections = cached_detections->get_detections();
+Detections CachedDetector::process(const cv::Mat &frame, int frame_no) {
+    auto opt_detections = cache.fetch(frame_no);
+    if (opt_detections.has_value()) {
+        std::vector<Detection> detections = opt_detections->get_detections();
         std::vector<Detection> filtered;
         std::copy_if(detections.begin(), detections.end(), std::back_inserter(filtered),
-                [this](const Detection& d) -> bool {
-                    return d.confidence >= this->conf;
-                });
+                     [this](const Detection &d) -> bool {
+                         return d.confidence >= this->conf;
+                     });
         return Detections(filtered);
     } else {
-        throw std::logic_error("Haven't run detection code yet for frame " + std::to_string(frame_no));
+        auto detections = base.process(frame, frame_no);
+        cache.store(detections, frame_no);
+        return detections;
     }
 }

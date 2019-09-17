@@ -41,7 +41,7 @@ public:
      * @param frame the image the person was detected in
      * @return the initialised custom data
      */
-    virtual std::unique_ptr<T> init(const Detection& d, const cv::Mat& frame) const = 0;
+    virtual std::unique_ptr<T> init(const Detection& d, const cv::Mat& frame, int frame_no) const = 0;
 
     /**
      * Determines the affinity between a 'Detection' and a 'Track'.
@@ -106,7 +106,7 @@ public:
      * Processes some detections
      * @returns a snapshot of the new state of the world
      */
-    std::vector<Event> process(const Detections &detections, const cv::Mat& frame) override;
+    std::vector<Event> process(const Detections &detections, const cv::Mat& frame, int frame_no) override;
     
     /**
      * Draws the current state
@@ -125,7 +125,7 @@ private:
     std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> affinities;
 
     void use_affinity(float weighting, std::unique_ptr<Affinity<TrackData>> affinity);
-    void merge(const Detections &detections,  const cv::Mat& frame);
+    void merge(const Detections &detections,  const cv::Mat& frame, int frame_no);
     std::vector<Event> update();
 };
 
@@ -147,8 +147,8 @@ public:
 
     ~AffAdaptor() override = default;;
 
-    std::unique_ptr<TrackData> init(const Detection& d, const cv::Mat& frame) const override {
-        return delegate->init(d, frame);
+    std::unique_ptr<TrackData> init(const Detection& d, const cv::Mat& frame, int frame_no) const override {
+        return delegate->init(d, frame, frame_no);
     }
 
     float affinity(const TrackData &detectionData, const TrackData &trackData) const override {

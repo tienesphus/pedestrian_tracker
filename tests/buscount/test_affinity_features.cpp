@@ -35,9 +35,9 @@ TEST_CASE( "Features_are_similar", "[affinity_features]" ) {
     Detection d2(cv::Rect2f(139/w, 7/h, 89/w, 177/h), 1.0); // same guy
     Detection d3(cv::Rect2f(809/w, 7/h, 89/w, 177/h), 1.0); // different guy
 
-    auto t1 = affinity.init(d1, frame);
-    auto t2 = affinity.init(d2, frame);
-    auto t3 = affinity.init(d3, frame);
+    auto t1 = affinity.init(d1, frame, 0);
+    auto t2 = affinity.init(d2, frame, 1);
+    auto t3 = affinity.init(d3, frame, 2);
 
     float c1_1 = affinity.affinity(*t1, *t1);
     float c1_2 = affinity.affinity(*t1, *t2);

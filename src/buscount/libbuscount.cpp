@@ -64,7 +64,7 @@ void BusCounter::run(RunStyle style, bool draw)
 template <class T>
 using ptr = std::shared_ptr<T>;
 
-void BusCounter::handle_events(const std::vector<Event>& events)
+void BusCounter::handle_events(const std::vector<Event>& events, const cv::Mat& frame, int frame_no)
 {
     for (Event e : events) {
         // handle the events internally
@@ -78,7 +78,7 @@ void BusCounter::handle_events(const std::vector<Event>& events)
         }
 
         // handle the event externally
-        _event_handle(e);
+        _event_handle(e, frame, frame_no);
     }
 }
 
@@ -135,12 +135,12 @@ void BusCounter::run_parallel(bool do_draw)
 
     std::cout << "Init functions" << std::endl;
 
-    flow::source_node<PtrMat> src_node(g,
-            [this, &stop](PtrMat &frame) -> bool {
+    flow::source_node<std::tuple<PtrMat, int>> src_node(g,
+            [this, &stop](std::tuple<PtrMat, int> &output) -> bool {
                 ScopeLog log("SRC");
-                nonstd::optional<Mat> got_frame = this->_src();
+                nonstd::optional<std::tuple<Mat, int>> got_frame = this->_src();
                 if (got_frame.has_value()) {
-                    frame = cv::makePtr<Mat>(*got_frame);
+                    output = std::make_tuple(cv::makePtr<Mat>(std::get<0>(*got_frame)), std::get<1>(*got_frame));
                 } else {
                     stop = true;
                 }
@@ -156,7 +156,7 @@ void BusCounter::run_parallel(bool do_draw)
     //           will be processed at once. Without limiting, runnaway
     //           occurs (src will keep producing into an unlimited buffer)
     const int MAX_FRAMES = 2;
-    flow::limiter_node<PtrMat> throttle_node(g, MAX_FRAMES);
+    flow::limiter_node<std::tuple<PtrMat, int>> throttle_node(g, MAX_FRAMES);
 
 
     // The detect nodes all world together through the Detector object.
@@ -165,10 +165,12 @@ void BusCounter::run_parallel(bool do_draw)
     
     // pre_detect: Preprocesses the image into a 'blob' so it is ready 
     //             to feed into a detection algorithm
-    flow::function_node<PtrMat, Detector::intermediate> start_detection(g, flow::serial,
-            [this](PtrMat mat) -> auto {
+    flow::function_node<std::tuple<PtrMat, int>, Detector::intermediate> start_detection(g, flow::serial,
+            [this](std::tuple<PtrMat, int> input) -> auto {
                 ScopeLog log("DETECTION");
-                return this->_detector.start_async(*mat);
+                PtrMat mat = std::get<0>(input);
+                int frame_no = std::get<1>(input);
+                return this->_detector.start_async(*mat, frame_no);
             }
     );
 
@@ -181,26 +183,27 @@ void BusCounter::run_parallel(bool do_draw)
     );
 
     // joint: combines the results from the original image and the detection data
-    typedef std::tuple<PtrMat, ptr<Detections>> joint_output;
+    typedef std::tuple<std::tuple<PtrMat, int>, ptr<Detections>> joint_output;
     flow::join_node<joint_output> joint_node(g);
 
     // track: Tracks detections
-    typedef std::tuple<PtrMat, ptr<Detections>> track_output;
+    typedef std::tuple<std::tuple<PtrMat, int>, ptr<Detections>> track_output;
     flow::function_node<joint_output, track_output> track_node(g, flow::serial,
-            [this](joint_output input) -> auto {
+            [this](joint_output input) -> track_output {
                 ScopeLog log("TRACK");
-                auto frame = std::get<0>(input);
+                PtrMat frame = std::get<0>(std::get<0>(input));
+                int frame_no = std::get<1>(std::get<0>(input));
                 auto detections = std::get<1>(input);
-                auto events = this->_tracker.process(*detections, *frame);
-                handle_events(events);
+                auto events = this->_tracker.process(*detections, *frame, frame_no);
+                handle_events(events, *frame, frame_no);
                 return input;
             }
     );
 
     flow::function_node<track_output, PtrMat> draw_node(g, flow::serial,
-            [this](track_output input) -> auto {
+            [this](track_output input) -> PtrMat {
                 ScopeLog log("DRAW");
-                auto frame = std::get<0>(input);
+                PtrMat frame = std::get<0>(std::get<0>(input));
                 auto detections = std::get<1>(input);
                 detections->draw(*frame);
                 geom::draw_world_count(*frame, inside_count, outside_count);
@@ -213,9 +216,10 @@ void BusCounter::run_parallel(bool do_draw)
     );
 
     flow::function_node<track_output, PtrMat> no_draw_node(g, flow::serial,
-            [](track_output input) -> auto {
+            [](track_output input) -> PtrMat {
                 ScopeLog log("NO DRAW");
-                return std::get<0>(input);
+                return std::get<0>(std::get<0>(input));
+
             }
     );
 
@@ -297,15 +301,16 @@ void BusCounter::run_serial(bool do_draw)
     while (true) {
 
         // Read at least once. Skip if source FPS is different from target FPS
-        nonstd::optional<cv::Mat> got_frame = _src();
+        nonstd::optional<std::tuple<cv::Mat, int>> got_frame = _src();
         if (!got_frame)
             break;
 
-        auto frame = *got_frame;
-        auto detections = _detector.process(frame);
-        auto events = _tracker.process(detections, frame);
+        cv::Mat frame = std::get<0>(*got_frame);
+        int frame_no = std::get<1>(*got_frame);
+        auto detections = _detector.process(frame, frame_no);
+        auto events = _tracker.process(detections, frame, frame_no);
 
-        handle_events(events);
+        handle_events(events, frame, frame_no);
 
         if (do_draw) {
             detections.draw(frame);

@@ -48,9 +48,9 @@ int main() {
             0.6,                 // similarity thresh
     };
 
-    //std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
-    //VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
-    auto cv_cap = std::make_shared<cv::VideoCapture>(0);
+    std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
+    //auto cv_cap = std::make_shared<cv::VideoCapture>(0);
 
     std::cout << "Loading plugin" << std::endl;
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
@@ -79,17 +79,17 @@ int main() {
     });
 
     BusCounter counter(detector, tracker, world_config,
-            //[&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
-            [&cv_cap]() -> nonstd::optional<cv::Mat> {
+            [&cap]() -> nonstd::optional<std::tuple<cv::Mat, int>> { return cap.next(); },
+            /*[&cv_cap]() -> nonstd::optional<cv::Mat> {
                 cv::Mat frame;
                 cv_cap->read(frame);
                 cv::resize(frame, frame, cv::Size(640, 480));
                 return frame;
-            },
+            },*/
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
             []() { return cv::waitKey(20) == 'q'; },
-            [&data](Event event) {
-                std::cout << "EVENT: " << name(event) << std::endl;
+            [&data](Event event, const cv::Mat&, int frame_no) {
+                std::cout << "EVENT: " << name(event) << " " << frame_no << " " << std::endl;
                 data.enter_event(event);
             }
     );

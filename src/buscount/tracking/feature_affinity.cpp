@@ -52,7 +52,7 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
 
 FeatureAffinity::~FeatureAffinity() = default;
 
-std::unique_ptr<FeatureData> FeatureAffinity::init(const Detection& d, const cv::Mat& frame) const
+std::unique_ptr<FeatureData> FeatureAffinity::init(const Detection& d, const cv::Mat& frame, int) const
 {
     int w = frame.cols;
     int h = frame.rows;

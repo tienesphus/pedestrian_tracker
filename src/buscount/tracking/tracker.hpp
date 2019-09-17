@@ -27,7 +27,7 @@ public:
      * Processes some detections
      * @returns all the events that occurred this frame
      */
-    virtual std::vector<Event> process(const Detections &detections, const cv::Mat& frame) = 0;
+    virtual std::vector<Event> process(const Detections &detections, const cv::Mat& frame, int frame_no) = 0;
 
     /**
      * Draws the current state

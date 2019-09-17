@@ -26,7 +26,7 @@ DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
 
 DetectorOpenCV::~DetectorOpenCV() {}
 
-Detections DetectorOpenCV::process(const cv::Mat &frame) {
+Detections DetectorOpenCV::process(const cv::Mat &frame, int) {
     cv::Mat blob = cv::dnn::blobFromImage(frame, config.scale, config.networkSize, this->config.mean);
 
     cv::Mat result;

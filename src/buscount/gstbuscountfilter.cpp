@@ -178,7 +178,7 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
                 std::bind(&GstBusCountFilter::next_frame, this),
                 std::bind(&GstBusCountFilter::push_frame, this, std::placeholders::_1),
                 std::bind(&GstBusCountFilter::test_quit, this),
-                [](Event){}
+                [](Event, const cv::Mat&, int){}
         ),
         buscount_running(false),
         pixel_size(format_descriptions[0].size),
@@ -201,8 +201,9 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
 }
 
 // Private methods
-nonstd::optional<cv::Mat> GstBusCountFilter::next_frame()
+nonstd::optional<std::tuple<cv::Mat, int>> GstBusCountFilter::next_frame()
 {
+    static int frame_no = 0;
     std::unique_lock<std::mutex> lk(cond_m);
 
     GST_DEBUG("Getting next frame");
@@ -216,7 +217,7 @@ nonstd::optional<cv::Mat> GstBusCountFilter::next_frame()
     cv::Mat ret(frame_in_queue->pop());
     frame_queue_popped.notify_one();
 
-    return ret;
+    return std::make_tuple(ret, ++frame_no);
 }
 
 void GstBusCountFilter::push_frame(const cv::Mat &frame)

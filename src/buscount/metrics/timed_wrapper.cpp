@@ -11,7 +11,7 @@ TimedDetector::TimedDetector(Detector &delegate, double *time, double detection_
 
 TimedDetector::~TimedDetector() = default;
 
-Detections TimedDetector::process(const cv::Mat &frame) {
+Detections TimedDetector::process(const cv::Mat &frame, int frame_no) {
     *time += detection_time;
-    return delegate.process(frame);
+    return delegate.process(frame, frame_no);
 }

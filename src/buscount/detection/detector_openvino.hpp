@@ -21,9 +21,9 @@ public:
      */
     DetectorOpenVino(const NetConfig &config, InferenceEngine::InferencePlugin &plugin);
 
-    virtual ~DetectorOpenVino();
+    ~DetectorOpenVino() override;
 
-    Detections process(const cv::Mat &frame) override;
+    Detections process(const cv::Mat &frame, int frame_no) override;
 
 private:
     // disallow copying

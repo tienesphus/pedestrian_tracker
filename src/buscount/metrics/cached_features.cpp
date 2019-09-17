@@ -130,15 +130,14 @@ CachedFeatures::CachedFeatures(const FeatureAffinity& features, FeatureCache& ca
     :features(features), cache(cache)
 {}
 
-std::unique_ptr<FeatureData> CachedFeatures::init(const Detection &d, const cv::Mat &frame) const
+std::unique_ptr<FeatureData> CachedFeatures::init(const Detection &d, const cv::Mat &frame, int frame_no) const
 {
-    int frame_no = frame.at<int32_t>(0, 0);
     nonstd::optional<FeatureData> cached = cache.fetch(frame_no, d);
     if (cached) {
         FeatureData data_cached = *cached;
         return std::make_unique<FeatureData>(data_cached);
     } else {
-        auto data = features.init(d, frame);
+        auto data = features.init(d, frame, frame_no);
         cache.store(*data, frame_no, d);
         return data;
     }

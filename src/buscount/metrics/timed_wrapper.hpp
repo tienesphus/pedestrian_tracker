@@ -12,7 +12,7 @@ public:
 
     ~TimedDetector() override;
 
-    Detections process(const cv::Mat &frame) override;
+    Detections process(const cv::Mat &frame, int frame_no) override;
 
 private:
     Detector& delegate;
@@ -29,9 +29,9 @@ public:
         :delegate(delegate), time(time), detection_time(process_time)
     {}
 
-    std::unique_ptr<T> init(const Detection &d, const cv::Mat &frame) const override {
+    std::unique_ptr<T> init(const Detection &d, const cv::Mat &frame, int frame_no) const override {
         *time += detection_time;
-        return delegate.init(d, frame);
+        return delegate.init(d, frame, frame_no);
     }
 
     float affinity(const T &detectionData, const T &trackData) const override {

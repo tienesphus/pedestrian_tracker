@@ -29,7 +29,7 @@ class CachedFeatures: public Affinity<FeatureData> {
 public:
     CachedFeatures(const FeatureAffinity& features, FeatureCache& cache);
 
-    std::unique_ptr<FeatureData> init(const Detection &d, const cv::Mat &frame) const override;
+    std::unique_ptr<FeatureData> init(const Detection &d, const cv::Mat &frame, int frame_no) const override;
 
     float affinity(const FeatureData &detectionData, const FeatureData &trackData) const override;
 
