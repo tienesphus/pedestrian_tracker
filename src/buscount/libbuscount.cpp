@@ -1,5 +1,3 @@
-#include <utility>
-
 #include "libbuscount.hpp"
 #include "tick_counter.hpp"
 #include "cv_utils.hpp"
@@ -7,29 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <unistd.h>
-
-#include <tbb/concurrent_queue.h>
-#include <tbb/flow_graph.h>
-#include <tbb/mutex.h>
-#include <tbb/tick_count.h>
-
-#include <opencv2/highgui.hpp>
-
-/**
- * A simple logging class that logs when it is created and when it is destroyed.
- */
-class ScopeLog {
-public:
-    explicit ScopeLog(std::string tag):tag(std::move(tag)) {
-        std::cout << "START " << this->tag << std::endl;
-    }
-    ~ScopeLog() {
-        std::cout << "END " << this->tag << std::endl;
-    }
-
-private:
-    std::string tag;
-};
+#include <deque>
 
 BusCounter::BusCounter(
         Detector& detector,
@@ -83,215 +59,6 @@ void BusCounter::handle_events(const std::vector<Event>& events, const cv::Mat& 
 }
 
 //
-// Builds and runs a flow graph with the the given configuration options
-//
-void BusCounter::run_parallel(bool do_draw)
-{
-    typedef cv::Mat Mat;
-    typedef ptr<Mat> PtrMat;
-    namespace flow = tbb::flow;
-
-    /*
-     * This code below produces the following flow graph:
-     * 
-     *             src
-     *              | Ptr<Mat>
-     *              v
-     *   +-->---throttle
-     *   |          | Ptr<Mat>
-     *   |          |
-     *   |        +-+---> start_detection
-     *   |        |           | Detector::intermediate
-     *   |        |           v
-     *   |        |       wait_detection
-     *   |        |           | Ptr<Detections>
-     *   |        |   +-------+
-     *   |        v   v
-     *   |        joint
-     *   |          | tuple<Mat, Detections>
-     *   |          v
-     *   |        track
-     *   |          | tuple<Mat, Detections, WorldState>
-     *   |       ...+....
-     *   |       :      :
-     *   |     draw    no_draw
-     *   |       :      :
-     *   |       :..+...:
-     *   |          |  Ptr<Mat>
-     *   |          v
-     *   |        stream              
-     *   |          | continue_msg
-     *   |          v
-     *   |        monitor
-     *   |          | continue_msg
-     *   +----------+
-     */            
-    
-    // shared variables
-    flow::graph g;
-    std::atomic_bool stop(false);
-    tbb::concurrent_queue<PtrMat> display_queue;
-    TickCounter<> counter;
-
-    std::cout << "Init functions" << std::endl;
-
-    flow::source_node<std::tuple<PtrMat, int>> src_node(g,
-            [this, &stop](std::tuple<PtrMat, int> &output) -> bool {
-                ScopeLog log("SRC");
-                nonstd::optional<std::tuple<Mat, int>> got_frame = this->_src();
-                if (got_frame.has_value()) {
-                    output = std::make_tuple(cv::makePtr<Mat>(std::get<0>(*got_frame)), std::get<1>(*got_frame));
-                } else {
-                    stop = true;
-                }
-                return !stop;
-            }, false // false; don't start until we call src_node.activate below
-    );
-
-
-    std::cout << "Init limiter" << std::endl;
-
-    // throttle: by default, infinite frames can be in the graph at one.
-    //           This node will limit the graph so that only MAX_FRAMES
-    //           will be processed at once. Without limiting, runnaway
-    //           occurs (src will keep producing into an unlimited buffer)
-    const int MAX_FRAMES = 2;
-    flow::limiter_node<std::tuple<PtrMat, int>> throttle_node(g, MAX_FRAMES);
-
-
-    // The detect nodes all world together through the Detector object.
-    // Note that the detect node is the bottle-neck in the pipeline, thus,
-    // as much as possible should be moved into pre_detect or post_detect.
-    
-    // pre_detect: Preprocesses the image into a 'blob' so it is ready 
-    //             to feed into a detection algorithm
-    flow::function_node<std::tuple<PtrMat, int>, Detector::intermediate> start_detection(g, flow::serial,
-            [this](std::tuple<PtrMat, int> input) -> auto {
-                ScopeLog log("DETECTION");
-                PtrMat mat = std::get<0>(input);
-                int frame_no = std::get<1>(input);
-                return this->_detector.start_async(*mat, frame_no);
-            }
-    );
-
-    // detect: Takes the preprocessed blob
-    flow::function_node<Detector::intermediate, ptr<Detections>> wait_detection(g, flow::serial,
-            [this](Detector::intermediate request) -> ptr<Detections> {
-                ScopeLog log("WAIT DETECTION");
-                return cv::makePtr<Detections>(this->_detector.wait_async(request));
-            }
-    );
-
-    // joint: combines the results from the original image and the detection data
-    typedef std::tuple<std::tuple<PtrMat, int>, ptr<Detections>> joint_output;
-    flow::join_node<joint_output> joint_node(g);
-
-    // track: Tracks detections
-    typedef std::tuple<std::tuple<PtrMat, int>, ptr<Detections>> track_output;
-    flow::function_node<joint_output, track_output> track_node(g, flow::serial,
-            [this](joint_output input) -> track_output {
-                ScopeLog log("TRACK");
-                PtrMat frame = std::get<0>(std::get<0>(input));
-                int frame_no = std::get<1>(std::get<0>(input));
-                auto detections = std::get<1>(input);
-                auto events = this->_tracker.process(*detections, *frame, frame_no);
-                handle_events(events, *frame, frame_no);
-                return input;
-            }
-    );
-
-    flow::function_node<track_output, PtrMat> draw_node(g, flow::serial,
-            [this](track_output input) -> PtrMat {
-                ScopeLog log("DRAW");
-                PtrMat frame = std::get<0>(std::get<0>(input));
-                auto detections = std::get<1>(input);
-                detections->draw(*frame);
-                geom::draw_world_count(*frame, inside_count, outside_count);
-                // TODO possible concurrency issue of tracker updating before getting drawn
-                this->_tracker.draw(*frame);
-                geom::draw_world_config(*frame, _world_config);
-
-                return frame;
-            }
-    );
-
-    flow::function_node<track_output, PtrMat> no_draw_node(g, flow::serial,
-            [](track_output input) -> PtrMat {
-                ScopeLog log("NO DRAW");
-                return std::get<0>(std::get<0>(input));
-
-            }
-    );
-
-    // stream: Writes images to a stream
-    flow::function_node<PtrMat> stream_node(g, flow::serial,
-            [&display_queue](PtrMat input) -> void {
-                ScopeLog log("DISPLAY");
-                display_queue.push(input);
-            }
-    );
-
-    // stream: Writes images to a stream
-    flow::function_node<flow::continue_msg> fps_node(g, flow::serial,
-            [&counter](flow::continue_msg) -> void {
-                ScopeLog log("TICK");
-                auto fps = counter.process_tick();
-                std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
-            }
-    );
-    
-    std::cout << "making edges" << std::endl;
-
-    // Setup flow dependencies
-    flow::make_edge(src_node,         throttle_node);
-    flow::make_edge(throttle_node,    start_detection);
-    flow::make_edge(start_detection,  wait_detection);
-    flow::make_edge(throttle_node,    flow::input_port<0>(joint_node));
-    flow::make_edge(wait_detection,   flow::input_port<1>(joint_node));
-    flow::make_edge(joint_node,       track_node);
-
-    if (do_draw)
-    {
-        flow::make_edge(track_node, draw_node);
-        flow::make_edge(draw_node, stream_node);
-    }
-    else
-    {
-        flow::make_edge(track_node, no_draw_node);
-        flow::make_edge(no_draw_node, stream_node);
-    }
-    flow::make_edge(stream_node,  fps_node);
-    flow::make_edge(fps_node,     throttle_node.decrement);
-    
-    // Begin running stuff
-    std::cout << "Starting video" << std::endl;
-    src_node.activate();
-    std::cout << "Video started" << std::endl;
-    
-    // The display code _must_ be run on the main thread. Thus, we pass
-    // display frames here through a queue
-    while (!stop)
-    {
-        PtrMat display_img;
-        if (display_queue.try_pop(display_img))
-            _dest(*display_img);
-
-        // TODO stop display code hogging CPU
-        // it actually doesn't currently because _test_exit() calls wait_key()
-        // but that is very brittle.
-        if (_test_exit()) {
-            stop = true;
-            break;
-        }
-    }
-    
-    // Allow the last few frames to pass through
-    // This actually isn't needed since g's destructor will call it,
-    // but I like to have it explicit.
-    g.wait_for_all();
-}
-
-//
 // A single threaded version of run_parallel. Useful for debugging non-threading related issues.
 //
 void BusCounter::run_serial(bool do_draw)
@@ -326,4 +93,91 @@ void BusCounter::run_serial(bool do_draw)
         if (_test_exit())
             break;
     }
+}
+
+void BusCounter::run_parallel(bool do_draw)
+{
+    std::mutex detection_lock, tracking_lock;
+
+    auto process_frame = [&](cv::Mat frame, int frame_no) -> std::tuple<cv::Mat, int, std::vector<Event>> {
+            // Run the detector
+            detection_lock.lock();
+            auto detections_promise = _detector.start_async(frame, frame_no);
+            detection_lock.unlock();
+
+            // Wait for results
+            const auto& detections = detections_promise.get();
+
+            // Track the results
+            tracking_lock.lock();
+            auto events = _tracker.process(detections, frame, frame_no);
+            tracking_lock.unlock();
+
+            // Draw stuff if needed
+            if (do_draw) {
+                detections.draw(frame);
+                geom::draw_world_count(frame, inside_count, outside_count);
+                geom::draw_world_config(frame, _world_config);
+                tracking_lock.lock();
+                _tracker.draw(frame);
+                tracking_lock.unlock();
+            }
+
+            return std::make_tuple(std::move(frame), frame_no, std::move(events));
+    };
+
+    const uint8_t MAX_FRAMES = 2;
+    std::deque<std::shared_future<std::tuple<cv::Mat, int, std::vector<Event>>>> processing;
+    bool finished = false;
+    TickCounter<> counter;
+
+    // Initialise a few start-up frames
+    for (auto i = 0; i < MAX_FRAMES; i++) {
+        // read the frame
+        auto got_frame = _src();
+        if (!got_frame) {
+            break;
+        }
+        cv::Mat frame = std::get<0>(*got_frame);
+        int frame_no = std::get<1>(*got_frame);
+
+        // start the frame processing
+        processing.emplace_back(std::async(process_frame, std::move(frame), frame_no));
+    }
+
+    // Keep processing frames until we're done
+    while (!processing.empty()) {
+        std::cout << "WAITING" << std::endl;
+        // Retrieve the processed data
+        std::tuple<cv::Mat, int, std::vector<Event>> result = processing.front().get();
+        processing.pop_front();
+        cv::Mat frame = std::get<0>(result);
+        int frame_no = std::get<1>(result);
+        std::vector<Event> events = std::get<2>(result);
+
+        // Calculate the FPS
+        auto fps = counter.process_tick();
+        std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
+
+        std::cout << "DISPLAYING" << std::endl;
+        // Output the frame/data
+        handle_events(events, frame, frame_no);
+        _dest(frame);
+        if (_test_exit()) {
+            finished = true;
+        }
+
+        std::cout << "READING" << std::endl;
+        // Get a new frame
+        auto got_frame = finished ? nonstd::nullopt : _src();
+        if (!got_frame) {
+            finished = true;
+        } else {
+            // start the frame processing
+            cv::Mat new_frame = std::get<0>(*got_frame);
+            int new_frame_no = std::get<1>(*got_frame);
+            processing.emplace_back(std::async(process_frame, std::move(new_frame), new_frame_no));
+        }
+    }
+
 }
