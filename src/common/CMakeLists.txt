@@ -1,7 +1,7 @@
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SQLITE3 REQUIRED sqlite3)
 
-add_library(common STATIC
+add_library(common SHARED
         event.cpp
         geom.cpp
         data_fetch.cpp
