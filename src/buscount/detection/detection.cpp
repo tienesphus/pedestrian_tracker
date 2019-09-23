@@ -29,10 +29,23 @@ Detections::Detections(std::vector<Detection> detections):
 {
 }
 
+Detections::Detections() =  default;
+
 const std::vector<Detection>& Detections::get_detections() const
 {
     return this->detections;
 }
+
+void Detections::push_back(const Detection& d)
+{
+    detections.push_back(d);
+}
+
+void Detections::emplace_back(const cv::Rect2f& r, float conf)
+{
+    detections.emplace_back(r, conf);
+}
+
 
 void Detections::draw(cv::Mat& display) const
 {

@@ -22,12 +22,13 @@ public:
             src(std::move(src)),
             src_fps(src_fps),
             time(time),
-            current_frame_no(-1)
+            current_frame_no(-1),
+            time_offset(*time)
     {}
 
     nonstd::optional<std::tuple<cv::Mat, int>> next() {
 
-        uint32_t frame_no_needed = std::round(*time * src_fps);
+        uint32_t frame_no_needed = std::round((*time - time_offset) * src_fps);
 
         nonstd::optional<std::tuple<cv::Mat, int>> frame;
         do {
@@ -49,7 +50,7 @@ public:
      * @param filename the name of the video
      * @return the syncronised video
      */
-    static ReadSimulator<> from_video(const std::string& filename, double* time) {
+    static ReadSimulator<> from_video(const std::string& filename, const double* time) {
         return from_capture(std::make_shared<cv::VideoCapture>(filename), time);
     }
 
@@ -67,11 +68,13 @@ public:
         }, src_fps, time);
     }
 
+
 private:
     std::function<src_cb_t> src;
     float src_fps;
     const double* time;
     uint32_t current_frame_no;
+    const double time_offset;
 };
 
 

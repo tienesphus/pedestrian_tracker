@@ -2,6 +2,7 @@ add_library(metrics STATIC
         cached_detector.cpp
         cached_features.cpp
         timed_wrapper.cpp
+        compare_gt.cpp
 )
 target_link_libraries(metrics PUBLIC buscount_static)
 

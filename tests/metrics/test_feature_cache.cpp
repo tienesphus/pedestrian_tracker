@@ -14,14 +14,28 @@ TEST_CASE( "Features are cached and retrieved", "[feature_cache]" )
 
     cache.store(FeatureData({1, 2, 3, 4}), 5, Detection(cv::Rect2d(0.1, 0.2, 0.3, 0.4), 0.5));
 
-    auto data = cache.fetch(5, Detection(cv::Rect2d(0.1, 0.2, 0.3, 0.4), 0.5));
+    // Read from same instance
+    auto data1 = cache.fetch(5, Detection(cv::Rect2d(0.1, 0.2, 0.3, 0.4), 0.5));
 
-    REQUIRE(data.has_value());
+    // Read from a different instance
+    FeatureCache cache2(SOURCE_DIR "/data/metrics.db", "unit_tests_features");
+    auto data2 = cache2.fetch(5, Detection(cv::Rect2d(0.1, 0.2, 0.3, 0.4), 0.5));
 
-    REQUIRE(data->features[0] == 1);
-    REQUIRE(data->features[1] == 2);
-    REQUIRE(data->features[2] == 3);
-    REQUIRE(data->features[3] == 4);
+    REQUIRE(data1.has_value());
+    REQUIRE(data2.has_value());
+
+    REQUIRE(data1->features.size() == 4);
+    REQUIRE(data2->features.size() == 4);
+
+    REQUIRE(data1->features[0] == 1);
+    REQUIRE(data1->features[1] == 2);
+    REQUIRE(data1->features[2] == 3);
+    REQUIRE(data1->features[3] == 4);
+
+    REQUIRE(data2->features[0] == 1);
+    REQUIRE(data2->features[1] == 2);
+    REQUIRE(data2->features[2] == 3);
+    REQUIRE(data2->features[3] == 4);
 }
 
 TEST_CASE( "Two Features are cached and retrieved", "[feature_cache]" )
@@ -92,4 +106,7 @@ TEST_CASE( "Features Cache Wrapper works okay", "[feature_cache]" )
     }
     // data_test_1 and data_test_2 must be mostly different (although a few elements can be the same)
     REQUIRE(same < 10);
+
+    // The feature network used produces a 256d vector. Make sure all the elements are retrieved
+    REQUIRE(data_test_1->features.size() == 256);
 }

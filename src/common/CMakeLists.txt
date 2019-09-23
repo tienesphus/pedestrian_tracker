@@ -7,6 +7,7 @@ add_library(common SHARED
         data_fetch.cpp
         config.cpp
         sql_helper.cpp
+        time_utils.cpp
 )
 
 target_link_libraries(common sqlite3 jsoncpp)

@@ -8,6 +8,7 @@
 #include "read_simulator.hpp"
 #include "cached_features.hpp"
 #include "timed_wrapper.hpp"
+#include "compare_gt.hpp"
 
 #include <data_fetch.hpp>
 
@@ -19,56 +20,47 @@
 #include <iostream>
 #include <unistd.h>
 #include <fstream>
+#include <iomanip>
+#include <time_utils.hpp>
 
-int main_file(const std::string& input) {
+int main_file(const std::string& input, Detector& detector, Tracker& tracker, WorldConfig& world_config,
+              std::vector<Bucket> gt, std::map<stoptime, StopData> sut, const double* time) {
 
-    FeatureAffinity::NetConfig tracker_config {
-            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
-            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
-            cv::Size(48, 96),    // input size
-            0.6,                 // similarity thresh
-    };
-    DetectorOpenVino::NetConfig net_config {
-            0.1f,               // thresh
-            15,                 // clazz
-            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
-            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
-    };
-
-    double time = 0;
-
-    //std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
-    auto cap = ReadSimulator<>::from_video(input, &time);
-
-    WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config.csv");
-
-    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
-
-    DetectorOpenVino detector(net_config, plugin);
-    DetectionCache cache(SOURCE_DIR "/data/metrics.db", input);
-    CachedDetector cached_detector(cache, detector, 0.6);
-    TimedDetector timedDetector(cached_detector, &time, 1/11.0);
-
-    TrackerComp tracker(world_config, 0.5);
-    FeatureAffinity affinity(tracker_config, plugin);
-    FeatureCache feature_cache(SOURCE_DIR "/data/metrics.db", input);
-    CachedFeatures cached_features(affinity, feature_cache);
-    tracker.use<TimedAffinity<FeatureData>, FeatureData>(0.5, cached_features, &time, 1/20.0);
-    tracker.use<PositionAffinity, PositionData>(0.5, 0.7);
+    /*int frames = cv::VideoCapture(input).get(cv::CAP_PROP_FRAME_COUNT);
+    cv::Mat dummy(1, 1, CV_8U);
+    auto cap = ReadSimulator<>([&dummy, &frames]() -> nonstd::optional<cv::Mat> {
+        --frames;
+        if (frames >= 0)
+            return dummy;
+        else {
+            return nonstd::nullopt;
+        }
+    }, 25, time);*/
+    auto cap = ReadSimulator<>::from_video(input, time);
 
     std::ofstream output(input + ".new-results.csv");
 
-    BusCounter counter(timedDetector, tracker, world_config,
-            [&cap]() -> nonstd::optional<std::tuple<cv::Mat, int>> { return cap.next(); },
+    BusCounter counter(detector, tracker, world_config,
+            [&cap]() -> auto {
+                return cap.next();
+            },
             [](const cv::Mat& frame) {
                 cv::imshow("output", frame);
             },
             []() {
+                //return false;
                 return cv::waitKey(1) == 'q';
             },
-            [&output](Event event, const cv::Mat&, int frame_no) {
+            [&output, &gt, &sut, &input](Event event, const cv::Mat&, int frame_no) {
                 std::cout << "EVENT: " << name(event) << " " << frame_no << std::endl;
-                output << frame_no << name(event) << std::endl;
+                output << frame_no << " " << name(event) << std::endl;
+
+                auto time = calctime(input, frame_no);
+                std::cout << "  OCCURED AT: " << date_to_string(time, "%Y-%m-%d--%H-%M-%S") << std::endl;
+                auto close = closest(time, gt);
+                std::cout << "  ASSIGING STOP: " << date_to_string(close,  "%Y-%m-%d--%H-%M-%S") << std::endl;
+
+                append(close, sut, event);
             }
     );
 
@@ -81,8 +73,55 @@ int main_file(const std::string& input) {
 
 int main() {
     auto files = {
-            "pi4/20181212/2018-12-12--07-45-41.mp4",
+            //"test.mp4"
+            //"test_2.mp4"
+            "pi3/20181212/2018-12-12--07-28-31.mp4",
+            "pi3/20181212/2018-12-12--07-38-31.mp4",
+            "pi3/20181212/2018-12-12--07-48-32.mp4",
+            "pi3/20181212/2018-12-12--07-58-32.mp4",
+            "pi3/20181212/2018-12-12--08-08-32.mp4",
+            "pi3/20181212/2018-12-12--08-18-32.mp4",
+            "pi3/20181212/2018-12-12--08-28-33.mp4",
+            "pi3/20181212/2018-12-12--08-38-33.mp4",
+            "pi3/20181212/2018-12-12--08-48-33.mp4",
+            "pi3/20181212/2018-12-12--08-58-34.mp4",
+            "pi3/20181212/2018-12-12--09-08-34.mp4",
+            "pi3/20181212/2018-12-12--09-18-34.mp4",
+            "pi3/20181212/2018-12-12--09-28-34.mp4",
+            "pi3/20181212/2018-12-12--09-38-35.mp4",
+            "pi3/20181212/2018-12-12--09-48-35.mp4",
+            "pi3/20181212/2018-12-12--09-58-35.mp4",
+            "pi3/20181212/2018-12-12--10-08-35.mp4",
+            "pi3/20181212/2018-12-12--10-18-36.mp4",
+            "pi3/20181212/2018-12-12--10-28-36.mp4",
+            "pi3/20181212/2018-12-12--10-38-36.mp4",
+            "pi3/20181212/2018-12-12--10-48-36.mp4",
+            "pi3/20181212/2018-12-12--10-58-37.mp4",
+            "pi3/20181212/2018-12-12--11-08-37.mp4",
+            "pi3/20181212/2018-12-12--11-18-37.mp4",
+            "pi3/20181212/2018-12-12--11-28-37.mp4",
+            "pi3/20181212/2018-12-12--11-38-38.mp4",
+            "pi3/20181212/2018-12-12--11-48-38.mp4",
+            "pi3/20181212/2018-12-12--11-58-38.mp4",
+            "pi3/20181212/2018-12-12--12-08-38.mp4",
+            "pi3/20181212/2018-12-12--12-18-39.mp4",
+            "pi3/20181212/2018-12-12--12-28-39.mp4",
+            "pi3/20181212/2018-12-12--12-38-39.mp4",
+            "pi3/20181212/2018-12-12--12-48-39.mp4",
+            "pi3/20181212/2018-12-12--12-58-40.mp4",
+            "pi3/20181212/2018-12-12--13-08-40.mp4",
+            "pi3/20181212/2018-12-12--13-18-40.mp4",
+            "pi3/20181212/2018-12-12--13-28-40.mp4",
+            "pi3/20181212/2018-12-12--13-38-41.mp4",
+            "pi3/20181212/2018-12-12--13-48-41.mp4",
+            "pi3/20181212/2018-12-12--13-58-41.mp4",
+            "pi3/20181212/2018-12-12--14-08-41.mp4",
+            "pi3/20181212/2018-12-12--14-18-42.mp4",
+            "pi3/20181212/2018-12-12--14-28-42.mp4",
+            "pi3/20181212/2018-12-12--14-38-42.mp4",
+
             "pi4/20181212/2018-12-12--15-25-53.mp4",
+            "pi4/20181212/2018-12-12--07-45-41.mp4",
             "pi4/20181212/2018-12-12--08-15-42.mp4",
             "pi4/20181212/2018-12-12--11-15-47.mp4",
             "pi4/20181212/2018-12-12--09-25-44.mp4",
@@ -133,55 +172,58 @@ int main() {
             "pi4/20181212/2018-12-12--12-05-48.mp4",
             "pi4/20181212/2018-12-12--12-25-48.mp4",
             "pi4/20181212/2018-12-12--09-55-45.mp4",
-            "pi4/20181212/2018-12-12--13-55-51.mp4",
-
-            "pi3/20181212/2018-12-12--08-08-32.mp4",
-            "pi3/20181212/2018-12-12--11-38-38.mp4",
-            "pi3/20181212/2018-12-12--10-28-36.mp4",
-            "pi3/20181212/2018-12-12--13-28-40.mp4",
-            "pi3/20181212/2018-12-12--11-28-37.mp4",
-            "pi3/20181212/2018-12-12--14-38-42.mp4",
-            "pi3/20181212/2018-12-12--14-28-42.mp4",
-            "pi3/20181212/2018-12-12--09-18-34.mp4",
-            "pi3/20181212/2018-12-12--09-58-35.mp4",
-            "pi3/20181212/2018-12-12--12-38-39.mp4",
-            "pi3/20181212/2018-12-12--10-38-36.mp4",
-            "pi3/20181212/2018-12-12--09-48-35.mp4",
-            "pi3/20181212/2018-12-12--13-48-41.mp4",
-            "pi3/20181212/2018-12-12--09-08-34.mp4",
-            "pi3/20181212/2018-12-12--11-18-37.mp4",
-            "pi3/20181212/2018-12-12--11-58-38.mp4",
-            "pi3/20181212/2018-12-12--10-18-36.mp4",
-            "pi3/20181212/2018-12-12--13-08-40.mp4",
-            "pi3/20181212/2018-12-12--14-18-42.mp4",
-            "pi3/20181212/2018-12-12--08-58-34.mp4",
-            "pi3/20181212/2018-12-12--10-48-36.mp4",
-            "pi3/20181212/2018-12-12--07-28-31.mp4",
-            "pi3/20181212/2018-12-12--07-48-32.mp4",
-            "pi3/20181212/2018-12-12--10-58-37.mp4",
-            "pi3/20181212/2018-12-12--11-48-38.mp4",
-            "pi3/20181212/2018-12-12--14-08-41.mp4",
-            "pi3/20181212/2018-12-12--12-48-39.mp4",
-            "pi3/20181212/2018-12-12--10-08-35.mp4",
-            "pi3/20181212/2018-12-12--12-58-40.mp4",
-            "pi3/20181212/2018-12-12--12-18-39.mp4",
-            "pi3/20181212/2018-12-12--08-48-33.mp4",
-            "pi3/20181212/2018-12-12--09-38-35.mp4",
-            "pi3/20181212/2018-12-12--08-38-33.mp4",
-            "pi3/20181212/2018-12-12--07-58-32.mp4",
-            "pi3/20181212/2018-12-12--11-08-37.mp4",
-            "pi3/20181212/2018-12-12--12-28-39.mp4",
-            "pi3/20181212/2018-12-12--08-28-33.mp4",
-            "pi3/20181212/2018-12-12--13-18-40.mp4",
-            "pi3/20181212/2018-12-12--08-18-32.mp4",
-            "pi3/20181212/2018-12-12--13-38-41.mp4",
-            "pi3/20181212/2018-12-12--13-58-41.mp4",
-            "pi3/20181212/2018-12-12--12-08-38.mp4",
-            "pi3/20181212/2018-12-12--07-38-31.mp4",
-            "pi3/20181212/2018-12-12--09-28-34.mp4"
+            "pi4/20181212/2018-12-12--13-55-51.mp4"
     };
+
+
+    std::vector<Bucket> gt = read_gt(SOURCE_DIR "/data/2031 13.csv", true, date(2018,12,12));
+    std::map<stoptime, StopData> sut;
+
+    FeatureAffinity::NetConfig tracker_config {
+            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
+            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
+            cv::Size(48, 96),    // input size
+            0.6,                 // similarity thresh
+    };
+    DetectorOpenVino::NetConfig net_config {
+            0.1f,               // thresh (to use for detection cache. Evaluation thresh is below)
+            15,                 // clazz
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
+    };
+
+    double time = 0;
+
+    WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config_2.csv");
+
+    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
+
+    //DetectorOpenVino detector(net_config, plugin);
+    DetectionCache detection_cache(SOURCE_DIR "/data/metrics.db", "uninitialised");
+    CachedDetector cached_detector(detection_cache, /*detector, */0.6);
+    TimedDetector timedDetector(cached_detector, &time, 1/100.0);
+
+    TrackerComp tracker(world_config, 0.5);
+    FeatureAffinity affinity(tracker_config, plugin);
+    FeatureCache feature_cache(SOURCE_DIR "/data/metrics.db", "uninitialised");
+    CachedFeatures cached_features(affinity, feature_cache);
+    tracker.use<TimedAffinity<FeatureData>, FeatureData>(0.5, cached_features, &time, 1/100.0);
+    tracker.use<PositionAffinity, PositionData>(0.5f, 0.7);
+
     for (std::string file: files) {
-        auto full_file = "/home/matt/ml/bus_counting/trials/" + file;
-        main_file(full_file);
+        auto full_file = "/home/buscount/code/trials/" + file;
+
+        detection_cache.setTag(full_file);
+        feature_cache.setTag(full_file);
+
+        main_file(full_file, cached_detector, tracker, world_config, gt, sut, &time);
     }
+
+    Error err =  compute_error(gt, sut);
+    std::cout << "ERROR CALCS: " << std::endl;
+    std::cout << "         in: " << err.in << std::endl;
+    std::cout << "        out: " << err.out << std::endl;
+    std::cout << "      total: " << err.total << std::endl;
+    std::cout << "     errors: " << err.total_errs << std::endl;
+    std::cout << "  exchanges: " << err.total_exchange<< std::endl;
 }

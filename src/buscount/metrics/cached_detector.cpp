@@ -4,13 +4,18 @@
 
 #include <opencv2/core/mat.hpp>
 
+// The dummy detection is used to differentiate between a frame that has no detections
+// and a frame that has not been processed yet
 const Detection DUMMY_DETECTION(cv::Rect2f(0.0f, 0.0f, 1.0f, 1.0f), 0.0f);
 
-DetectionCache::DetectionCache(const std::string& location, std::string tag):
-        db(nullptr), tag(std::move(tag)) {
+DetectionCache::DetectionCache(const std::string& location, const std::string& tag):
+        db(nullptr), tag(tag), detections_lookup({}) {
     if (sqlite3_open(location.c_str(), &db) != SQLITE_OK) {
         throw std::logic_error("Cannot open database");
     }
+
+    // Reload the detection_lookup
+    setTag(tag);
 }
 
 DetectionCache::~DetectionCache() {
@@ -22,33 +27,50 @@ DetectionCache::~DetectionCache() {
 
 nonstd::optional<Detections> DetectionCache::fetch(int frame)
 {
-    std::vector<Detection> detections;
+    const Detections& detections = detections_lookup[frame];
+    const std::vector<Detection>& list = detections.get_detections();
 
-    if (!exec(db, "SELECT x, y, w, h, c FROM Detections WHERE frame = '" + std::to_string(frame) + "' AND tag = '" + tag + "'",
-              [&](int, char** argv, char**) -> int {
-                  double x = std::stod(argv[0]);
-                  double y = std::stod(argv[1]);
-                  double w = std::stod(argv[2]);
-                  double h = std::stod(argv[3]);
-                  double c = std::stod(argv[4]);
-
-                  detections.emplace_back(cv::Rect2d(x, y, w, h), c);
-                  return 0;
-              })) {
-        throw std::logic_error("Cannot select from detections");
-    }
-
-    if (detections.empty()) {
+    if (list.empty()) {
         // No detections means no data was present. So state we found nothing
         return nonstd::nullopt;
     } else {
         // Some detections present, so detection has run. Check if we are just getting the dummy data detection.
-        if (detections.size() == 1 && detections[0] == DUMMY_DETECTION) {
-            return Detections(std::vector<Detection>());
+        if (list.size() == 1 && list[0] == DUMMY_DETECTION) {
+            return Detections();
         } else {
-            return Detections(detections);
+            return detections;
         }
     }
+}
+
+void DetectionCache::setTag(const std::string &new_tag)
+{
+    this->tag = new_tag;
+
+    // reload the database into ram
+    // Note: we load the detections into ram, otherwise, the SQL call will limit the performance to
+    // approximately 150fps
+
+    detections_lookup.clear();
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db, "SELECT frame, x, y, w, h, c FROM Detections WHERE tag = ?", -1, &stmt, nullptr) != SQLITE_OK) {
+        std::cout << "Cannot delete data: "<< sqlite3_errmsg(db) << std::endl;
+        throw std::logic_error("Cannot load detections from database");
+    }
+    sqlite3_bind_text(stmt, 1, new_tag.c_str(), -1, nullptr);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int frame = sqlite3_column_int(stmt, 0);
+        double x = sqlite3_column_double(stmt, 1);
+        double y = sqlite3_column_double(stmt, 2);
+        double w = sqlite3_column_double(stmt, 3);
+        double h = sqlite3_column_double(stmt, 4);
+        double c = sqlite3_column_double(stmt, 5);
+
+        detections_lookup[frame].emplace_back(cv::Rect2f(x, y, w, h), c);
+    }
+
+    sqlite3_finalize(stmt);
 }
 
 void DetectionCache::clear(int frame)
@@ -65,7 +87,10 @@ void DetectionCache::clear(int frame)
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         throw std::logic_error("Cannot delete detections");
     }
+    sqlite3_finalize(stmt);
 
+    // update the detection cache
+    detections_lookup.erase(frame);
 }
 
 void DetectionCache::clear()
@@ -81,6 +106,10 @@ void DetectionCache::clear()
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         throw std::logic_error("Cannot delete detections");
     }
+    sqlite3_finalize(stmt);
+
+    // update the ram cache
+    detections_lookup.clear();
 }
 
 void DetectionCache::store(const Detection& d, int frame)
@@ -95,6 +124,8 @@ void DetectionCache::store(const Detection& d, int frame)
                   + "'" + std::to_string(d.confidence) + "')")) {
         throw std::logic_error("Cannot insert into detections");
     }
+
+    detections_lookup[frame].push_back(d);
 }
 
 void DetectionCache::store(const Detections& detections, int frame) {
@@ -119,24 +150,33 @@ void DetectionCache::store(const Detections& detections, int frame) {
 
 
 CachedDetector::CachedDetector(DetectionCache& cache, Detector& base, float conf):
-    base(base), cache(cache), conf(conf)
+    base(&base), cache(cache), conf(conf)
+{}
+
+CachedDetector::CachedDetector(DetectionCache& cache, float conf):
+        base(nullptr), cache(cache), conf(conf)
 {}
 
 CachedDetector::~CachedDetector() = default;
 
 Detections CachedDetector::process(const cv::Mat &frame, int frame_no) {
     auto opt_detections = cache.fetch(frame_no);
+    std::vector<Detection> detections;
     if (opt_detections.has_value()) {
-        std::vector<Detection> detections = opt_detections->get_detections();
-        std::vector<Detection> filtered;
-        std::copy_if(detections.begin(), detections.end(), std::back_inserter(filtered),
-                     [this](const Detection &d) -> bool {
-                         return d.confidence >= this->conf;
-                     });
-        return Detections(filtered);
+        detections = opt_detections->get_detections();
     } else {
-        auto detections = base.process(frame, frame_no);
-        cache.store(detections, frame_no);
-        return detections;
+        if (base) {
+            auto detection_res = base->process(frame, frame_no);
+            cache.store(detection_res, frame_no);
+            detections = detection_res.get_detections();
+        } else {
+            throw std::logic_error(&"Frame not known: " [ frame_no]);
+        }
     }
+    std::vector<Detection> filtered;
+    std::copy_if(detections.begin(), detections.end(), std::back_inserter(filtered),
+                 [this](const Detection &d) -> bool {
+                     return d.confidence >= this->conf;
+                 });
+    return Detections(filtered);
 }

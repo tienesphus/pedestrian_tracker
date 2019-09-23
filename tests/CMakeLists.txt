@@ -14,6 +14,8 @@ add_executable(tests
         metrics/test_read_simulator.cpp
         metrics/test_detection_cache.cpp
         metrics/test_feature_cache.cpp
+        metrics/test_gt_compare.cpp
+        common/test_time_utils.cpp
         # all opencv detection must be after openvino detection
         buscount/test_detector_opencv.cpp
 )

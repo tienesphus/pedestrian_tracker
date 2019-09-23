@@ -44,18 +44,28 @@ public:
  */
 class Detections {
 public:
+
     /**
      * Constructs a detection result
      * @param frame the image the detections were made on
      * @param detections a list of detections that were made
      */
     explicit Detections(std::vector<Detection> detections);
-    
+
+    /**
+     * Creates an empty detection list
+     */
+    Detections();
+
     /**
      * Get the detections that occured
      */
     const std::vector<Detection>& get_detections() const;
-    
+
+    void push_back(const Detection& d);
+
+    void emplace_back(const cv::Rect2f& r, float conf);
+
     /**
      * Draws the results onto an image.
      */

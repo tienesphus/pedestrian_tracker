@@ -10,7 +10,7 @@
 BusCounter::BusCounter(
         Detector& detector,
         Tracker& tracker,
-        WorldConfig &wconf,
+        const WorldConfig &wconf,
         std::function<BusCounter::src_cb_t> src,
         std::function<BusCounter::dest_cb_t> dest,
         std::function<BusCounter::test_exit_t> test_exit,

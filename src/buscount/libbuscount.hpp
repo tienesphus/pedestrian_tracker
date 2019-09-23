@@ -24,7 +24,7 @@ public:
     BusCounter(
             Detector& detector,
             Tracker& tracker,
-            WorldConfig& wconf,
+            const WorldConfig& wconf,
             std::function<BusCounter::src_cb_t> src,
             std::function<BusCounter::dest_cb_t> dest,
             std::function<BusCounter::test_exit_t> test_exit,
@@ -43,7 +43,7 @@ private:
     // Internal data structures
     Detector& _detector;
     Tracker& _tracker;
-    WorldConfig& _world_config;
+    const WorldConfig& _world_config;
 
     int inside_count, outside_count;
 
