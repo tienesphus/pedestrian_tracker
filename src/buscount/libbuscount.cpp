@@ -2,10 +2,10 @@
 #include "tick_counter.hpp"
 #include "cv_utils.hpp"
 
-#include <iostream>
 #include <vector>
 #include <unistd.h>
 #include <deque>
+#include <spdlog/spdlog.h>
 
 BusCounter::BusCounter(
         Detector& detector,
@@ -64,7 +64,7 @@ void BusCounter::handle_events(const std::vector<Event>& events, const cv::Mat& 
 void BusCounter::run_serial(bool do_draw)
 {
 
-    TickCounter<> counter;
+    TickCounter<100> counter;
     while (true) {
 
         // Read at least once. Skip if source FPS is different from target FPS
@@ -87,7 +87,7 @@ void BusCounter::run_serial(bool do_draw)
         }
 
         auto fps = counter.process_tick();
-        std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
+        spdlog::info("FPS: {}", fps ? *fps : -1);
 
         _dest(frame);
         if (_test_exit())
@@ -147,7 +147,7 @@ void BusCounter::run_parallel(bool do_draw)
 
     // Keep processing frames until we're done
     while (!processing.empty()) {
-        std::cout << "WAITING" << std::endl;
+        spdlog::debug("WAITING");
         // Retrieve the processed data
         std::tuple<cv::Mat, int, std::vector<Event>> result = processing.front().get();
         processing.pop_front();
@@ -157,9 +157,9 @@ void BusCounter::run_parallel(bool do_draw)
 
         // Calculate the FPS
         auto fps = counter.process_tick();
-        std::cout << "FPS: " << (fps ? *fps : -1) << std::endl;
+        spdlog::info("FPS: {}", fps ? *fps : -1);
 
-        std::cout << "DISPLAYING" << std::endl;
+        spdlog::debug("DISPLAYING");
         // Output the frame/data
         handle_events(events, frame, frame_no);
         _dest(frame);
@@ -167,7 +167,7 @@ void BusCounter::run_parallel(bool do_draw)
             finished = true;
         }
 
-        std::cout << "READING" << std::endl;
+        spdlog::debug("READING");
         // Get a new frame
         auto got_frame = finished ? nonstd::nullopt : _src();
         if (!got_frame) {

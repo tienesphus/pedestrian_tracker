@@ -2,10 +2,10 @@
 #include "../cv_utils.hpp"
 
 #include <utility>
-#include <iostream>
 
 #include <opencv2/imgproc.hpp>
 #include <deque>
+#include <spdlog/spdlog.h>
 
 
 //  ----------- TRACK ---------------
@@ -23,7 +23,7 @@ public:
     /**
      * Updates the status of this Track and stores any events in the given list
      */
-    bool update(const WorldConfig &config, std::vector<Event>& events);
+    bool update(const WorldConfig &config, std::vector<Event>& events, double conf_decrease_rate, double conf_thresh, int deltaFrames);
 
     /**
      * Draws the Track onto the given image
@@ -54,7 +54,7 @@ Track::Track(cv::Rect2f box, float conf, int index, std::vector<std::unique_ptr<
         color(rand() % 256)
 {}
 
-bool Track::update(const WorldConfig &config, std::vector<Event>& events)
+bool Track::update(const WorldConfig &config, std::vector<Event>& events, double conf_decrease_rate, double conf_thresh, int deltaFrames)
 {
     // look only at the boxes center point
     float x = box.x + box.width/2;
@@ -108,8 +108,8 @@ bool Track::update(const WorldConfig &config, std::vector<Event>& events)
         path.pop_front();
 
     // decrease the confidence (will increase when merging with a detection)
-    confidence -= 0.01;
-    return confidence > 0.2;
+    confidence -= conf_decrease_rate * deltaFrames;
+    return confidence > conf_thresh;
 }
 
 void Track::draw(cv::Mat &img) const {
@@ -138,8 +138,9 @@ void Track::draw(cv::Mat &img) const {
 
 //  -----------  TRACKER ---------------
 
-TrackerComp::TrackerComp(const WorldConfig& world, float merge_thresh):
-        worldConfig(world), merge_thresh(merge_thresh), index_count(0)
+TrackerComp::TrackerComp(const WorldConfig& world, float merge_thresh, double conf_decrease_rate, double conf_thresh):
+        worldConfig(world), merge_thresh(merge_thresh), index_count(0),
+        conf_decrease_rate(conf_decrease_rate), conf_thresh(conf_thresh), pre_frame_no(-1)
 {
 }
 
@@ -152,7 +153,14 @@ void TrackerComp::use_affinity(float weighting, std::unique_ptr<Affinity<TrackDa
 std::vector<Event> TrackerComp::process(const Detections &detections, const cv::Mat& frame, int frame_no)
 {
     merge(detections, frame, frame_no);
-    return update();
+
+    // calculate the number of frames the system has moved by
+    int delta = frame_no - pre_frame_no;
+    if (delta <= 0)
+        delta = 1;
+    pre_frame_no = frame_no;
+
+    return update(delta);
 }
 
 
@@ -188,7 +196,7 @@ struct MergeOption {
 std::vector<DetectionExtra> initialise_detections(const std::vector<Detection> &detection_results, const cv::Mat &frame, int frame_no,
                                 const std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> &affinities)
 {
-    std::cout << "  Initialise detection info" << std::endl;
+    spdlog::debug("  Initialise detection info");
     std::vector<DetectionExtra> detections;
     int index = 0;
     for (const Detection& detection : detection_results) {
@@ -206,7 +214,7 @@ std::vector<DetectionExtra> initialise_detections(const std::vector<Detection> &
 std::vector<MergeOption> calculate_affinities(std::vector<DetectionExtra>& detections, const std::vector<std::unique_ptr<Track>>& tracks,
         const std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>>& affinities)
 {
-    std::cout << "  Calculating affinities" << std::endl;
+    spdlog::debug("  Calculating affinities");
     std::vector<MergeOption> merges;
     for (DetectionExtra &extra : detections) {
         for (const std::unique_ptr<Track> &track : tracks) {
@@ -218,7 +226,7 @@ std::vector<MergeOption> calculate_affinities(std::vector<DetectionExtra>& detec
 
                 confidence += weight * affinity.affinity(*extra.data[i], *track->data[i]);
             }
-            std::cout << "      d" << extra.index << " x t" << track->index << ": " << confidence << std::endl;
+            spdlog::trace("      d{} x t{}: {}", extra.index, track->index, confidence);
             merges.emplace_back(confidence, track.get(), &extra);
         }
     }
@@ -232,13 +240,13 @@ void merge_top(std::vector<MergeOption> merges,
      // TODO tracker merging code is a mess
 
     // Sort the merges so best merges are first
-    std::cout << "    Sorting differences" << std::endl;
+     spdlog::debug( "    Sorting differences");
     std::sort(merges.begin(), merges.end(),
               [](const MergeOption &a, const MergeOption &b) -> auto { return a.confidence > b.confidence; }
     );
-    std::cout << "    Sorted Merges: " << std::endl;
+     spdlog::debug("    Sorted Merges: ");
     for (const MergeOption &m : merges) {
-        std::cout << "      d" << m.extra->index << " x t" << m.track->index << ": " << m.confidence << std::endl;
+        spdlog::trace("      d{} x t{}: {}", m.extra->index, m.track->index, m.confidence);
     }
 
     // iteratively merge the closest of the detection/track combinations
@@ -248,14 +256,14 @@ void merge_top(std::vector<MergeOption> merges,
         // threshold box's that are too different
         // TODO remove hardcoded tracker threshold
         if (merge.confidence < merge_thresh) {
-            std::cout << " Differences too high" << std::endl;
+            spdlog::trace(" Differences too high ({})", i);
             break;
         }
 
         const Detection& d = merge.extra->detection;
         Track* track = merge.track;
 
-        std::cout << "Merging d" << merge.extra->index <<  " and t" << track->index << std::endl;
+        spdlog::trace("Merging d{} and t{}", merge.extra->index, track->index);
 
         // Merge the data
         track->box = d.box;
@@ -270,7 +278,7 @@ void merge_top(std::vector<MergeOption> merges,
         for (size_t j = i+1; j < merges.size(); j++) {
             const MergeOption& merge2 = merges[j];
             if (merge2.track == track || merge2.extra->merged) {
-                std::cout << " Ignore option " << j << std::endl;
+                spdlog::trace(" Ignore option {}", j);
                 merges.erase(merges.begin()+j);
                 j--;
             }
@@ -280,13 +288,13 @@ void merge_top(std::vector<MergeOption> merges,
 
 void add_new_tracks(std::vector<DetectionExtra>& detections, std::vector<std::unique_ptr<Track>>& tracks, int& index_count)
 {
-    std::cout << "Adding new tracks" << std::endl;
+    spdlog::debug("Adding new tracks");
     // Make new tracks for detections that have not merged
     for (DetectionExtra &extra : detections) {
         bool dealt_with = extra.merged;
         if (!dealt_with) {
             const Detection &d = extra.detection;
-            std::cout << "Making a new box for detection " << d.box << std::endl;
+            spdlog::trace("Making a new box for detection ({},{}) ({}x{})", d.box.x, d.box.y, d.box.width, d.box.height);
 
             tracks.push_back(std::make_unique<Track>(d.box, d.confidence, index_count++, std::move(extra.data)));
         }
@@ -335,7 +343,7 @@ void TrackerComp::merge(const Detections &detection_results, const cv::Mat& fram
     // - merge the top detection/track combinations
     // - add new tracks for unmerged detections
 
-    std::cout << "MERGING" << std::endl;
+    spdlog::debug("MERGING");
 
     std::vector<DetectionExtra> detections = initialise_detections(detection_results.get_detections(), frame, frame_no, this->affinities);
     std::vector<MergeOption> merges = calculate_affinities(detections, this->tracks, this->affinities);
@@ -348,13 +356,13 @@ void TrackerComp::merge(const Detections &detection_results, const cv::Mat& fram
  * Updates the status of each Track. Updates the world count.
  * Deletes old tracks.
  */
-std::vector<Event> TrackerComp::update()
+std::vector<Event> TrackerComp::update(int deltaFrames)
 {
     std::vector<Event> events;
 
     this->tracks.erase(std::remove_if(std::begin(this->tracks), std::end(this->tracks),
-                                      [this, &events](std::unique_ptr<Track>& t) {
-                                          return !t->update(this->worldConfig, events);
+                                      [this, &events, deltaFrames](std::unique_ptr<Track>& t) {
+                                          return !t->update(this->worldConfig, events, this->conf_decrease_rate, this->conf_thresh, deltaFrames);
                                       }
     ), std::end(this->tracks));
 

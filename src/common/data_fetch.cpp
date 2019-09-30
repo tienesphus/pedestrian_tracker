@@ -1,10 +1,10 @@
 #include "data_fetch.hpp"
 #include "optional.hpp"
+#include <spdlog/spdlog.h>
 
 #include <sqlite3.h>
 
 #include <string>
-#include <iostream>
 #include <json/json.h>
 
 DataFetch::DataFetch(const std::string& file):
@@ -18,7 +18,7 @@ DataFetch::DataFetch(const std::string& file):
 DataFetch::~DataFetch()
 {
     if (db) {
-        std::cout << "Closing SQL" << std::endl;
+        spdlog::debug("Closing SQL");
         sqlite3_close(db);
     }
 }
@@ -38,7 +38,7 @@ int DataFetch::count() const
                          ((int*)in_out)[1] = out_count;
                          return 0;
                      }, in_out, &error) != SQLITE_OK) {
-        std::cout << "SELECT count ERROR: " << error << std::endl;
+        spdlog::error("SELECT count ERROR: {}", error);
         sqlite3_free(error);
     }
 
@@ -75,7 +75,7 @@ nonstd::optional<geom::Line> _line_from_json(const Json::Value& json)
         );
         return line;
     } else {
-        std::cout << "One of the points is not a float" << std::endl;
+        spdlog::error("One of the points is not a float");
         return nonstd::nullopt;
     }
 }
@@ -98,7 +98,7 @@ void DataFetch::update_config(const WorldConfig& config)
     std::string output = Json::writeString(builder, _to_json(config));
     if (sqlite3_exec(db, ("INSERT INTO ConfigUpdate(Config) VALUES ('" + output + "')").c_str(),
                      nullptr, nullptr, &error) != SQLITE_OK) {
-        std::cout << "SQL ERROR insert config update: " << error << std::endl;
+        spdlog::error("SQL ERROR insert config update: {}", error);
         sqlite3_free(error);
     }
 }
@@ -115,7 +115,7 @@ nonstd::optional<WorldConfig> _config_from_json(const Json::Value &data)
 
 void DataFetch::enter_event(Event event)
 {
-    std::cout << "EVENT: " << name(event) << std::endl;
+    spdlog::debug("EVENT: {}", name(event));
     char *error = nullptr;
     int deltaIn = 0, deltaOut = 0;
     switch (event) {
@@ -137,7 +137,7 @@ void DataFetch::enter_event(Event event)
     std::string sql = "INSERT INTO CountEvents(Name, DeltaIn, DeltaOut) VALUES ('" + name(event) + "', " +
                       std::to_string(deltaIn) + ", " + std::to_string(deltaOut) + ")";
     if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &error) != SQLITE_OK) {
-        std::cout << "SQL ERROR: " << error << std::endl;
+        spdlog::error("SQL ERROR: {}", error);
         sqlite3_free(error);
     }
 }
@@ -158,7 +158,7 @@ WorldConfig DataFetch::get_latest_config() const
                          *(WorldConfig*)config = *op_config;
                          return 0;
                      }, &config, &error) != SQLITE_OK) {
-        std::cout << "SELECT config ERROR: " << error << std::endl;
+        spdlog::error("SELECT config ERROR: {}", error);
         sqlite3_free(error);
     }
 
@@ -178,7 +178,7 @@ void DataFetch::check_config_update(const std::function<void(WorldConfig)>& upda
                          *(std::string*)latest_update = argv[0];
                          return 0;
                      }, &latest_update, &error) != SQLITE_OK) {
-        std::cout << "SELECT ERROR: " << error << std::endl;
+        spdlog::error("SELECT ERROR: {}", error);
         sqlite3_free(error);
         return;
     }
@@ -207,7 +207,7 @@ void DataFetch::check_config_update(const std::function<void(WorldConfig)>& upda
                              return 0;
                          }, &world_config,
                          &error) != SQLITE_OK) {
-            std::cout << "SELECT ERROR: " << error << std::endl;
+            spdlog::error("SELECT ERROR: {}", error);
             sqlite3_free(error);
         } else {
             last_count_update = std::move(latest_update);
@@ -222,7 +222,7 @@ void DataFetch::add_count(int delta)
 
     if (sqlite3_exec(db, ("INSERT INTO CountEvents (name, DeltaIn) VALUES ('Manual', " + std::to_string(delta) + ")").c_str(),
                      nullptr, nullptr, &error) != SQLITE_OK) {
-        std::cout << "INSERT count ERROR: " << error << std::endl;
+        spdlog::error("INSERT count ERROR: {}", error);
         sqlite3_free(error);
     }
 }

@@ -15,8 +15,8 @@
 
 #include <sqlite3.h>
 
-#include <iostream>
 #include <unistd.h>
+#include <spdlog/spdlog.h>
 
 
 int main_file(std::string input) {
@@ -31,7 +31,7 @@ int main_file(std::string input) {
     //std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
     auto cv_cap = std::make_shared<cv::VideoCapture>(input);
 
-    std::cout << "Loading plugin" << std::endl;
+    spdlog::info("Loading plugin");
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
 
     WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config.csv");
@@ -58,7 +58,7 @@ int main_file(std::string input) {
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
             []() { return cv::waitKey(20) == 'q'; },
             [](Event event, const cv::Mat&, int) {
-                std::cout << "EVENT: " << name(event) << std::endl;
+                spdlog::debug("EVENT: {}", name(event));
             }
     );
 

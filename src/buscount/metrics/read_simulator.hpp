@@ -5,7 +5,6 @@
 
 #include <functional>
 #include <cmath>
-#include <iostream>
 
 #include <opencv2/videoio.hpp>
 

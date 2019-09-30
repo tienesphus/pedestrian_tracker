@@ -1,9 +1,9 @@
 #ifndef DETECTION_OPENVINO_H
 #define DETECTION_OPENVINO_H
 
-#include <inference_engine.hpp>
-
 #include "detector.hpp"
+
+#include <inference_engine.hpp>
 
 class DetectorOpenVino: public Detector {
 

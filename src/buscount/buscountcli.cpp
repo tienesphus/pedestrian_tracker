@@ -11,8 +11,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include <sqlite3.h>
-
-#include <iostream>
+#include <spdlog/spdlog.h>
 #include <unistd.h>
 
 
@@ -52,7 +51,7 @@ int main() {
     VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
     //auto cv_cap = std::make_shared<cv::VideoCapture>(0);
 
-    std::cout << "Loading plugin" << std::endl;
+    spdlog::info("Loading plugin");
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
 
     DetectorOpenVino detector(net_config, plugin);
@@ -89,7 +88,7 @@ int main() {
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
             []() { return cv::waitKey(20) == 'q'; },
             [&data](Event event, const cv::Mat&, int frame_no) {
-                std::cout << "EVENT: " << name(event) << " " << frame_no << " " << std::endl;
+                spdlog::info("EVENT: {}, {}", name(event), frame_no);
                 data.enter_event(event);
             }
     );

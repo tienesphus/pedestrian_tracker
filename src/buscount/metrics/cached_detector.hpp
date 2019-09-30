@@ -7,7 +7,6 @@
 
 #include <sqlite3.h>
 #include <optional.hpp>
-#include <iostream>
 #include <map>
 
 

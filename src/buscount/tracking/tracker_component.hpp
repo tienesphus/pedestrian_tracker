@@ -77,7 +77,7 @@ public:
      * The created tracker will do nothing by default. Must call "use" to add tracking components
      * @param world the world configuration
      */
-    explicit TrackerComp(const WorldConfig& world, float merge_thresh);
+    TrackerComp(const WorldConfig& world, float merge_thresh, double conf_decrease_rate, double conf_thresh);
 
     ~TrackerComp() override;
 
@@ -123,10 +123,12 @@ private:
     float merge_thresh;
     int index_count;
     std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> affinities;
+    double conf_decrease_rate, conf_thresh;
+    int pre_frame_no;
 
     void use_affinity(float weighting, std::unique_ptr<Affinity<TrackData>> affinity);
     void merge(const Detections &detections,  const cv::Mat& frame, int frame_no);
-    std::vector<Event> update();
+    std::vector<Event> update(int deltaFrames);
 };
 
 

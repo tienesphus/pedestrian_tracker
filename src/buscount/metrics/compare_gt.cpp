@@ -4,15 +4,15 @@
 #include <string_utils.hpp>
 
 #include <fstream>
-#include <iostream>
 #include <iomanip>
+#include <spdlog/spdlog.h>
 
 Bucket::Bucket(stoptime stop_time, StopData data)
     :stop_time(stop_time), data(data)
 {}
 
 
-std::vector<Bucket> read_gt(const std::string& location, bool front, const std::chrono::time_point<std::chrono::system_clock>& date) {
+std::vector<Bucket> read_gt(const std::string& location, bool front, const std::time_t& date) {
     std::ifstream source(location);
     if (!source.is_open()) {
         throw std::logic_error("Cannot open ground truth file");
@@ -24,7 +24,7 @@ std::vector<Bucket> read_gt(const std::string& location, bool front, const std::
 
     // check the header
     std::getline(source, line);
-    if ("Arrive,Depart,In_F,In_R,Out_F,Out_R\r" != line) {
+    if ("Arrive,Depart,In_F,In_R,Out_F,Out_R" != line) {
         throw std::logic_error("CSV file in incorrect format");
     }
 
@@ -56,6 +56,8 @@ std::vector<Bucket> read_gt(const std::string& location, bool front, const std::
 
         // store the value
         gt.emplace_back(arrive_time, front ? StopData{in_f, out_f} : StopData{in_r, out_r});
+
+        spdlog::debug("GT: {}: {}, {}", date_to_string(arrive_time, "%Y-%m-%d %H:%M:%S"), in_f, out_f);
     }
 
     return gt;
@@ -102,7 +104,8 @@ stoptime calctime(const std::string& filename, int frame_no) {
     int ext_sep = filename.find_first_of('.', dir_sep);
     std::string section = filename.substr(dir_sep + 1, ext_sep - dir_sep - 1);
     auto start = string_to_date(section, "%Y-%m-%d--%H-%M-%S");
-    return start + std::chrono::seconds(frame_no / 25);
+    auto offset = time(0, 0, frame_no / 25);
+    return start + offset;
 }
 
 Error compute_error(const std::vector<Bucket>& gt, std::map<stoptime, StopData>& sut) {

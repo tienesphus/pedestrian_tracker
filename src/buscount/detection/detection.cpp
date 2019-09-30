@@ -1,7 +1,6 @@
 #include "detection.hpp"
 
 #include <utility>
-#include <iostream>
 
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/cvstd.hpp>

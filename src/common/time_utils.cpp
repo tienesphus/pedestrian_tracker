@@ -3,18 +3,15 @@
 #include <sstream>
 #include <iomanip>
 
-std::chrono::time_point<std::chrono::system_clock> string_to_date(const std::string& input, const std::string& format)
+std::time_t string_to_date(const std::string& input, const std::string& format)
 {
     std::tm tm = {};
     std::stringstream ss(input);
     ss >> std::get_time(&tm, format.c_str());
-    tm.tm_zone = "AEDT";
-    tm.tm_isdst = 1;
-    tm.tm_gmtoff = 39600;
-    return std::chrono::system_clock::from_time_t(std::mktime(&tm));
+    return timegm(&tm);
 }
 
-std::chrono::seconds string_to_time(const std::string& input, const std::string& format)
+std::time_t string_to_time(const std::string& input, const std::string& format)
 {
     std::tm tm = {};
     std::stringstream ss_time(input);
@@ -22,17 +19,16 @@ std::chrono::seconds string_to_time(const std::string& input, const std::string&
     return time(tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
-std::string date_to_string(std::chrono::time_point<std::chrono::system_clock> date, const std::string& format)
+std::string date_to_string(std::time_t date, const std::string& format)
 {
-    auto in_time_t = std::chrono::system_clock::to_time_t(date);
-    auto tm = std::localtime(&in_time_t);
+    auto tm = std::gmtime(&date);
     std::stringstream ss;
     ss << std::put_time(tm, format.c_str());
     return ss.str();
 }
 
 
-std::chrono::time_point<std::chrono::system_clock> datetime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second)
+std::time_t datetime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second)
 {
     std::tm expected_tm = {
             .tm_sec  = second,
@@ -42,21 +38,20 @@ std::chrono::time_point<std::chrono::system_clock> datetime(uint16_t year, uint8
             .tm_mon  = month - 1,
             .tm_year = year - 1900,
     };
-    // TODO how to get rid of hacked in timezone
-    expected_tm.tm_zone = "AEDT";
-    expected_tm.tm_isdst = 0;
-    expected_tm.tm_gmtoff = 39600;
-    return std::chrono::system_clock::from_time_t(std::mktime(&expected_tm));
+    return timegm(&expected_tm);
 }
 
-std::chrono::time_point<std::chrono::system_clock> date(uint16_t year, uint8_t month, uint8_t day)
+std::time_t date(uint16_t year, uint8_t month, uint8_t day)
 {
     return datetime(year, month, day, 0, 0, 0);
 }
 
 
-std::chrono::seconds time(int64_t hour, int64_t minute, int64_t second)
+std::time_t time(int64_t hour, int64_t minute, int64_t second)
 {
-    int64_t seconds = hour*60*60 + minute*60 + second;
-    return std::chrono::seconds(seconds);
+    // let seconds/minutes/hours overflow into minutes/hours/days
+    minute += second / 60;
+    hour += minute / 60;
+    uint8_t days = hour / 24;
+    return datetime(1970, 1, days + 1, hour % 24, minute % 60, second % 60);
 }

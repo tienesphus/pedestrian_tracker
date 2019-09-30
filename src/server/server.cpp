@@ -3,6 +3,7 @@
 #include <geom.hpp>
 
 #include <drogon/drogon.h>
+#include <spdlog/spdlog.h>
 
 
 namespace server {
@@ -40,7 +41,7 @@ namespace server {
         Json::Value default_feed = json["default_feed"];
 
         if (!id.isString() || !name.isString()) {
-            std::cout << "Device id or name is not a string" << std::endl;
+            spdlog::debug("Device id or name is not a string");
             return nonstd::nullopt;
         } else {
             std::string s_id = id.asString();
@@ -74,7 +75,7 @@ namespace server {
             );
             return line;
         } else {
-            std::cout << "One of the points is not a float" << std::endl;
+            spdlog::debug("One of the points is not a float");
             return nonstd::nullopt;
         }
     }
@@ -117,7 +118,7 @@ namespace server {
         app().setThreadNum(2);
         app().setDocumentRoot(std::string(SOURCE_DIR) + "/src/server/");
 
-        std::cout << "Server running at http://localhost:8080" << std::endl;
+        spdlog::info("Server running at http://localhost:8080");
         app().run();
     }
 
@@ -144,7 +145,7 @@ namespace server {
         drogon::app().registerHandler("/status_update",
                 [addCount](const drogon::HttpRequestPtr& req,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
-                    std::cout << "status_update" << std::endl;
+                    spdlog::debug("status_update");
                     std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
                     if (!json_ptr)
                     {

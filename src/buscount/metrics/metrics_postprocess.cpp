@@ -9,6 +9,7 @@
 #include "cached_features.hpp"
 #include "timed_wrapper.hpp"
 #include "compare_gt.hpp"
+#include "../tracking/original_tracker.hpp"
 
 #include <data_fetch.hpp>
 
@@ -17,56 +18,65 @@
 
 #include <sqlite3.h>
 
-#include <iostream>
 #include <unistd.h>
 #include <fstream>
 #include <iomanip>
 #include <time_utils.hpp>
+#include <spdlog/spdlog.h>
 
 int main_file(const std::string& input, Detector& detector, Tracker& tracker, WorldConfig& world_config,
-              std::vector<Bucket> gt, std::map<stoptime, StopData> sut, const double* time) {
+              const std::vector<Bucket>& gt, std::map<stoptime, StopData>& sut, double* time,
+              std::ofstream& output, bool draw) {
 
-    /*int frames = cv::VideoCapture(input).get(cv::CAP_PROP_FRAME_COUNT);
+    int frames = cv::VideoCapture(input).get(cv::CAP_PROP_FRAME_COUNT);
     cv::Mat dummy(1, 1, CV_8U);
-    auto cap = ReadSimulator<>([&dummy, &frames]() -> nonstd::optional<cv::Mat> {
+    auto cap_headless = ReadSimulator<>([&dummy, &frames]() -> nonstd::optional<cv::Mat> {
         --frames;
         if (frames >= 0)
             return dummy;
         else {
             return nonstd::nullopt;
         }
-    }, 25, time);*/
-    auto cap = ReadSimulator<>::from_video(input, time);
+    }, 25, time);
 
-    std::ofstream output(input + ".new-results.csv");
+    auto cap_drawing = ReadSimulator<>::from_video(input, time);
+    //*time += 9*60 + 00; // skip to a specific point in the video
 
     BusCounter counter(detector, tracker, world_config,
-            [&cap]() -> auto {
-                return cap.next();
+            [draw, &cap_headless, &cap_drawing]() -> auto {
+                if (draw)
+                    return cap_drawing.next();
+                else
+                    return cap_headless.next();
             },
-            [](const cv::Mat& frame) {
-                cv::imshow("output", frame);
+            [draw](const cv::Mat& frame) {
+                if (draw)
+                    cv::imshow("output", frame);
             },
-            []() {
-                //return false;
-                return cv::waitKey(1) == 'q';
+            [draw]() {
+                if (draw)
+                    return cv::waitKey(0) == 'q';
+                else
+                    return false;
             },
             [&output, &gt, &sut, &input](Event event, const cv::Mat&, int frame_no) {
-                std::cout << "EVENT: " << name(event) << " " << frame_no << std::endl;
-                output << frame_no << " " << name(event) << std::endl;
+                spdlog::info("EVENT: {}, {}", name(event), frame_no);
 
                 auto time = calctime(input, frame_no);
-                std::cout << "  OCCURED AT: " << date_to_string(time, "%Y-%m-%d--%H-%M-%S") << std::endl;
+                spdlog::info("  OCCURED AT: ", date_to_string(time, "%Y-%m-%d %H-%M-%S"));
                 auto close = closest(time, gt);
-                std::cout << "  ASSIGING STOP: " << date_to_string(close,  "%Y-%m-%d--%H-%M-%S") << std::endl;
+                spdlog::info("  ASSIGNING : ", date_to_string(close,  "%Y-%m-%d %H-%M-%S"));
 
+                // record the event
                 append(close, sut, event);
+
+                // log it in results file
+                //output << date_to_string(time, "%Y-%m-%d %H:%M:%S") << ", " << date_to_string(close, "%Y-%m-%d %H:%M:%S") << ", " << name(event) << std::endl;
+                output << input << ", " << frame_no << ", " << name(event) << ", " << date_to_string(time, "%Y-%m-%d %H:%M:%S") << ", " << date_to_string(close, "%Y-%m-%d %H:%M:%S") << std::endl;
             }
     );
 
-    counter.run(BusCounter::RUN_SERIAL, true);
-
-    output.close();
+    counter.run(BusCounter::RUN_SERIAL, draw);
 
     return 0;
 }
@@ -118,9 +128,9 @@ int main() {
             "pi3/20181212/2018-12-12--14-08-41.mp4",
             "pi3/20181212/2018-12-12--14-18-42.mp4",
             "pi3/20181212/2018-12-12--14-28-42.mp4",
-            "pi3/20181212/2018-12-12--14-38-42.mp4",
+            "pi3/20181212/2018-12-12--14-38-42.mp4"
 
-            "pi4/20181212/2018-12-12--15-25-53.mp4",
+            /*"pi4/20181212/2018-12-12--15-25-53.mp4",
             "pi4/20181212/2018-12-12--07-45-41.mp4",
             "pi4/20181212/2018-12-12--08-15-42.mp4",
             "pi4/20181212/2018-12-12--11-15-47.mp4",
@@ -172,11 +182,11 @@ int main() {
             "pi4/20181212/2018-12-12--12-05-48.mp4",
             "pi4/20181212/2018-12-12--12-25-48.mp4",
             "pi4/20181212/2018-12-12--09-55-45.mp4",
-            "pi4/20181212/2018-12-12--13-55-51.mp4"
+            "pi4/20181212/2018-12-12--13-55-51.mp4"*/
     };
 
 
-    std::vector<Bucket> gt = read_gt(SOURCE_DIR "/data/2031 13.csv", true, date(2018,12,12));
+    std::vector<Bucket> gt = read_gt(SOURCE_DIR "/data/2031 12.csv", true, date(2018,12,12));
     std::map<stoptime, StopData> sut;
 
     FeatureAffinity::NetConfig tracker_config {
@@ -196,28 +206,35 @@ int main() {
 
     WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config_2.csv");
 
-    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
+    //InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
 
     //DetectorOpenVino detector(net_config, plugin);
     DetectionCache detection_cache(SOURCE_DIR "/data/metrics.db", "uninitialised");
-    CachedDetector cached_detector(detection_cache, /*detector, */0.6);
-    TimedDetector timedDetector(cached_detector, &time, 1/100.0);
+    CachedDetector cached_detector(detection_cache, /*detector, */0.3);
+    TimedDetector timedDetector(cached_detector, &time, 3.0/25);
 
-    TrackerComp tracker(world_config, 0.5);
-    FeatureAffinity affinity(tracker_config, plugin);
-    FeatureCache feature_cache(SOURCE_DIR "/data/metrics.db", "uninitialised");
-    CachedFeatures cached_features(affinity, feature_cache);
-    tracker.use<TimedAffinity<FeatureData>, FeatureData>(0.5, cached_features, &time, 1/100.0);
-    tracker.use<PositionAffinity, PositionData>(0.5f, 0.7);
+    TrackerComp tracker(world_config, 0.01, 0.05/3, 0.2);
+    //FeatureAffinity affinity(tracker_config, plugin);
+    //FeatureCache feature_cache(SOURCE_DIR "/data/metrics.db", "uninitialised");
+    //CachedFeatures cached_features(/*affinity,*/ feature_cache);
+    //tracker.use<TimedAffinity<FeatureData>, FeatureData>(0.5, cached_features, &time, 1/100.0);
+    //tracker.use<PositionAffinity, PositionData>(1.0f, 0.7);
+    tracker.use<OriginalTracker, OriginalData>(1.0f, 60.0/300);
+
+    spdlog::set_level(spdlog::level::err);
+
+    std::ofstream output(SOURCE_DIR "/data/results.csv");
 
     for (std::string file: files) {
         auto full_file = "/home/buscount/code/trials/" + file;
 
         detection_cache.setTag(full_file);
-        feature_cache.setTag(full_file);
+        //feature_cache.setTag(full_file);
 
-        main_file(full_file, cached_detector, tracker, world_config, gt, sut, &time);
+        main_file(full_file, timedDetector, tracker, world_config, gt, sut, &time, output, true);
     }
+
+    output.close();
 
     Error err =  compute_error(gt, sut);
     std::cout << "ERROR CALCS: " << std::endl;

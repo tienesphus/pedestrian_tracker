@@ -3,11 +3,11 @@
 
 #include <event.hpp>
 
-#include <chrono>
 #include <vector>
 #include <map>
+#include <ctime>
 
-typedef std::chrono::time_point<std::chrono::system_clock> stoptime;
+typedef std::time_t stoptime;
 
 struct StopData {
     int in_count = 0, out_count = 0;
@@ -41,7 +41,7 @@ struct Bucket {
 };
 
 
-std::vector<Bucket> read_gt(const std::string& location, bool front, const std::chrono::time_point<std::chrono::system_clock>& date);
+std::vector<Bucket> read_gt(const std::string& location, bool front, const std::time_t & date);
 
 stoptime closest(stoptime time, const std::vector<Bucket>& gt);
 

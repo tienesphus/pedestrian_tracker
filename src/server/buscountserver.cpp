@@ -1,7 +1,6 @@
 #include "server.hpp"
 #include <data_fetch.hpp>
-
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 int main()
 {
@@ -29,7 +28,7 @@ int main()
 
     start();
 
-    std::cout << "Buscount server finished (does this ever get run?)" << std::endl;
+    spdlog::info("Buscount server finished (does this ever get run?)");
 
     return 0;
 }

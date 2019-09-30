@@ -1,6 +1,5 @@
+#include <spdlog/spdlog.h>
 #include "sql_helper.hpp"
-
-#include <iostream>
 
 bool exec(sqlite3* db, const std::string& sql, std::function<int(int, char**, char**)> callback) {
     char* error;
@@ -18,7 +17,7 @@ bool exec(sqlite3* db, const std::string& sql, std::function<int(int, char**, ch
     while (result == SQLITE_BUSY);
 
     if (result != SQLITE_OK) {
-        std::cout << "SQL error: (" << result << ")" << error << std::endl;
+        spdlog::error("SQL error: ({}), {}", result, error);
         sqlite3_free(error);
         return false;
     }

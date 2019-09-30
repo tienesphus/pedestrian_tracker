@@ -1,8 +1,8 @@
 
 #include "detector_opencv.hpp"
+#include "../cv_utils.hpp"
 
-#include <iostream>
-
+#include <spdlog/spdlog.h>
 
 DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
         config(config),
@@ -68,11 +68,13 @@ Detections static_post_process(const cv::Mat &data, int clazz, float thresh)
             float y2 = detections.at<float>(i, 6);
             cv::Rect2d r(cv::Point2d(x1, y1), cv::Point2d(x2, y2));
 
-            std::cout << "    Found: " << id << "(" << confidence << "%) - " << r << std::endl;
+            spdlog::debug( "    Found: {} ({}%) - ({},{}),({}x{})", id, confidence, r.x, r.y, r.width, r.height);
             if (id == clazz)
                 results.emplace_back(r, confidence);
         }
     }
+
+
 
     return Detections(results);
 }

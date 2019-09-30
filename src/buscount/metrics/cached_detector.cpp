@@ -3,6 +3,7 @@
 #include "cached_detector.hpp"
 
 #include <opencv2/core/mat.hpp>
+#include <spdlog/spdlog.h>
 
 // The dummy detection is used to differentiate between a frame that has no detections
 // and a frame that has not been processed yet
@@ -54,7 +55,7 @@ void DetectionCache::setTag(const std::string &new_tag)
     detections_lookup.clear();
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db, "SELECT frame, x, y, w, h, c FROM Detections WHERE tag = ?", -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cout << "Cannot delete data: "<< sqlite3_errmsg(db) << std::endl;
+        spdlog::error("Cannot delete data: {}", sqlite3_errmsg(db));
         throw std::logic_error("Cannot load detections from database");
     }
     sqlite3_bind_text(stmt, 1, new_tag.c_str(), -1, nullptr);
@@ -77,7 +78,7 @@ void DetectionCache::clear(int frame)
 {
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Detections WHERE frame = ? AND tag = ?", -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cout << "Cannot delete data: "<< sqlite3_errmsg(db) << std::endl;
+        spdlog::error("Cannot delete data: ", sqlite3_errmsg(db));
         throw std::logic_error("Cannot delete features");
     }
 
@@ -97,7 +98,7 @@ void DetectionCache::clear()
 {
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Detections WHERE tag = ?", -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cout << "Cannot delete data: "<< sqlite3_errmsg(db) << std::endl;
+        spdlog::error("Cannot delete data: {}",  sqlite3_errmsg(db));
         throw std::logic_error("Cannot delete features");
     }
 

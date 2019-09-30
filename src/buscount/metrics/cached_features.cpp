@@ -2,6 +2,7 @@
 #include "../cv_utils.hpp"
 
 #include <sql_helper.hpp>
+#include <spdlog/spdlog.h>
 
 // The DB scale stuff is to remove oddities with floating point numbers
 // We scale float numbers from 0-1 to integers from 0-DB_SCALE
@@ -41,7 +42,7 @@ void FeatureCache::setTag(const std::string& new_tag) {
     sqlite3_stmt* stmt;
     const char* sql = "SELECT frame, x, y, w, h, data FROM Features WHERE tag=?";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cout << "Cannot select data: "<< sqlite3_errmsg(db) << std::endl;
+        spdlog::error("Cannot select data: {}", sqlite3_errmsg(db));
         throw std::logic_error("Cannot select features");
     }
     sqlite3_bind_text(stmt, 1, tag.c_str(), -1, nullptr);
@@ -62,6 +63,7 @@ void FeatureCache::setTag(const std::string& new_tag) {
 
         int floats = bytes / sizeof(float);
         std::vector<float> f_features;
+        f_features.reserve(floats);
         for (int i = 0; i < floats; i++) {
             float f = features[i];
             f_features.push_back(f);
@@ -77,7 +79,7 @@ void FeatureCache::clear() {
     // Delete any existing features in that location
     sqlite3_stmt* delete_stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Features WHERE tag=?", -1, &delete_stmt, nullptr) != SQLITE_OK) {
-        std::cout << "Cannot delete data: "<< sqlite3_errmsg(db) << std::endl;
+        spdlog::error("Cannot delete data: {}", sqlite3_errmsg(db));
         throw std::logic_error("Cannot delete features");
     }
     sqlite3_bind_text(delete_stmt, 1, tag.c_str(), -1, nullptr);
@@ -96,7 +98,7 @@ void FeatureCache::clear(int frame_no, const Detection& d) {
     // Delete the detection from the database
     sqlite3_stmt* delete_stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Features WHERE tag=? AND frame=? AND x=? AND y=? AND w=? AND h=?", -1, &delete_stmt, nullptr) != SQLITE_OK) {
-        std::cout << "Cannot delete data: "<< sqlite3_errmsg(db) << std::endl;
+        spdlog::error("Cannot delete data: {}", sqlite3_errmsg(db));
         throw std::logic_error("Cannot delete features");
     }
     sqlite3_bind_text(delete_stmt, 1, tag.c_str(), -1, nullptr);
@@ -129,7 +131,7 @@ void FeatureCache::store(const FeatureData &data, int frame_no, const Detection 
     sqlite3_stmt* stmt;
     const char* sql = "INSERT INTO Features (tag, frame, x, y, w, h, data) VALUES (?, ?, ?, ?, ?, ?, ?)";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cout << "Cannot insert data: "<< sqlite3_errmsg(db) << std::endl;
+        spdlog::error("Cannot insert data: {}", sqlite3_errmsg(db));
         throw std::logic_error("Cannot insert features");
     }
 
