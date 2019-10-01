@@ -22,7 +22,6 @@ public:
         std::string meta;       // path to the meta file (.xml)
         std::string model;      // path to the model file (.bin)
         cv::Size size;          // Size of input layer
-        float thresh;           // confidence to threshold positive detections at (between 0-1)
     };
 
     FeatureAffinity(const NetConfig& net, InferenceEngine::InferencePlugin &plugin);
@@ -37,7 +36,6 @@ public:
 
 private:
 
-    NetConfig netConfig;
     InferenceEngine::ExecutableNetwork network;
     std::string inputName, outputName;
 

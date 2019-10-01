@@ -7,8 +7,7 @@
 FeatureData::FeatureData(std::vector<float> features): features(std::move(features))
 {}
 
-FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::InferencePlugin &plugin):
-        netConfig(netConfig)
+FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::InferencePlugin &plugin)
 {
     using namespace InferenceEngine;
 
