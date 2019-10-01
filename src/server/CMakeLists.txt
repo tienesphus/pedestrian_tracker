@@ -6,7 +6,7 @@ add_library(server_static
 )
 
 target_link_libraries(server_static PUBLIC
-    Drogon::Drogon
+    ${DROGON_LIBRARIES}
     common
     trantor
     uuid
@@ -20,12 +20,13 @@ target_link_libraries(server_static PUBLIC
 
 # allow common header files to be used
 target_include_directories(server_static PUBLIC
-        $<TARGET_PROPERTY:common,SOURCE_DIR>
+    $<TARGET_PROPERTY:common,SOURCE_DIR>
+    ${DROGON_INCLUDE_DIRS}
 )
 
 add_executable(buscountserver
-        buscountserver.cpp
-        )
+    buscountserver.cpp
+)
 
 target_link_libraries(buscountserver server_static)
 
