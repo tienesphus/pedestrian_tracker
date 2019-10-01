@@ -102,10 +102,10 @@ Detections DetectorOpenVino::process(const cv::Mat &frame)
     spdlog::debug("Starting inference request");
     request->StartAsync();
 
-    spdlog::info("Waiting for inference request");
+    spdlog::debug("Waiting for inference request");
     request->Wait(IInferRequest::WaitMode::RESULT_READY);
 
-    spdlog::info("Interpreting results");
+    spdlog::debug("Interpreting results");
     std::vector<Detection> results;
     const float *detections = request->GetBlob(outputName)->buffer().as<PrecisionTrait<Precision::FP32>::value_type*>();
     for (size_t i = 0; i < maxProposalCount; i++) {

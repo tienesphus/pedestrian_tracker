@@ -193,7 +193,7 @@ struct MergeOption {
 std::vector<DetectionExtra> initialise_detections(const std::vector<Detection> &detection_results, const cv::Mat &frame,
                                 const std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> &affinities)
 {
-    spdlog::info("  Initialise detection info");
+    spdlog::debug("  Initialise detection info");
     std::vector<DetectionExtra> detections;
     int index = 0;
     for (const Detection& detection : detection_results) {

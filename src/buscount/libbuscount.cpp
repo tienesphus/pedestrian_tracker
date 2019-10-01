@@ -237,7 +237,7 @@ void BusCounter::run_parallel(bool do_draw)
             [&counter](flow::continue_msg) -> void {
                 ScopeLog log("TICK");
                 auto fps = counter.process_tick();
-                spdlog::info("FPS: {:f}", (fps ? *fps : -1));
+                spdlog::debug("FPS: {:f}", (fps ? *fps : -1));
             }
     );
     

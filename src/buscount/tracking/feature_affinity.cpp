@@ -2,6 +2,7 @@
 #include "../cv_utils.hpp"
 
 #include <opencv2/imgproc.hpp>
+#include <spdlog/spdlog.h>
 
 FeatureData::FeatureData(std::vector<float> features): features(std::move(features))
 {}
@@ -11,12 +12,12 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
 {
     using namespace InferenceEngine;
 
-    std::cout << "[ INFO ] Loading network files for PersonREID" << std::endl;
+    spdlog::info("Loading network files for PersonREID");
     CNNNetReader netReader;
     /** Read network model **/
     netReader.ReadNetwork(netConfig.meta);
     /** Set batch size to 1 **/
-    std::cout << "[ INFO ] Batch size is forced to  1" << std::endl;
+    spdlog::info("Batch size is forced to  1");
     netReader.getNetwork().setBatchSize(1);
     /** Extract model name and load it's weights **/
     netReader.ReadWeights(netConfig.model);
@@ -24,7 +25,7 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
 
     /** SSD-based network should have one input and one output **/
     // ---------------------------Check inputs ------------------------------------------------------
-    std::cout << "[ INFO ] Checking Person Reidentification inputs" << std::endl;
+    spdlog::info("Checking Person Reidentification inputs");
     InputsDataMap inputInfo(netReader.getNetwork().getInputsInfo());
     if (inputInfo.size() != 1) {
         throw std::logic_error("Person Reidentification network should have only one input");
@@ -39,7 +40,7 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
     // -----------------------------------------------------------------------------------------------------
 
     // ---------------------------Check outputs ------------------------------------------------------
-    std::cout << "[ INFO ] Checking Person Reidentification outputs" << std::endl;
+    spdlog::info("Checking Person Reidentification outputs");
     OutputsDataMap outputInfo(netReader.getNetwork().getOutputsInfo());
     if (outputInfo.size() != 1) {
         throw std::logic_error("Person Reidentification network should have only one output");
@@ -109,7 +110,7 @@ static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
 std::vector<float> FeatureAffinity::identify(const cv::Mat &person) const {
     using namespace InferenceEngine;
 
-    std::cout << "Identify started" << std::endl;
+    spdlog::debug("Identify started");
 
     InferRequest request = const_cast<FeatureAffinity*>(this)->network.CreateInferRequest();
     cv::Mat person_scaled;
@@ -132,6 +133,6 @@ std::vector<float> FeatureAffinity::identify(const cv::Mat &person) const {
     }
     
     auto outputValues = attribsBlob->buffer().as<float*>();
-    std::cout << "Identify finished" << std::endl;
+    spdlog::debug("Identify finished");
     return std::vector<float>(outputValues, outputValues + 256);
 }

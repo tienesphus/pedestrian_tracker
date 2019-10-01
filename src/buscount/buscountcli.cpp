@@ -6,6 +6,7 @@
 // C++ includes
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include <spdlog/spdlog.h>
 
 // C includes
 #include <unistd.h>
@@ -22,6 +23,8 @@
 
 
 int main() {
+
+    spdlog::default_logger()->set_level(spdlog::level::debug);
 
     /*
     DetectorOpenCV::NetConfig net_config {
@@ -94,7 +97,7 @@ int main() {
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
             []() { return cv::waitKey(20) == 'q'; },
             [&data](Event event) {
-                std::cout << "EVENT: " << name(event) << std::endl;
+                spdlog::info("EVENT: {}", name(event));
                 data.enter_event(event);
             }
     );
