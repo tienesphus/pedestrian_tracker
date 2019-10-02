@@ -97,6 +97,8 @@ std::vector<std::string> list_video_files(const std::string& trials_dir_name) {
 
 int main() {
 
+    spdlog::set_level(spdlog::level::trace);
+
     // find all files
     std::string trials_folder = SOURCE_DIR "/../video_data/";
     auto files = list_video_files(trials_folder);

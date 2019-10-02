@@ -99,47 +99,67 @@ void BusCounter::run_parallel(bool do_draw)
 {
     typedef std::tuple<cv::Mat, int, std::vector<Event>> process_result;
 
+    // these locks ensure that only one thread can access the given resource at a time
     std::mutex detection_lock, tracking_lock, src_lock;
+
+    // these locks ensure that the threads stay in order
+    // (otherwise, there may be a case where the first frame has to wait for all latter frames to complete and
+    // large jitter will b
+    std::mutex src_detect_lock, detect_track_lock, track_draw_lock;
 
     // define the wor
     auto process_frame = [&]() -> nonstd::optional<process_result> {
-            src_lock.lock();
-            auto next = _src();
-            src_lock.unlock();
+        // name this thread something meaningfull
+        //pthread_setname_np(pthread_self(), "Detection process");
 
-            if (!next) {
-                return nonstd::nullopt;
-            }
-            cv::Mat frame = std::get<0>(*next);
-            int frame_no = std::get<1>(*next);
+        // get new frame
+        src_lock.lock();
+        auto next = _src();
 
-            // Run the detector
-            detection_lock.lock();
-            auto detections_promise = _detector.start_async(frame, frame_no);
-            detection_lock.unlock();
+        src_detect_lock.lock();
+        src_lock.unlock();
 
-            // Wait for results
-            const auto& detections = detections_promise.get();
+        if (!next) {
+            src_detect_lock.unlock();
+            return nonstd::nullopt;
+        }
+        cv::Mat frame = std::get<0>(*next);
+        int frame_no = std::get<1>(*next);
 
-            // Track the results
+        detection_lock.lock();
+        src_detect_lock.unlock();
+
+        // Run the detector
+        auto detections_promise = _detector.start_async(frame, frame_no);
+
+        detect_track_lock.lock();
+        detection_lock.unlock();
+
+        // Wait for results
+        const auto& detections = detections_promise.get();
+
+        // Track the results
+        tracking_lock.lock();
+        detect_track_lock.unlock();
+
+        auto events = _tracker.process(detections, frame, frame_no);
+
+        tracking_lock.unlock();
+
+        // Draw stuff if needed
+        if (do_draw) {
+            detections.draw(frame);
+            geom::draw_world_count(frame, inside_count, outside_count);
+            geom::draw_world_config(frame, _world_config);
             tracking_lock.lock();
-            auto events = _tracker.process(detections, frame, frame_no);
+            _tracker.draw(frame);
             tracking_lock.unlock();
+        }
 
-            // Draw stuff if needed
-            if (do_draw) {
-                detections.draw(frame);
-                geom::draw_world_count(frame, inside_count, outside_count);
-                geom::draw_world_config(frame, _world_config);
-                tracking_lock.lock();
-                _tracker.draw(frame);
-                tracking_lock.unlock();
-            }
-
-            return std::make_tuple(std::move(frame), frame_no, std::move(events));
+        return std::make_tuple(std::move(frame), frame_no, std::move(events));
     };
 
-    const uint8_t MAX_FRAMES = 2;
+    const uint8_t MAX_FRAMES = 5;
     std::deque<std::shared_future<nonstd::optional<process_result>>> processing;
     bool finished = false;
     TickCounter<> counter;
