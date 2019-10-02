@@ -80,12 +80,12 @@ void FeatureCache::clear() {
     sqlite3_stmt* delete_stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Features WHERE tag=?", -1, &delete_stmt, nullptr) != SQLITE_OK) {
         spdlog::error("Cannot delete data: {}", sqlite3_errmsg(db));
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Syntax error in clearing all features from cache");
     }
     sqlite3_bind_text(delete_stmt, 1, tag.c_str(), -1, nullptr);
 
     if (sqlite3_step(delete_stmt) != SQLITE_DONE) {
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Cannot delete all features");
     }
     sqlite3_finalize(delete_stmt);
 
@@ -99,7 +99,7 @@ void FeatureCache::clear(int frame_no, const Detection& d) {
     sqlite3_stmt* delete_stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Features WHERE tag=? AND frame=? AND x=? AND y=? AND w=? AND h=?", -1, &delete_stmt, nullptr) != SQLITE_OK) {
         spdlog::error("Cannot delete data: {}", sqlite3_errmsg(db));
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Syntax error in clear single feature");
     }
     sqlite3_bind_text(delete_stmt, 1, tag.c_str(), -1, nullptr);
     sqlite3_bind_int(delete_stmt, 2, frame_no);
@@ -109,7 +109,7 @@ void FeatureCache::clear(int frame_no, const Detection& d) {
     sqlite3_bind_int(delete_stmt, 6, box.height);
 
     if (sqlite3_step(delete_stmt) != SQLITE_DONE) {
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Cannot delete feature");
     }
 
     sqlite3_finalize(delete_stmt);

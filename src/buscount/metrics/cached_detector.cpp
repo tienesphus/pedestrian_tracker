@@ -79,7 +79,7 @@ void DetectionCache::clear(int frame)
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Detections WHERE frame = ? AND tag = ?", -1, &stmt, nullptr) != SQLITE_OK) {
         spdlog::error("Cannot delete data: ", sqlite3_errmsg(db));
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Syntax error in clearing frame's detections from cache");
     }
 
     sqlite3_bind_int(stmt, 1, frame);
@@ -99,7 +99,7 @@ void DetectionCache::clear()
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Detections WHERE tag = ?", -1, &stmt, nullptr) != SQLITE_OK) {
         spdlog::error("Cannot delete data: {}",  sqlite3_errmsg(db));
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Syntax error in clearing all detections from cache");
     }
 
     sqlite3_bind_text(stmt, 1, tag.c_str(), -1, nullptr);
