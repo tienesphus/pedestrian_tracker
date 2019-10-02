@@ -17,46 +17,33 @@
 
 #include <unistd.h>
 #include <spdlog/spdlog.h>
+#include <dirent.h>
+#include <string_utils.hpp>
 
 
-int main_file(std::string input) {
+int main_file(const std::string& full_filename, bool flip, Detector& detector, Tracker& tracker, WorldConfig& config) {
 
-    DetectorOpenVino::NetConfig net_config {
-            0.1f,               // thresh
-            15,                 // clazz
-            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
-            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
-    };
+    auto cv_cap = std::make_shared<cv::VideoCapture>(full_filename);
 
-    //std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
-    auto cv_cap = std::make_shared<cv::VideoCapture>(input);
-
-    spdlog::info("Loading plugin");
-    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
-
-    WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config.csv");
-
-    DetectorOpenVino detector(net_config, plugin);
-    DetectionCache cache(SOURCE_DIR "/data/metrics.db", input);
-    CachedDetector cachedDetector(cache, detector, 0.2f);
-
-    TrackerComp tracker(world_config, 0.5);
-    tracker.use<PositionAffinity, PositionData>(1, 0.7);
+    cv::namedWindow(full_filename);
 
     uint32_t frameno = 0;
 
-    BusCounter counter(cachedDetector, tracker, world_config,
-            [&cv_cap, &frameno]() -> nonstd::optional<std::tuple<cv::Mat, int>> {
+    BusCounter counter(detector, tracker, config,
+            [&cv_cap, &frameno, flip]() -> nonstd::optional<std::tuple<cv::Mat, int>> {
                 cv::Mat frame;
                 bool okay = cv_cap->read(frame);
                 if (okay) {
+                    if (flip)  {
+                        cv::flip(frame, frame, 0);
+                    }
                     return std::make_tuple(frame, frameno++);
                 } else {
                     return nonstd::nullopt;
                 }
             },
-            [](const cv::Mat& frame) { cv::imshow("output", frame); },
-            []() { return cv::waitKey(20) == 'q'; },
+            [&full_filename](const cv::Mat& frame) { cv::imshow(full_filename, frame); },
+            []() { return cv::waitKey(1) == 'q'; },
             [](Event event, const cv::Mat&, int) {
                 spdlog::debug("EVENT: {}", name(event));
             }
@@ -64,113 +51,94 @@ int main_file(std::string input) {
 
     counter.run(BusCounter::RUN_PARALLEL, true);
 
+    cv::destroyWindow(full_filename);
     return 0;
 }
 
 
-int main() {
-    auto files = {
-            "pi4/20181212/2018-12-12--07-45-41.mp4",
-            "pi4/20181212/2018-12-12--15-25-53.mp4",
-            "pi4/20181212/2018-12-12--08-15-42.mp4",
-            "pi4/20181212/2018-12-12--11-15-47.mp4",
-            "pi4/20181212/2018-12-12--09-25-44.mp4",
-            "pi4/20181212/2018-12-12--16-05-54.mp4",
-            "pi4/20181212/2018-12-12--10-55-46.mp4",
-            "pi4/20181212/2018-12-12--08-55-43.mp4",
-            "pi4/20181212/2018-12-12--11-55-48.mp4",
-            "pi4/20181212/2018-12-12--10-15-45.mp4",
-            "pi4/20181212/2018-12-12--14-35-52.mp4",
-            "pi4/20181212/2018-12-12--13-25-50.mp4",
-            "pi4/20181212/2018-12-12--12-45-49.mp4",
-            "pi4/20181212/2018-12-12--10-35-46.mp4",
-            "pi4/20181212/2018-12-12--09-35-44.mp4",
-            "pi4/20181212/2018-12-12--09-45-45.mp4",
-            "pi4/20181212/2018-12-12--15-45-54.mp4",
-            "pi4/20181212/2018-12-12--15-55-54.mp4",
-            "pi4/20181212/2018-12-12--07-55-42.mp4",
-            "pi4/20181212/2018-12-12--15-15-53.mp4",
-            "pi4/20181212/2018-12-12--09-15-44.mp4",
-            "pi4/20181212/2018-12-12--08-35-43.mp4",
-            "pi4/20181212/2018-12-12--13-35-50.mp4",
-            "pi4/20181212/2018-12-12--14-25-51.mp4",
-            "pi4/20181212/2018-12-12--12-55-49.mp4",
-            "pi4/20181212/2018-12-12--07-35-41.mp4",
-            "pi4/20181212/2018-12-12--10-45-46.mp4",
-            "pi4/20181212/2018-12-12--10-25-46.mp4",
-            "pi4/20181212/2018-12-12--12-35-49.mp4",
-            "pi4/20181212/2018-12-12--07-25-41.mp4",
-            "pi4/20181212/2018-12-12--10-05-45.mp4",
-            "pi4/20181212/2018-12-12--11-25-47.mp4",
-            "pi4/20181212/2018-12-12--11-35-47.mp4",
-            "pi4/20181212/2018-12-12--08-05-42.mp4",
-            "pi4/20181212/2018-12-12--08-25-42.mp4",
-            "pi4/20181212/2018-12-12--13-15-50.mp4",
-            "pi4/20181212/2018-12-12--08-45-43.mp4",
-            "pi4/20181212/2018-12-12--14-05-51.mp4",
-            "pi4/20181212/2018-12-12--11-45-47.mp4",
-            "pi4/20181212/2018-12-12--15-05-53.mp4",
-            "pi4/20181212/2018-12-12--14-45-52.mp4",
-            "pi4/20181212/2018-12-12--11-05-46.mp4",
-            "pi4/20181212/2018-12-12--12-15-48.mp4",
-            "pi4/20181212/2018-12-12--09-05-43.mp4",
-            "pi4/20181212/2018-12-12--14-55-52.mp4",
-            "pi4/20181212/2018-12-12--15-35-53.mp4",
-            "pi4/20181212/2018-12-12--13-45-51.mp4",
-            "pi4/20181212/2018-12-12--14-15-51.mp4",
-            "pi4/20181212/2018-12-12--13-05-50.mp4",
-            "pi4/20181212/2018-12-12--12-05-48.mp4",
-            "pi4/20181212/2018-12-12--12-25-48.mp4",
-            "pi4/20181212/2018-12-12--09-55-45.mp4",
-            "pi4/20181212/2018-12-12--13-55-51.mp4",
+std::vector<std::string> list_video_files(const std::string& trials_dir_name) {
+    // list out all the video files
+    std::vector<std::string> files;
+    DIR *trials_dir;
+    if ((trials_dir = opendir(trials_dir_name.c_str())) != nullptr) {
+        struct dirent *trials_ent;
+        while ((trials_ent  = readdir (trials_dir)) != nullptr) {
+            // pi_dir_name will be pi1, pi2, etc
+            const std::string pi_dir_name = trials_ent->d_name;
+            DIR  *pi_dir;
+            if ((pi_dir = opendir((trials_dir_name + "/" + pi_dir_name).c_str())) != nullptr) {
+                struct dirent *pi_ent;
+                while ((pi_ent = readdir (pi_dir)) != nullptr) {
+                    // dirname will be e.g. 20181212
+                    const std::string date_dir_name = pi_ent->d_name;
+                    DIR  *date_dir;
+                    if ((date_dir = opendir((trials_dir_name + "/" + pi_dir_name + "/" + date_dir_name).c_str())) != nullptr) {
+                        struct dirent *date_ent;
+                        while ((date_ent = readdir (date_dir)) != nullptr) {
+                            // file will be something like '2018-12-12--15-25-53.mp4'
+                            std::string video_file = date_ent->d_name;
+                            if (ends_with(video_file, ".mp4")) {
+                                files.push_back(pi_dir_name + "/" + date_dir_name + "/" + video_file);
+                            }
+                        }
+                        closedir(date_dir);
+                    }
+                }
+                closedir(pi_dir);
+            }
+        }
+        closedir(trials_dir);
+    }
 
-            "pi3/20181212/2018-12-12--08-08-32.mp4",
-            "pi3/20181212/2018-12-12--11-38-38.mp4",
-            "pi3/20181212/2018-12-12--10-28-36.mp4",
-            "pi3/20181212/2018-12-12--13-28-40.mp4",
-            "pi3/20181212/2018-12-12--11-28-37.mp4",
-            "pi3/20181212/2018-12-12--14-38-42.mp4",
-            "pi3/20181212/2018-12-12--14-28-42.mp4",
-            "pi3/20181212/2018-12-12--09-18-34.mp4",
-            "pi3/20181212/2018-12-12--09-58-35.mp4",
-            "pi3/20181212/2018-12-12--12-38-39.mp4",
-            "pi3/20181212/2018-12-12--10-38-36.mp4",
-            "pi3/20181212/2018-12-12--09-48-35.mp4",
-            "pi3/20181212/2018-12-12--13-48-41.mp4",
-            "pi3/20181212/2018-12-12--09-08-34.mp4",
-            "pi3/20181212/2018-12-12--11-18-37.mp4",
-            "pi3/20181212/2018-12-12--11-58-38.mp4",
-            "pi3/20181212/2018-12-12--10-18-36.mp4",
-            "pi3/20181212/2018-12-12--13-08-40.mp4",
-            "pi3/20181212/2018-12-12--14-18-42.mp4",
-            "pi3/20181212/2018-12-12--08-58-34.mp4",
-            "pi3/20181212/2018-12-12--10-48-36.mp4",
-            "pi3/20181212/2018-12-12--07-28-31.mp4",
-            "pi3/20181212/2018-12-12--07-48-32.mp4",
-            "pi3/20181212/2018-12-12--10-58-37.mp4",
-            "pi3/20181212/2018-12-12--11-48-38.mp4",
-            "pi3/20181212/2018-12-12--14-08-41.mp4",
-            "pi3/20181212/2018-12-12--12-48-39.mp4",
-            "pi3/20181212/2018-12-12--10-08-35.mp4",
-            "pi3/20181212/2018-12-12--12-58-40.mp4",
-            "pi3/20181212/2018-12-12--12-18-39.mp4",
-            "pi3/20181212/2018-12-12--08-48-33.mp4",
-            "pi3/20181212/2018-12-12--09-38-35.mp4",
-            "pi3/20181212/2018-12-12--08-38-33.mp4",
-            "pi3/20181212/2018-12-12--07-58-32.mp4",
-            "pi3/20181212/2018-12-12--11-08-37.mp4",
-            "pi3/20181212/2018-12-12--12-28-39.mp4",
-            "pi3/20181212/2018-12-12--08-28-33.mp4",
-            "pi3/20181212/2018-12-12--13-18-40.mp4",
-            "pi3/20181212/2018-12-12--08-18-32.mp4",
-            "pi3/20181212/2018-12-12--13-38-41.mp4",
-            "pi3/20181212/2018-12-12--13-58-41.mp4",
-            "pi3/20181212/2018-12-12--12-08-38.mp4",
-            "pi3/20181212/2018-12-12--07-38-31.mp4",
-            "pi3/20181212/2018-12-12--09-28-34.mp4"
+    std::sort(files.begin(), files.end());
+    return files;
+}
+
+
+int main() {
+
+    // find all files
+    std::string trials_folder = SOURCE_DIR "/../video_data/";
+    auto files = list_video_files(trials_folder);
+
+    // load detector and feature affity
+    DetectorOpenVino::NetConfig net_config {
+            0.1f,               // thresh (limit to store in database)
+            15,                 // person class
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.xml", // config
+            SOURCE_DIR "/models/MobileNetSSD_IE/MobileNetSSD.bin", // model
     };
-    for (std::string file: files) {
-        auto full_file = "/home/matt/ml/bus_counting/trials/" + file;
-        main_file(full_file);
+
+    FeatureAffinity::NetConfig tracker_config {
+            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
+            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
+            cv::Size(48, 96),    // input size
+    };
+
+    // load any random world config (really doesn't matter which)
+    WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config.csv");
+
+    spdlog::info("Loading plugin");
+    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
+
+    DetectorOpenVino detector(net_config, plugin);
+    DetectionCache detection_cache(SOURCE_DIR "/data/detections.db", "unitialised");
+    CachedDetector cachedDetector(detection_cache, detector, 0.2f);
+
+    TrackerComp tracker(world_config, 0.5, 0.05/3, 0.2);
+    FeatureAffinity affinity(tracker_config, plugin);
+    FeatureCache feature_cache(SOURCE_DIR "/data/features.db", "unitialised");
+    tracker.use<CachedFeatures, FeatureData>(1.0f, affinity, feature_cache);
+
+
+    for (const std::string& file: files) {
+        auto full_file = trials_folder + file;
+        spdlog::info("{} -> {}", file, full_file);
+        bool flip = file.find("flip") != std::string::npos;
+
+        detection_cache.setTag(file);
+        feature_cache.setTag(file);
+
+        main_file(full_file, flip, cachedDetector, tracker, world_config);
     }
 }

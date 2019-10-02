@@ -43,4 +43,9 @@ static inline std::string trim_copy(std::string s) {
     return s;
 }
 
+// Tests if one string ends with another string
+static inline bool ends_with(const std::string& str, const std::string& suffix) {
+    return str.size() >= suffix.size() && 0 == str.compare(str.size()-suffix.size(), suffix.size(), suffix);
+}
+
 #endif //BUS_COUNT_STRING_UTILS_HPP
