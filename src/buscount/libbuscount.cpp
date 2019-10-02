@@ -97,9 +97,22 @@ void BusCounter::run_serial(bool do_draw)
 
 void BusCounter::run_parallel(bool do_draw)
 {
-    std::mutex detection_lock, tracking_lock;
+    typedef std::tuple<cv::Mat, int, std::vector<Event>> process_result;
 
-    auto process_frame = [&](cv::Mat frame, int frame_no) -> std::tuple<cv::Mat, int, std::vector<Event>> {
+    std::mutex detection_lock, tracking_lock, src_lock;
+
+    // define the wor
+    auto process_frame = [&]() -> nonstd::optional<process_result> {
+            src_lock.lock();
+            auto next = _src();
+            src_lock.unlock();
+
+            if (!next) {
+                return nonstd::nullopt;
+            }
+            cv::Mat frame = std::get<0>(*next);
+            int frame_no = std::get<1>(*next);
+
             // Run the detector
             detection_lock.lock();
             auto detections_promise = _detector.start_async(frame, frame_no);
@@ -127,33 +140,26 @@ void BusCounter::run_parallel(bool do_draw)
     };
 
     const uint8_t MAX_FRAMES = 2;
-    std::deque<std::shared_future<std::tuple<cv::Mat, int, std::vector<Event>>>> processing;
+    std::deque<std::shared_future<nonstd::optional<process_result>>> processing;
     bool finished = false;
     TickCounter<> counter;
 
     // Initialise a few start-up frames
     for (auto i = 0; i < MAX_FRAMES; i++) {
-        // read the frame
-        auto got_frame = _src();
-        if (!got_frame) {
-            break;
-        }
-        cv::Mat frame = std::get<0>(*got_frame);
-        int frame_no = std::get<1>(*got_frame);
-
-        // start the frame processing
-        processing.emplace_back(std::async(process_frame, std::move(frame), frame_no));
+        processing.emplace_back(std::async(process_frame));
     }
 
     // Keep processing frames until we're done
     while (!processing.empty()) {
         spdlog::debug("WAITING");
         // Retrieve the processed data
-        std::tuple<cv::Mat, int, std::vector<Event>> result = processing.front().get();
+        nonstd::optional<process_result> result = processing.front().get();
         processing.pop_front();
-        cv::Mat frame = std::get<0>(result);
-        int frame_no = std::get<1>(result);
-        std::vector<Event> events = std::get<2>(result);
+        if (!result)
+            continue; // clear the final few elements from processing queue
+        cv::Mat frame = std::get<0>(*result);
+        int frame_no = std::get<1>(*result);
+        std::vector<Event> events = std::get<2>(*result);
 
         // Calculate the FPS
         auto fps = counter.process_tick();
@@ -167,17 +173,9 @@ void BusCounter::run_parallel(bool do_draw)
             finished = true;
         }
 
-        spdlog::debug("READING");
-        // Get a new frame
-        auto got_frame = finished ? nonstd::nullopt : _src();
-        if (!got_frame) {
-            finished = true;
-        } else {
-            // start the frame processing
-            cv::Mat new_frame = std::get<0>(*got_frame);
-            int new_frame_no = std::get<1>(*got_frame);
-            processing.emplace_back(std::async(process_frame, std::move(new_frame), new_frame_no));
-        }
+        // spin up another process for the sourced frame
+        if (!finished)
+            processing.emplace_back(std::async(process_frame));
     }
 
 }
