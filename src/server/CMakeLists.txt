@@ -14,6 +14,7 @@ target_link_libraries(server_static PUBLIC
         z
         ssl
         crypto
+	atomic
 )
 
 # allow common header files to be used

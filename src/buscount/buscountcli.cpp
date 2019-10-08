@@ -17,6 +17,7 @@
 
 
 int main() {
+    std::cout << "STARTING" << std::endl;
 
     /*
     DetectorOpenCV::NetConfig net_config {
@@ -48,9 +49,12 @@ int main() {
             0.6,                 // similarity thresh
     };
 
-    //std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
-    //VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
+    std::cout << "LOAdING VINDO" << std::endl;
+    std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+std::cout << "p1" << std::endl;
+    //VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(0);
     auto cv_cap = std::make_shared<cv::VideoCapture>(0);
+   std::cout << "VIDEO LOADED" << std::endl;
 
     std::cout << "Loading plugin" << std::endl;
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
@@ -86,8 +90,12 @@ int main() {
                 cv::resize(frame, frame, cv::Size(640, 480));
                 return frame;
             },
-            [](const cv::Mat& frame) { cv::imshow("output", frame); },
-            []() { return cv::waitKey(20) == 'q'; },
+            [](const cv::Mat& frame) { 
+		//cv::imshow("output", frame); 
+	    },
+            []() { 
+		return cv::waitKey(1) == 'q';
+	    },
             [&data](Event event) {
                 std::cout << "EVENT: " << name(event) << std::endl;
                 data.enter_event(event);
