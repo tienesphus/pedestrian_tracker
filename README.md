@@ -4,47 +4,56 @@ Counts passengers entering and exiting a bus.
 
 ## Building
 
-### Setup
-I have only tested the program in Linux. I think it should work fine in Windows.
+This has only been tested on:
+- Ubuntu 18.04
+- Raspberrian Stretch
+- Rasperrian Buster
 
-You will need to install OpenCV 4.0 and cmake and tbb.
+### Install system libraries
+Install these libraries:
+
 ```
 sudo apt install make cmake
-sudo apt install libtbb-dev libtbb2 libtbb2-dbg
+sudo apt install libtbb-dev libtbb2
+sudo apt install libgstrtspserver-1.0-dev
+sudo apt install gstreamer1.0-omx-rpi # on Pi only
+sudo apt install gstreamer1.0-plugins-base
+sudo apt install libgstreamermm-1.0-dev
+sudo apt install libsqlite3-dev
+sudo apt install libjsoncpp-dev
+sudo ln -s /usr/include/jsoncpp/json/ /usr/include/json
 ```
 
-If you want to run in on a Neural Compute Stick, you will also need to install OpenVino.
+### Install OpenCV/OpenVino
+You will need to install OpenVino and OpenCV. You do not need to install OpenCV from source; it is fine to just use the OpenCV binaries that come with OpenVino. However, if you do install OpenCV from source, make sure it includes the Inference Engine.
 
-OpenCV should be installed automatically when OpenVino is installed, so you probably do not have to build/install it manually. However, if you do, then make sure you enable the inference engine:
+Install instructions:
+- Pi: https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_raspbian.html
+- Ubuntu: https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_linux.html
 
+Make sure OpenVino is setup with:
 ```
 . /opt/intel/openvino/bin/setupvars.sh 
 ```
 
+### Install Drogon
+See instructions here:
+https://github.com/an-tao/drogon/wiki/02-Installation
+
+### Download Related repos
 Only once, you will have to download the required Neural Network modules.
 
 ```
 git submodule update --init models/<network>
 # replace <network> with the folder that needs initialising
 ```
+
 Note: All submodules are stored in private repos, hence will require logging in for each (git doesn't have any concept of gitlab groups, so can't share the same password for each repo). To circumvent this, we will probably need to modify the submodules to make use of SSH, which will allow us to use either `ssh-agent` or SSH public-private keys.
 
 If the test videos are being used, it is assumed that the sample video repo has been downloaded to `../samplevideos`.
 ```
 cd ..
 git clone https://gitlab.com/buspassengercount/samplevideos.git
-```
-
-### External dependancies
-There are other dependancies that are also required, these can be installed using apt get
-```
-sudo apt install make cmake
-
-sudo apt install libtbb-dev libtbb2 libtbb2-dbg
-
-sudo apt-get install libgstrtspserver-1.0-dev
-sudo apt-get install gstreamer1.0-omx-rpi
-sudo apt-get install gstreamer1.0-plugins-base
 ```
 
 ### Building
@@ -65,12 +74,12 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 From within the build directory:
 
 ```
-bin/buscountcli
+./bin/buscountcli
 ```
 
 To run the daemon:
 ```
-bin/buscountd
+./bin/buscountd
 ```
 
 The gstreamer buscount plugin may also be used outside of `buscountd`. You may use any gstreamer command (`gst-launch-1.0`, `gst-inspect-1.0`, etc) as follows:

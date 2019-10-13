@@ -1,3 +1,5 @@
+find_package(OpenCV 4.0 REQUIRED)
+
 add_executable(tests
         tests_main.cpp
         buscount/testing_utils.cpp
@@ -14,13 +16,10 @@ add_executable(tests
         common/test_geom.cpp
 )
 
-# TODO why do I need to include opencv_imgcodecs here but not in buscountcli?
-# and why did I only start needing it when I restructured the project?
 target_link_libraries(tests
     Catch2
     buscount_static
-    opencv_videoio
-    opencv_imgcodecs
+    opencv_highgui
 )
 
 target_include_directories(tests PUBLIC
