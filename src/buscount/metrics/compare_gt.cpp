@@ -7,8 +7,8 @@
 #include <iomanip>
 #include <spdlog/spdlog.h>
 
-Bucket::Bucket(stoptime stop_time, StopData data)
-    :stop_time(stop_time), data(data)
+Bucket::Bucket(stoptime stop_time, StopData data, bool ignore)
+    :stop_time(stop_time), data(data), ignore(ignore)
 {}
 
 
@@ -24,7 +24,7 @@ std::vector<Bucket> read_gt(const std::string& location, bool front, const std::
 
     // check the header
     std::getline(source, line);
-    if ("Arrive,Depart,In_F,In_R,Out_F,Out_R" != line) {
+    if ("Arrive,Depart,In_F,In_R,Out_F,Out_R,Ignore" != line) {
         throw std::logic_error("CSV file in incorrect format");
     }
 
@@ -40,7 +40,7 @@ std::vector<Bucket> read_gt(const std::string& location, bool front, const std::
             trim(substr);
             parts.push_back( substr );
         }
-        if (parts.size() != 6) {
+        if (parts.size() != 7) {
             throw std::logic_error("Each line must have exactly six parts");
         }
 
@@ -53,9 +53,10 @@ std::vector<Bucket> read_gt(const std::string& location, bool front, const std::
         int in_r = parts[3].empty() ? 0 : std::stoi(parts[3]);
         int out_f = parts[4].empty() ? 0 : std::stoi(parts[4]);
         int out_r = parts[5].empty() ? 0 : std::stoi(parts[5]);
+        bool ignore = parts[6] == "1";
 
         // store the value
-        gt.emplace_back(arrive_time, front ? StopData{in_f, out_f} : StopData{in_r, out_r});
+        gt.emplace_back(arrive_time, front ? StopData{in_f, out_f} : StopData{in_r, out_r}, ignore);
 
         spdlog::debug("GT: {}: {}, {}", date_to_string(arrive_time, "%Y-%m-%d %H:%M:%S"), in_f, out_f);
     }
@@ -66,7 +67,7 @@ std::vector<Bucket> read_gt(const std::string& location, bool front, const std::
 
 
 stoptime closest(stoptime time, const std::vector<Bucket>& gt) {
-    auto larger = std::lower_bound(gt.begin(), gt.end(), Bucket(time, {}));
+    auto larger = std::lower_bound(gt.begin(), gt.end(), Bucket(time, {}, false));
     auto smaller = larger - 1;
 
     if (larger >= gt.end()) {
@@ -115,6 +116,10 @@ Error compute_error(const std::vector<Bucket>& gt, std::map<stoptime, StopData>&
         auto time = i->stop_time;
         auto in_gt = i->data.in_count;
         auto out_gt = i->data.out_count;
+        auto ignore = i->ignore;
+
+        if (ignore)
+            continue;
 
         auto act = sut[time];
         auto in_sut = act.in_count;
@@ -126,8 +131,8 @@ Error compute_error(const std::vector<Bucket>& gt, std::map<stoptime, StopData>&
         auto in_max = std::max(in_gt, in_sut);
         auto out_max = std::max(out_gt, out_sut);
 
-        sum_error_in += in_max == 0 ? 1 : static_cast<float>(in_err) / in_max;
-        sum_error_out += out_max == 0 ? 1 : static_cast<float>(out_err) / out_max;
+        sum_error_in += in_max == 0 ? 0 : static_cast<float>(in_err) / in_max;
+        sum_error_out += out_max == 0 ? 0 : static_cast<float>(out_err) / out_max;
 
         total_errors += in_err + out_err;
         total_exchanges += in_gt + out_gt;

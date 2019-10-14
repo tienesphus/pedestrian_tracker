@@ -16,8 +16,9 @@ struct StopData {
 struct Bucket {
     stoptime stop_time;
     StopData data;
+    bool ignore;
 
-    Bucket(stoptime stop_time, StopData data);
+    Bucket(stoptime stop_time, StopData data, bool ignore);
 
     inline bool operator > (const Bucket& other) const {
         return stop_time > other.stop_time;

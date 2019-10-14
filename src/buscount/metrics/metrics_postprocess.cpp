@@ -50,12 +50,12 @@ int main_file(const std::string& input, Detector& detector, Tracker& tracker, Wo
                     return cap_headless.next();
             },
             [draw](const cv::Mat& frame) {
-                if (draw)
-                    cv::imshow("output", frame);
+                //if (draw)
+                    //cv::imshow("output", frame);
             },
             [draw]() {
                 if (draw)
-                    return cv::waitKey(0) == 'q';
+                    return false;//cv::waitKey(1) == 'q';
                 else
                     return false;
             },
@@ -76,7 +76,7 @@ int main_file(const std::string& input, Detector& detector, Tracker& tracker, Wo
             }
     );
 
-    counter.run(BusCounter::RUN_SERIAL, draw);
+    counter.run(BusCounter::RUN_PARALLEL, draw);
 
     return 0;
 }
@@ -193,7 +193,6 @@ int main() {
             SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
             SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
             cv::Size(48, 96),    // input size
-            0.6,                 // similarity thresh
     };
     DetectorOpenVino::NetConfig net_config {
             0.1f,               // thresh (to use for detection cache. Evaluation thresh is below)
@@ -210,16 +209,16 @@ int main() {
 
     //DetectorOpenVino detector(net_config, plugin);
     DetectionCache detection_cache(SOURCE_DIR "/data/metrics.db", "uninitialised");
-    CachedDetector cached_detector(detection_cache, /*detector, */0.3);
-    TimedDetector timedDetector(cached_detector, &time, 3.0/25);
+    CachedDetector cached_detector(detection_cache, /*detector, */0.2);
+    TimedDetector timedDetector(cached_detector, &time, 0.1/25);
 
-    TrackerComp tracker(world_config, 0.01, 0.05/3, 0.2);
+    TrackerComp tracker(world_config, 0.5, 0.08, 0.2);
     //FeatureAffinity affinity(tracker_config, plugin);
-    //FeatureCache feature_cache(SOURCE_DIR "/data/metrics.db", "uninitialised");
-    //CachedFeatures cached_features(/*affinity,*/ feature_cache);
-    //tracker.use<TimedAffinity<FeatureData>, FeatureData>(0.5, cached_features, &time, 1/100.0);
+    FeatureCache feature_cache(SOURCE_DIR "/data/metrics.db", "uninitialised");
+    CachedFeatures cached_features(/*affinity,*/ feature_cache);
+    tracker.use<TimedAffinity<FeatureData>, FeatureData>(0.5, cached_features, &time, 1/100.0);
     //tracker.use<PositionAffinity, PositionData>(1.0f, 0.7);
-    tracker.use<OriginalTracker, OriginalData>(1.0f, 60.0/300);
+    tracker.use<OriginalTracker, OriginalData>(0.5f, 60.0/300);
 
     spdlog::set_level(spdlog::level::err);
 
@@ -229,9 +228,9 @@ int main() {
         auto full_file = "/home/buscount/code/trials/" + file;
 
         detection_cache.setTag(full_file);
-        //feature_cache.setTag(full_file);
+        feature_cache.setTag(full_file);
 
-        main_file(full_file, timedDetector, tracker, world_config, gt, sut, &time, output, true);
+        main_file(full_file, timedDetector, tracker, world_config, gt, sut, &time, output, false);
     }
 
     output.close();
