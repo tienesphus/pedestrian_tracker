@@ -12,4 +12,6 @@ enum Event {
 
 std::string name(Event e);
 
+int delta_count(Event e);
+
 #endif //BUS_COUNT_EVENT_HPP

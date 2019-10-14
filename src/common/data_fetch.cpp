@@ -1,11 +1,14 @@
 #include "data_fetch.hpp"
 #include "optional.hpp"
+#include <spdlog/spdlog.h>
 
 #include <sqlite3.h>
 
 #include <string>
-#include <iostream>
 #include <json/json.h>
+#include <sstream>
+#include <iostream>
+
 
 DataFetch::DataFetch(const std::string& file):
     db(nullptr), last_count_update("")
@@ -134,12 +137,71 @@ void DataFetch::enter_event(Event event)
         default:
             throw std::logic_error("Unknown event type");
     }
-    std::string sql = "INSERT INTO CountEvents(Name, DeltaIn, DeltaOut) VALUES ('" + name(event) + "', " +
+    std::string sql = "INSERT INTO CountEvents(Name, DeltaIn, DeltaOut) VALUES ('" + std::to_string(event) + "', " +
                       std::to_string(deltaIn) + ", " + std::to_string(deltaOut) + ")";
     if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &error) != SQLITE_OK) {
         std::cout << "SQL ERROR: " << error << std::endl;
         sqlite3_free(error);
     }
+}
+
+void DataFetch::remove_events(const std::vector<int>& entries)
+{
+    sqlite3_stmt* stmt;
+
+    std::string sql = "DELETE FROM CountEvents WHERE id IN (?";
+    for (size_t i = 1; i < entries.size(); i++) {
+        sql += ", ?";
+    }
+    sql += ")";
+
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot prepare delete count events: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot select features");
+    }
+
+    for (size_t i = 0; i < entries.size(); i++) {
+        sqlite3_bind_int(stmt, i, entries[i]);
+    }
+
+    int result = sqlite3_step(stmt);
+    while (result == SQLITE_BUSY) {
+        result = sqlite3_step(stmt);
+    }
+    if (result != SQLITE_DONE) {
+        throw std::logic_error("Cannot delete count events");
+    }
+
+    sqlite3_finalize(stmt);
+}
+
+/**
+ * Fetches all the events logged in the database
+ * @return a list of (id, timestamp, Event)
+ */
+std::vector<std::tuple<int, time_t, Event>> DataFetch::fetch_events() const
+{
+    sqlite3_stmt* stmt;
+
+    const char* sql = "SELECT id, time, name FROM CountEvents" ;
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot select count events: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot select count events");
+    }
+
+    std::vector<std::tuple<int, time_t, Event>> events;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 0);
+        time_t time = sqlite3_column_int(stmt, 1);
+        auto event = static_cast<Event>(sqlite3_column_int(stmt, 2));
+        events.emplace_back(id, time, event);
+    }
+
+    sqlite3_finalize(stmt);
+
+    return events;
 }
 
 WorldConfig DataFetch::get_latest_config() const
@@ -226,3 +288,4 @@ void DataFetch::add_count(int delta)
         sqlite3_free(error);
     }
 }
+

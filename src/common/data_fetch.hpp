@@ -16,7 +16,22 @@ public:
 
     ~DataFetch();
 
+    /**
+     * Enters an event into the database at the current time
+     */
     void enter_event(Event event);
+
+    /**
+     * Deletes the given ids from the database.
+     * @param entries the ids to remove
+     */
+    void remove_events(const std::vector<int>& entries);
+
+    /**
+     * Fetches all the events logged in the database
+     * @return a list of (id, timestamp, Event)
+     */
+    std::vector<std::tuple<int, time_t, Event>> fetch_events() const;
 
     int count() const;
 
