@@ -8,13 +8,15 @@ CloudUpdater::CloudUpdater(const std::string& database, std::string server, std:
 
 std::string CloudUpdater::stringify_event(Event event, time_t timestamp, float latitude, float longitude)
 {
+    std::string server_type = delta_count(event) < 0 ? "out" : "in";
+
     return "{"
            "\"event_timestamp\": " + std::to_string(timestamp) + ", "
             "\"busid\": \"" + bus_id + "\", "
             "\"latitude\": " + std::to_string(latitude) + ", "
             "\"longitude\": " + std::to_string(longitude) + ", "
-            "\"event_count\": " + std::to_string(delta_count(event)) + ","
-            "\"event_type\": " + name(event) + ""
+            "\"event_count\": 1,"
+            "\"event_type\": \"" + server_type + "\""
       "}";
 }
 
@@ -27,11 +29,15 @@ bool CloudUpdater::post_to_server(const std::string& data)
 
     curl = curl_easy_init();
     if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, server_address.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
 
-        // strlen is default
-        // curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.length());
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_easy_setopt(curl, CURLOPT_URL, server_address.c_str());
+
+        struct curl_slist *headers = nullptr;
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
 
         // Perform the request, res will get the return code
         res = curl_easy_perform(curl);
@@ -49,9 +55,15 @@ bool CloudUpdater::post_to_server(const std::string& data)
     return success;
 }
 
-bool CloudUpdater::send_events() {
+bool CloudUpdater::send_events()
+{
     // Build the events to send
     auto events = database.fetch_events();
+    if (events.empty()) {
+        return true;
+    }
+
+    // Build the server's json string
     std::string data = "[";
     for (size_t i = 0; i < events.size(); ++i) {
         const auto& tuple = events[i];

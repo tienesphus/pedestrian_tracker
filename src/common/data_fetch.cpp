@@ -149,19 +149,17 @@ void DataFetch::remove_events(const std::vector<int>& entries)
 {
     sqlite3_stmt* stmt;
 
-    std::string sql = "DELETE FROM CountEvents WHERE id IN (?";
-    for (size_t i = 1; i < entries.size(); i++) {
-        sql += ", ?";
+    std::string sql = "DELETE FROM CountEvents WHERE id IN (";
+    for (size_t i = 0; i < entries.size(); i++) {
+        sql += std::to_string(entries[i]);
+        if (i < entries.size()-1)
+            sql += ", ";
     }
     sql += ")";
 
     if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
         spdlog::error("Cannot prepare delete count events: {}", sqlite3_errmsg(db));
         throw std::logic_error("Cannot select features");
-    }
-
-    for (size_t i = 0; i < entries.size(); i++) {
-        sqlite3_bind_int(stmt, i, entries[i]);
     }
 
     int result = sqlite3_step(stmt);
