@@ -71,7 +71,6 @@ TEST_CASE( "Features Cache Wrapper works okay", "[feature_cache]" )
             SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
             SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
             cv::Size(48, 96),    // input size
-            0.6,                 // similarity thresh
     };
 
     FeatureCache cache(SOURCE_DIR "/data/metrics.db", "unit_tests_features");

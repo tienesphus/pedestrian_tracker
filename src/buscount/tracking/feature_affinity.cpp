@@ -56,12 +56,12 @@ std::unique_ptr<FeatureData> FeatureAffinity::init(const Detection& d, const cv:
 {
     int w = frame.cols;
     int h = frame.rows;
-    cv::Rect2f person(d.box.x*w, d.box.y*h, d.box.width*w, d.box.height*h);
-    person = geom::intersection(person, cv::Rect2f(0, 0, frame.cols, frame.rows));
-    cv::Mat crop = frame(person);
+    cv::Rect2i person(d.box.x*w, d.box.y*h, d.box.width*w, d.box.height*h);
+    person = geom::intersection(person, cv::Rect2i(0, 0, frame.cols, frame.rows));
     // gracefully handle zero width detections (sometimes the detection algorithm gives strange results)
-    if (crop.rows < 1 || crop.cols < 1)
-        crop = frame(cv::Rect2i(0, 0, 1, 1));
+    if (person.width < 1 || person.height < 1)
+        person = cv::Rect2i(1, 1, 3, 3);
+    cv::Mat crop = frame(person);
     return std::make_unique<FeatureData>(identify(crop));
 }
 

@@ -40,6 +40,14 @@ namespace geom {
 
     }
 
+    /**
+     * Takes the intersection of two rectangles. Note: Due to floating point inaccuracies, the intersection may be
+     * slightly outside the actual intersection. If this is a problem, do not use this method (try using the integer
+     * version instead)
+     * @param a one rectangle
+     * @param b another rectangle
+     * @return the intersection. If there is no intersection, either width OR height will be zero.
+     */
     cv::Rect2f intersection(const cv::Rect2f &a, const cv::Rect2f &b) {
         float i_x1 = std::max(a.x, b.x);
         float i_y1 = std::max(a.y, b.y);
@@ -48,6 +56,24 @@ namespace geom {
 
         float w = std::max(i_x2 - i_x1, 0.0f);
         float h = std::max(i_y2 - i_y1, 0.0f);
+
+        return {i_x1, i_y1, w, h};
+    }
+
+    /**
+     * Takes the intersection of two rectangles.
+     * @param a one rectangle
+     * @param b another rectangle
+     * @return the intersection. If there is no intersection, either width OR height will be zero.
+     */
+    cv::Rect2i intersection(const cv::Rect2i &a, const cv::Rect2i &b) {
+        int i_x1 = std::max(a.x, b.x);
+        int i_y1 = std::max(a.y, b.y);
+        int i_x2 = std::min(a.x + a.width, b.x + b.width);
+        int i_y2 = std::min(a.y + a.height, b.y + b.height);
+
+        int w = std::max(i_x2 - i_x1, 0);
+        int h = std::max(i_y2 - i_y1, 0);
 
         return {i_x1, i_y1, w, h};
     }

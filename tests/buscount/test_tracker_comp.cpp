@@ -56,7 +56,7 @@ public:
 TEST_CASE( "Tracker gives correct data", "[tracker_comp]" ) {
 
     auto config = WorldConfig::from_file(std::string(SOURCE_DIR)+"/config.csv");
-    TrackerComp tracker(config, 0.5);
+    TrackerComp tracker(config, 0.5, 0.05, 0.2);
 
     TestTracker* tracker_a = new TestTracker(1);
     TestTracker* tracker_b = new TestTracker(2);
