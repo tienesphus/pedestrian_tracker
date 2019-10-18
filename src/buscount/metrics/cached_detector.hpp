@@ -31,6 +31,7 @@ private:
     std::string tag;
     void store(const Detection& d, int frame);
     std::map<int, Detections> detections_lookup;
+    std::mutex lookup_lock;
 };
 
 class CachedDetector: public Detector {

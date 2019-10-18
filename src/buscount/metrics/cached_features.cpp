@@ -37,7 +37,9 @@ cv::Rect2i convert(const cv::Rect2d& b) {
 void FeatureCache::setTag(const std::string& new_tag) {
     this->tag = new_tag;
 
+    lookup_lock.lock();
     feature_lookup.clear();
+    lookup_lock.unlock();
 
     sqlite3_stmt* stmt;
     const char* sql = "SELECT frame, x, y, w, h, data FROM Features WHERE tag=?";
@@ -69,7 +71,9 @@ void FeatureCache::setTag(const std::string& new_tag) {
             f_features.push_back(f);
         }
 
+        lookup_lock.lock();
         feature_lookup[std::make_tuple(frame, x, y, w, h)] = std::move(f_features);
+        lookup_lock.unlock();
     }
 
     sqlite3_finalize(stmt);
@@ -89,7 +93,9 @@ void FeatureCache::clear() {
     }
     sqlite3_finalize(delete_stmt);
 
+    lookup_lock.lock();
     feature_lookup.clear();
+    lookup_lock.unlock();
 }
 
 void FeatureCache::clear(int frame_no, const Detection& d) {
@@ -115,7 +121,9 @@ void FeatureCache::clear(int frame_no, const Detection& d) {
     sqlite3_finalize(delete_stmt);
 
     // Delete the detection from the ram database
+    lookup_lock.lock();
     feature_lookup.erase(std::make_tuple(frame_no, box.x, box.y, box.width, box.height));
+    lookup_lock.unlock();
 }
 
 void FeatureCache::store(const FeatureData &data, int frame_no, const Detection &d) {
@@ -153,13 +161,16 @@ void FeatureCache::store(const FeatureData &data, int frame_no, const Detection 
     sqlite3_finalize(stmt);
 
     // store it locally too
+    lookup_lock.lock();
     feature_lookup[std::make_tuple(frame_no, box.x, box.y, box.width, box.height)] = features;
+    lookup_lock.unlock();
 }
 
 nonstd::optional<FeatureData> FeatureCache::fetch(int frame_no, const Detection &d) const {
 
     cv::Rect2i box = convert(d.box);
 
+    std::lock_guard<std::mutex> lock(const_cast<FeatureCache*>(this)->lookup_lock);
     auto index = feature_lookup.find(std::make_tuple(frame_no, box.x, box.y, box.width, box.height));
     if (index == feature_lookup.end()) {
         return nonstd::nullopt;

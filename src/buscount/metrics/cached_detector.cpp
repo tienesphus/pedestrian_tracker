@@ -28,7 +28,9 @@ DetectionCache::~DetectionCache() {
 
 nonstd::optional<Detections> DetectionCache::fetch(int frame)
 {
+    lookup_lock.lock();
     const Detections& detections = detections_lookup[frame];
+    lookup_lock.unlock();
     const std::vector<Detection>& list = detections.get_detections();
 
     if (list.empty()) {
@@ -52,7 +54,10 @@ void DetectionCache::setTag(const std::string &new_tag)
     // Note: we load the detections into ram, otherwise, the SQL call will limit the performance to
     // approximately 150fps
 
+    lookup_lock.lock();
     detections_lookup.clear();
+    lookup_lock.unlock();
+
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db, "SELECT frame, x, y, w, h, c FROM Detections WHERE tag = ?", -1, &stmt, nullptr) != SQLITE_OK) {
         spdlog::error("Cannot delete data: {}", sqlite3_errmsg(db));
@@ -68,7 +73,9 @@ void DetectionCache::setTag(const std::string &new_tag)
         double h = sqlite3_column_double(stmt, 4);
         double c = sqlite3_column_double(stmt, 5);
 
+        lookup_lock.lock();
         detections_lookup[frame].emplace_back(cv::Rect2f(x, y, w, h), c);
+        lookup_lock.unlock();
     }
 
     sqlite3_finalize(stmt);
@@ -91,7 +98,9 @@ void DetectionCache::clear(int frame)
     sqlite3_finalize(stmt);
 
     // update the detection cache
+    lookup_lock.lock();
     detections_lookup.erase(frame);
+    lookup_lock.unlock();
 }
 
 void DetectionCache::clear()
@@ -110,7 +119,9 @@ void DetectionCache::clear()
     sqlite3_finalize(stmt);
 
     // update the ram cache
+    lookup_lock.lock();
     detections_lookup.clear();
+    lookup_lock.unlock();
 }
 
 void DetectionCache::store(const Detection& d, int frame)
@@ -126,7 +137,9 @@ void DetectionCache::store(const Detection& d, int frame)
         throw std::logic_error("Cannot insert into detections");
     }
 
+    lookup_lock.lock();
     detections_lookup[frame].push_back(d);
+    lookup_lock.unlock();
 }
 
 void DetectionCache::store(const Detections& detections, int frame) {
