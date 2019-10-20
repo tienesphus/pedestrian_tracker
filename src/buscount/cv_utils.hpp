@@ -23,11 +23,22 @@ namespace geom {
     /**
      * Gets the intersection of two rectangles.
      * If the two rectangles do not overlap, then a zero size rectangle will be returned at a random location
+     * Note: Due to floating point inaccuracies, the intersection may be slightly outside the actual intersection.
+     * If this is a problem, do not use this method (try using the integer version instead)
      * @param a rectangle a
      * @param b rectangle b
      * @return the intersection
      */
     cv::Rect2f intersection(const cv::Rect2f &a, const cv::Rect2f &b);
+
+    /**
+     * Gets the intersection of two rectangles.
+     * If the two rectangles do not overlap, then a zero size rectangle will be returned at a random location
+     * @param a rectangle a
+     * @param b rectangle b
+     * @return the intersection
+     */
+    cv::Rect2i intersection(const cv::Rect2i &a, const cv::Rect2i &b);
 
     /**
      * Converts a HSV scalar into a RGB scalar

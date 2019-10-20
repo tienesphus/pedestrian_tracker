@@ -5,6 +5,7 @@
 #include <optional.hpp>
 #include "../tracking/tracker_component.hpp"
 #include "../tracking/feature_affinity.hpp"
+#include <mutex>
 
 class FeatureCache {
 public:
@@ -26,6 +27,7 @@ private:
     sqlite3* db;
     std::string tag;
     std::map<std::tuple<int, int, int, int, int>, std::vector<float>> feature_lookup; // map<(frame, x, y, w, h), FeatureData>
+    std::mutex lookup_lock;
 };
 
 class CachedFeatures: public Affinity<FeatureData> {

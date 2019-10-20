@@ -35,6 +35,7 @@ private:
     std::string inputName, outputName;
     size_t objectSize;
     size_t maxProposalCount;
+    std::mutex ncs_lock;
 };
 
 #endif

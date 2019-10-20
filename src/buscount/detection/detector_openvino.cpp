@@ -91,17 +91,20 @@ DetectorOpenVino::~DetectorOpenVino() = default;
 Detections DetectorOpenVino::process(const cv::Mat &frame, int)
 {
     spdlog::debug("Preprocess");
+    ncs_lock.lock();
     InferRequest::Ptr request = this->network.CreateInferRequestPtr();
     request->SetBlob(inputName, wrapMat2Blob(frame));
 
     spdlog::debug("Starting inference request");
     request->StartAsync();
+    ncs_lock.unlock();
 
     spdlog::debug("Waiting for inference request");
     request->Wait(IInferRequest::WaitMode::RESULT_READY);
 
     spdlog::debug("Interpreting results");
     std::vector<Detection> results;
+    ncs_lock.lock();
     const float *detections = request->GetBlob(outputName)->buffer().as<PrecisionTrait<Precision::FP32>::value_type*>();
     for (size_t i = 0; i < maxProposalCount; i++) {
         float id  = detections[i * objectSize + 0];
@@ -124,6 +127,7 @@ Detections DetectorOpenVino::process(const cv::Mat &frame, int)
             results.emplace_back(r, con);
         }
     }
+    ncs_lock.unlock();
 
     return Detections(results);
 }

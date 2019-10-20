@@ -37,7 +37,9 @@ cv::Rect2i convert(const cv::Rect2d& b) {
 void FeatureCache::setTag(const std::string& new_tag) {
     this->tag = new_tag;
 
+    lookup_lock.lock();
     feature_lookup.clear();
+    lookup_lock.unlock();
 
     sqlite3_stmt* stmt;
     const char* sql = "SELECT frame, x, y, w, h, data FROM Features WHERE tag=?";
@@ -69,7 +71,9 @@ void FeatureCache::setTag(const std::string& new_tag) {
             f_features.push_back(f);
         }
 
+        lookup_lock.lock();
         feature_lookup[std::make_tuple(frame, x, y, w, h)] = std::move(f_features);
+        lookup_lock.unlock();
     }
 
     sqlite3_finalize(stmt);
@@ -80,16 +84,18 @@ void FeatureCache::clear() {
     sqlite3_stmt* delete_stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Features WHERE tag=?", -1, &delete_stmt, nullptr) != SQLITE_OK) {
         spdlog::error("Cannot delete data: {}", sqlite3_errmsg(db));
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Syntax error in clearing all features from cache");
     }
     sqlite3_bind_text(delete_stmt, 1, tag.c_str(), -1, nullptr);
 
     if (sqlite3_step(delete_stmt) != SQLITE_DONE) {
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Cannot delete all features");
     }
     sqlite3_finalize(delete_stmt);
 
+    lookup_lock.lock();
     feature_lookup.clear();
+    lookup_lock.unlock();
 }
 
 void FeatureCache::clear(int frame_no, const Detection& d) {
@@ -99,7 +105,7 @@ void FeatureCache::clear(int frame_no, const Detection& d) {
     sqlite3_stmt* delete_stmt;
     if (sqlite3_prepare_v2(db, "DELETE FROM Features WHERE tag=? AND frame=? AND x=? AND y=? AND w=? AND h=?", -1, &delete_stmt, nullptr) != SQLITE_OK) {
         spdlog::error("Cannot delete data: {}", sqlite3_errmsg(db));
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Syntax error in clear single feature");
     }
     sqlite3_bind_text(delete_stmt, 1, tag.c_str(), -1, nullptr);
     sqlite3_bind_int(delete_stmt, 2, frame_no);
@@ -109,13 +115,15 @@ void FeatureCache::clear(int frame_no, const Detection& d) {
     sqlite3_bind_int(delete_stmt, 6, box.height);
 
     if (sqlite3_step(delete_stmt) != SQLITE_DONE) {
-        throw std::logic_error("Cannot delete features");
+        throw std::logic_error("Cannot delete feature");
     }
 
     sqlite3_finalize(delete_stmt);
 
     // Delete the detection from the ram database
+    lookup_lock.lock();
     feature_lookup.erase(std::make_tuple(frame_no, box.x, box.y, box.width, box.height));
+    lookup_lock.unlock();
 }
 
 void FeatureCache::store(const FeatureData &data, int frame_no, const Detection &d) {
@@ -153,13 +161,16 @@ void FeatureCache::store(const FeatureData &data, int frame_no, const Detection 
     sqlite3_finalize(stmt);
 
     // store it locally too
+    lookup_lock.lock();
     feature_lookup[std::make_tuple(frame_no, box.x, box.y, box.width, box.height)] = features;
+    lookup_lock.unlock();
 }
 
 nonstd::optional<FeatureData> FeatureCache::fetch(int frame_no, const Detection &d) const {
 
     cv::Rect2i box = convert(d.box);
 
+    std::lock_guard<std::mutex> lock(const_cast<FeatureCache*>(this)->lookup_lock);
     auto index = feature_lookup.find(std::make_tuple(frame_no, box.x, box.y, box.width, box.height));
     if (index == feature_lookup.end()) {
         return nonstd::nullopt;

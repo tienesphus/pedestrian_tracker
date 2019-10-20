@@ -56,8 +56,11 @@ std::unique_ptr<FeatureData> FeatureAffinity::init(const Detection& d, const cv:
 {
     int w = frame.cols;
     int h = frame.rows;
-    cv::Rect2f person(d.box.x*w, d.box.y*h, d.box.width*w, d.box.height*h);
-    person = geom::intersection(person, cv::Rect2f(0, 0, frame.cols, frame.rows));
+    cv::Rect2i person(d.box.x*w, d.box.y*h, d.box.width*w, d.box.height*h);
+    person = geom::intersection(person, cv::Rect2i(0, 0, frame.cols, frame.rows));
+    // gracefully handle zero width detections (sometimes the detection algorithm gives strange results)
+    if (person.width < 1 || person.height < 1)
+        person = cv::Rect2i(1, 1, 3, 3);
     cv::Mat crop = frame(person);
     return std::make_unique<FeatureData>(identify(crop));
 }
@@ -111,6 +114,9 @@ std::vector<float> FeatureAffinity::identify(const cv::Mat &person) const {
     cv::Mat person_scaled;
     // TODO if the person input image is too big, the reid network starts segfaulting?
     // Thus, I manually scale here. Only occurs on Pi with images taking nearly entire frame.
+    if (person.cols < 1 || person.rows < 1) {
+        throw std::logic_error("Feature affinity requires a size >= 1");
+    }
     cv::resize(person, person_scaled, cv::Size(48, 96));
     cv::Mat person_clone = person_scaled.clone(); // clone is needed so the Mat is dense
     Blob::Ptr inputBlob = wrapMat2Blob(person_clone);
