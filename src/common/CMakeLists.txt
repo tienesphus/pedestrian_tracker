@@ -8,7 +8,8 @@ add_library(common
         config.cpp
         sql_helper.cpp
         time_utils.cpp
-        )
+        file_utils.cpp
+)
 
 target_link_libraries(common sqlite3 jsoncpp spdlog)
 

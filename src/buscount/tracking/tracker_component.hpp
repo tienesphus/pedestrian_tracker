@@ -2,6 +2,7 @@
 #define TRACKER_COMP_H
 
 #include "tracker.hpp"
+#include <functional>
 
 /**
  * Internal tracking data class
@@ -77,7 +78,8 @@ public:
      * The created tracker will do nothing by default. Must call "use" to add tracking components
      * @param world the world configuration
      */
-    TrackerComp(const WorldConfig& world, float merge_thresh, double conf_decrease_rate, double conf_thresh);
+    TrackerComp(const WorldConfig& world, float merge_thresh, double conf_decrease_rate, double conf_thresh,
+                std::function<void(const cv::Mat&, uint32_t, int, const cv::Rect2f&, float conf)> track_listener=nullptr);
 
     ~TrackerComp() override;
 
@@ -125,6 +127,8 @@ private:
     std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> affinities;
     double conf_decrease_rate, conf_thresh;
     int pre_frame_no;
+    std::function<void(const cv::Mat&, uint32_t, int, const cv::Rect2f&, float conf)> track_listener;
+
 
     void use_affinity(float weighting, std::unique_ptr<Affinity<TrackData>> affinity);
     void merge(const Detections &detections,  const cv::Mat& frame, int frame_no);

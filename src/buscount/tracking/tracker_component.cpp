@@ -138,9 +138,10 @@ void Track::draw(cv::Mat &img) const {
 
 //  -----------  TRACKER ---------------
 
-TrackerComp::TrackerComp(const WorldConfig& world, float merge_thresh, double conf_decrease_rate, double conf_thresh):
+TrackerComp::TrackerComp(const WorldConfig& world, float merge_thresh, double conf_decrease_rate, double conf_thresh,
+                         std::function<void(const cv::Mat&, uint32_t, int, const cv::Rect2f&, float conf)> track_listener):
         worldConfig(world), merge_thresh(merge_thresh), index_count(0),
-        conf_decrease_rate(conf_decrease_rate), conf_thresh(conf_thresh), pre_frame_no(-1)
+        conf_decrease_rate(conf_decrease_rate), conf_thresh(conf_thresh), pre_frame_no(-1), track_listener(std::move(track_listener))
 {
 }
 
@@ -153,6 +154,13 @@ void TrackerComp::use_affinity(float weighting, std::unique_ptr<Affinity<TrackDa
 std::vector<Event> TrackerComp::process(const Detections &detections, const cv::Mat& frame, int frame_no)
 {
     merge(detections, frame, frame_no);
+
+    // notify track listener of all changes
+    if (track_listener != nullptr) {
+        for (const auto& track : tracks) {
+            track_listener(frame, frame_no, track->index, track->box, track->confidence);
+        }
+    }
 
     // calculate the number of frames the system has moved by
     int delta = frame_no - pre_frame_no;
@@ -254,7 +262,6 @@ void merge_top(std::vector<MergeOption> merges,
         MergeOption& merge = merges[i];
 
         // threshold box's that are too different
-        // TODO remove hardcoded tracker threshold
         if (merge.confidence < merge_thresh) {
             spdlog::trace(" Differences too high ({})", i);
             break;
