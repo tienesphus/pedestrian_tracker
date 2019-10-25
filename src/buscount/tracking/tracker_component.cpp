@@ -43,6 +43,7 @@ public:
 
     int8_t color; // the hue of the path
     std::deque<geom::Point> path;
+    bool wasDetected;
 
 };
 
@@ -51,7 +52,8 @@ Track::Track(cv::Rect2f box, float conf, int index, std::vector<std::unique_ptr<
         confidence(conf),
         index(index),
         data(std::move(data)),
-        color(rand() % 256)
+        color(rand() % 256),
+        wasDetected(true)
 {}
 
 bool Track::update(const WorldConfig &config, std::vector<Event>& events, double conf_decrease_rate, double conf_thresh, int deltaFrames)
@@ -153,12 +155,19 @@ void TrackerComp::use_affinity(float weighting, std::unique_ptr<Affinity<TrackDa
 
 std::vector<Event> TrackerComp::process(const Detections &detections, const cv::Mat& frame, int frame_no)
 {
+    // Reset all tracks detection status
+    for (const auto& track : tracks) {
+        track->wasDetected = false;
+    }
+
+    // merge detections into the tracks
     merge(detections, frame, frame_no);
 
     // notify track listener of all changes
     if (track_listener != nullptr) {
         for (const auto& track : tracks) {
-            track_listener(frame, frame_no, track->index, track->box, track->confidence);
+            if (track->wasDetected) // don't notify about dieing tracks
+                track_listener(frame, frame_no, track->index, track->box, track->confidence);
         }
     }
 
@@ -226,13 +235,15 @@ std::vector<MergeOption> calculate_affinities(std::vector<DetectionExtra>& detec
     std::vector<MergeOption> merges;
     for (DetectionExtra &extra : detections) {
         for (const std::unique_ptr<Track> &track : tracks) {
-            float confidence = 0;
+            float confidence = 1.0f;
             for (size_t i = 0; i < affinities.size(); i++) {
                 const auto &tuple = affinities[i];
                 const Affinity<TrackData> &affinity = *std::get<0>(tuple);
                 float weight = std::get<1>(tuple);
 
-                confidence += weight * affinity.affinity(*extra.data[i], *track->data[i]);
+                // confidence is multiplication of all others.
+                // max(0,..) is needed so negative times a negative does not become big
+                confidence *= weight * std::max(0.0f, affinity.affinity(*extra.data[i], *track->data[i]));
             }
             spdlog::trace("      d{} x t{}: {}", extra.index, track->index, confidence);
             merges.emplace_back(confidence, track.get(), &extra);
@@ -275,6 +286,7 @@ void merge_top(std::vector<MergeOption> merges,
         // Merge the data
         track->box = d.box;
         track->confidence = std::max(d.confidence, track->confidence);
+        track->wasDetected = true;
         for (size_t j = 0; j < affinities.size(); j++) {
             std::get<0>(affinities[j])->merge(*merge.extra->data[j], *track->data[j]);
         }

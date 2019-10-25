@@ -9,7 +9,7 @@
 #include <sstream>
 
 
-DetectorMot::DetectorMot(float thresh) :thresh(thresh)
+DetectorMot::DetectorMot(float thresh, float conf_scale) :thresh(thresh), conf_scale(conf_scale)
 {}
 
 void DetectorMot::set_file(const std::string& detections_file)
@@ -52,7 +52,7 @@ void DetectorMot::set_file(const std::string& detections_file)
         // double z = std::stod(parts[9]);
         spdlog::trace("MOT det: f:{} {}% at {},{} {}x{})", frame, c, x, y, w, h);
 
-        if (c < thresh*100)
+        if (c < thresh*conf_scale)
             continue;
 
         entry_lock.lock();
@@ -73,7 +73,7 @@ Detections DetectorMot::process(const cv::Mat &frame, int frame_no) {
     int h = frame.rows;
     Detections actual;
     for (const Detection& d : raw.get_detections()) {
-        actual.emplace_back(cv::Rect2f(d.box.x / w, d.box.y / h, d.box.width / w, d.box.height / h), d.confidence / 100);
+        actual.emplace_back(cv::Rect2f(d.box.x / w, d.box.y / h, d.box.width / w, d.box.height / h), d.confidence/conf_scale);
     }
 
     return actual;

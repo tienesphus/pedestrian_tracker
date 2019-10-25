@@ -24,7 +24,7 @@ public:
      * Creates an empty detector
      * @param thresh the threshold to filter detections on (0-1)
      */
-    explicit DetectorMot(float thresh);
+    explicit DetectorMot(float thresh, float conf_scale);
 
     /**
      * Sets where to find the detections file
@@ -38,6 +38,7 @@ public:
 
 private:
     float thresh;
+    float conf_scale;
     std::map<int, Detections> entries;
     std::mutex entry_lock;
 };
