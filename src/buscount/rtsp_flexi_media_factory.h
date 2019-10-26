@@ -36,7 +36,12 @@ typedef GstElement* (*RtspFlexiCreateElemFunc)(GstRTSPMediaFactory *, const GstR
 
 GType rtsp_flexi_media_factory_get_type(void);
 RtspFlexiMediaFactory *rtsp_flexi_media_factory_new(void);
+
+// Getters and setters
 void rtsp_flexi_media_factory_set_create_elem(RtspFlexiMediaFactory *, RtspFlexiCreateElemFunc);
+void rtsp_flexi_media_factory_set_extra_data(RtspFlexiMediaFactory *self, GObject *data);
+GObject *rtsp_flexi_media_factory_get_extra_data(RtspFlexiMediaFactory *self);
+
 
 G_END_DECLS
 

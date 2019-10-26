@@ -12,6 +12,8 @@
 GST_DEBUG_CATEGORY_STATIC(buscount); // Define a new debug category for gstreamer output
 #define GST_CAT_DEFAULT buscount     // Set new category as the default category
 
+#define QUEUE_MAX_LEN 3
+
 namespace GstBusCount {
 
 // ******** Compilation unit specific data ******** //
@@ -140,12 +142,11 @@ void GstBusCountFilter::tracker_init(InferenceEngine::InferencePlugin& plugin)
                 SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
                 SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
                 cv::Size(48, 96),    // input size
-                0.6,                 // similarity thresh
         };
 
-        auto* track_ptr = new TrackerComp(default_world_config, 0.6);
-        track_ptr->use<FeatureAffinity, FeatureData>(0.6, feature_config, plugin);
-        track_ptr->use<PositionAffinity, PositionData>(0.4, 0.7);
+        auto* track_ptr = new TrackerComp(default_world_config, 0.6, 0.03, 0.2);
+        track_ptr->use<FeatureAffinity, FeatureData>(1, feature_config, plugin);
+        track_ptr->use<PositionAffinity, PositionData>(1, 0.7);
 
         tracker = std::unique_ptr<TrackerComp>(track_ptr);
     }
@@ -170,8 +171,8 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
         //line_bounds_a_property(*this, "line_bounds_a_property", "default_val")
         //line_bounds_b_property(*this, "line_bounds_b_property", "default_val")
         test_property(*this, "test_property", "default_val"),
-        frame_in_queue(Gst::AtomicQueue<cv::Mat>::create(10)),
-        frame_out_queue(Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>::create(10)),
+        mat_queue(Gst::AtomicQueue<cv::Mat>::create(10)),
+        buf_queue(Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>::create(10)),
         world_config(default_world_config),
         buscounter(
                 *detector, *tracker, world_config,
@@ -208,13 +209,13 @@ nonstd::optional<std::tuple<cv::Mat, int>> GstBusCountFilter::next_frame()
 
     GST_DEBUG("Getting next frame");
 
-    if (frame_in_queue->length() == 0) {
+    if (mat_queue->length() == 0) {
         GST_DEBUG("Waiting for next frame");
         frame_queue_pushed.wait(lk);
     }
 
     GST_DEBUG("Popping next frame");
-    cv::Mat ret(frame_in_queue->pop());
+    cv::Mat ret(mat_queue->pop());
     frame_queue_popped.notify_one();
 
     return std::make_tuple(ret, ++frame_no);
@@ -235,14 +236,14 @@ void GstBusCountFilter::push_frame(const cv::Mat &frame)
             buf->unmap(mapinfo);
             buf.reset();
         }
-        if (frame_out_queue->length() == 0)
+        if (buf_queue->length() == 0)
         {
-            GST_DEBUG("frame_out_queue exausted");
+            GST_DEBUG("buf_queue exausted");
             break;
         }
 
-        GST_DEBUG("Fetching next frame from frame_out_queue");
-        buf = frame_out_queue->pop();
+        GST_DEBUG("Fetching next frame from buf_queue");
+        buf = buf_queue->pop();
         buf->map(mapinfo, Gst::MAP_READ);
     }
     while (frame.data != mapinfo.get_data());
@@ -382,8 +383,7 @@ bool GstBusCountFilter::pad_query(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPt
 {
     bool result = false;
 
-    GST_DEBUG(
-        "Pad query on [%s] of type '%s'",
+    GST_DEBUG("[%s] type '%s'",
         pad->get_name().c_str(),
         ((Glib::ustring)Gst::Enums::get_quark(query->get_query_type())).c_str()
     );
@@ -402,18 +402,27 @@ bool GstBusCountFilter::pad_query(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPt
             GST_DEBUG(
                 "Peer latency: min %" GST_TIME_FORMAT " max %" GST_TIME_FORMAT,
                 GST_TIME_ARGS(min),
-                GST_TIME_ARGS(min)
+                GST_TIME_ARGS(max)
             );
 
             // These are estimates for best case and worst case latencies under normal operating
             // conditions. These should not be determined by huristics, rather they should be
             // sane values. For heuristics and jitter fixup, try looking into QoS instead.
-            min += gst_util_uint64_scale(GST_SECOND, 12, 1);
-            if (max != Gst::CLOCK_TIME_NONE)
-                max += gst_util_uint64_scale(GST_SECOND, 5, 1);
+            uint64_t base_latency = gst_util_uint64_scale(GST_SECOND, 12, 1);
 
+            min += base_latency;
+            if (max != Gst::CLOCK_TIME_NONE)
+                max += base_latency * 2 * QUEUE_MAX_LEN;
+
+            GST_DEBUG(
+                "Our latency: min %" GST_TIME_FORMAT " max %" GST_TIME_FORMAT,
+                GST_TIME_ARGS(min),
+                GST_TIME_ARGS(max)
+            );
 
             ltncy_query->set(live, min, max);
+
+            result = true;
 
             break;
         }
@@ -428,7 +437,7 @@ bool GstBusCountFilter::pad_query(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPt
 
 
 // Flow control
-Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPtr<Gst::Buffer> &buf)
+Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> & /*pad*/, Glib::RefPtr<Gst::Buffer> &buf)
 {
     std::unique_lock<std::mutex> lk(cond_m);
 
@@ -444,14 +453,14 @@ Gst::FlowReturn GstBusCountFilter::chain(const Glib::RefPtr<Gst::Pad> &pad, Glib
         return Gst::FLOW_NOT_SUPPORTED;
     }
 
-    if (frame_in_queue->length() >= 16) {
+    if (mat_queue->length() >= QUEUE_MAX_LEN) {
         GST_DEBUG("Queue full, waiting for empty");
         frame_queue_popped.wait(lk);
     }
 
     GST_DEBUG("Pushing data to queue");
-    frame_in_queue->push(cv::Mat(frame_height, frame_width, cv_type, mapinfo.get_data()));
-    frame_out_queue->push(buf);
+    mat_queue->push(cv::Mat(frame_height, frame_width, cv_type, mapinfo.get_data()));
+    buf_queue->push(buf);
     frame_queue_pushed.notify_one();
 
     buf->unmap(mapinfo);

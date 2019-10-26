@@ -11,12 +11,13 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
 {
     using namespace InferenceEngine;
 
-    spdlog::debug("[ INFO ] Loading network files for PersonREID");
+    spdlog::info("Loading network files for PersonREID");
     CNNNetReader netReader;
     /** Read network model **/
     netReader.ReadNetwork(netConfig.meta);
+
     /** Set batch size to 1 **/
-    spdlog::debug("[ INFO ] Batch size is forced to  1");
+    spdlog::debug("Batch size is forced to  1");
     netReader.getNetwork().setBatchSize(1);
     /** Extract model name and load it's weights **/
     netReader.ReadWeights(netConfig.model);
@@ -24,7 +25,7 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
 
     /** SSD-based network should have one input and one output **/
     // ---------------------------Check inputs ------------------------------------------------------
-    spdlog::debug("[ INFO ] Checking Person Reidentification inputs");
+    spdlog::debug("Checking Person Reidentification inputs");
     InputsDataMap inputInfo(netReader.getNetwork().getInputsInfo());
     if (inputInfo.size() != 1) {
         throw std::logic_error("Person Reidentification network should have only one input");
@@ -39,7 +40,7 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
     // -----------------------------------------------------------------------------------------------------
 
     // ---------------------------Check outputs ------------------------------------------------------
-    spdlog::debug("[ INFO ] Checking Person Reidentification outputs");
+    spdlog::debug("Checking Person Reidentification outputs");
     OutputsDataMap outputInfo(netReader.getNetwork().getOutputsInfo());
     if (outputInfo.size() != 1) {
         throw std::logic_error("Person Reidentification network should have only one output");

@@ -1,5 +1,6 @@
 #include "detector.hpp"
-#include <opencv2/dnn.hpp>
+
+#include <opencv2/core/mat.hpp>
 
 // TODO Detector is just a wrapper around std::future. Perhaps the caller should handle that instead?
 

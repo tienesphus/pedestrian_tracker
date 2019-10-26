@@ -2,10 +2,11 @@
 #include "tick_counter.hpp"
 #include "cv_utils.hpp"
 
-#include <vector>
-#include <unistd.h>
-#include <deque>
 #include <spdlog/spdlog.h>
+
+#include <vector>
+#include <deque>
+
 
 BusCounter::BusCounter(
         Detector& detector,
@@ -36,7 +37,6 @@ void BusCounter::run(RunStyle style, bool draw)
         run_serial(draw);
 }
 
-// abbreviation
 template <class T>
 using ptr = std::shared_ptr<T>;
 
@@ -87,7 +87,7 @@ void BusCounter::run_serial(bool do_draw)
         }
 
         auto fps = counter.process_tick();
-        spdlog::info("FPS: {}", fps ? *fps : -1);
+        spdlog::info("FPS: {:f}", (fps ? *fps : -1));
 
         _dest(frame);
         if (_test_exit())
@@ -105,7 +105,7 @@ void BusCounter::run_parallel(bool do_draw)
     // these locks ensure that the threads stay in order
     // (otherwise, there may be a case where the first frame has to wait for all latter frames to complete and
     // large jitter will b
-    std::mutex src_detect_lock, detect_track_lock, track_draw_lock;
+    std::mutex src_detect_lock, detect_track_lock;
 
     // define the wor
     auto process_frame = [&]() -> nonstd::optional<process_result> {

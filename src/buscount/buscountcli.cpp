@@ -1,21 +1,34 @@
+// Standard includes
+#include <iostream>
+#include <tuple>
+#include <vector>
+
+// C++ includes
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <spdlog/spdlog.h>
+
+// C includes
+#include <unistd.h>
+#include <sqlite3.h>
+
+// Project libraries includes
+#include <spdlog/spdlog.h>
+
+// Project includes
 #include "libbuscount.hpp"
 #include "tracking/feature_affinity.hpp"
 #include "tracking/position_affinity.hpp"
 #include "detection/detector_openvino.hpp"
 #include "detection/detector_opencv.hpp"
 #include "video_sync.hpp"
-
-#include <data_fetch.hpp>
-
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-
-#include <sqlite3.h>
-#include <spdlog/spdlog.h>
-#include <unistd.h>
+#include "data_fetch.hpp"
 
 
 int main() {
+    std::cout << "STARTING" << std::endl;
+
+    spdlog::default_logger()->set_level(spdlog::level::debug);
 
     /*
     DetectorOpenCV::NetConfig net_config {
@@ -44,10 +57,9 @@ int main() {
             SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
             SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
             cv::Size(48, 96),    // input size
-            0.6,                 // similarity thresh
     };
 
-    std::string input = std::string(SOURCE_DIR) + "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    std::string input = SOURCE_DIR "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
     VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
     //auto cv_cap = std::make_shared<cv::VideoCapture>(0);
 
@@ -56,10 +68,10 @@ int main() {
 
     DetectorOpenVino detector(net_config, plugin);
     WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config.csv");
-    TrackerComp tracker(world_config, 0.5);
+    TrackerComp tracker(world_config, 0.5, 0.03, 0.2);
 
-    tracker.use<FeatureAffinity, FeatureData>(0.6, tracker_config, plugin);
-    tracker.use<PositionAffinity, PositionData>(0.4, 0.7);
+    tracker.use<FeatureAffinity, FeatureData>(1, tracker_config, plugin);
+    tracker.use<PositionAffinity, PositionData>(1, 1);
 
     DataFetch data(SOURCE_DIR "/data/database.db");
 
@@ -86,7 +98,7 @@ int main() {
                 return frame;
             },*/
             [](const cv::Mat& frame) { cv::imshow("output", frame); },
-            []() { return cv::waitKey(20) == 'q'; },
+            []() { return cv::waitKey(1) == 'q'; },
             [&data](Event event, const cv::Mat&, int frame_no) {
                 spdlog::info("EVENT: {}, {}", name(event), frame_no);
                 data.enter_event(event);

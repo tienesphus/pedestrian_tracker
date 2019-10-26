@@ -12,6 +12,6 @@ add_compile_options(
 
 add_compile_options(-D SOURCE_DIR="${bus_count_SOURCE_DIR}")
 
-add_subdirectory(include/spdlog)
+add_subdirectory(extras)
 add_subdirectory(src)
 add_subdirectory(tests)

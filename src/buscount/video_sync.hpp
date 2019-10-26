@@ -1,12 +1,15 @@
 #ifndef BUS_COUNT_VIDEO_SYNC_HPP
 #define BUS_COUNT_VIDEO_SYNC_HPP
 
+// Standard includes
 #include <functional>
 #include <cmath>
 
+// C++ includes
 #include <opencv2/videoio.hpp>
 
-#include <optional.hpp>
+// Project includes
+#include "optional.hpp"
 
 /**
  * Takes an input source and ensures that it runs in real time. Does so by measuring the time between calls and

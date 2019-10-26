@@ -1,12 +1,11 @@
+// Project includes
 #include "tracker_component.hpp"
 #include "../cv_utils.hpp"
 
-#include <utility>
-
-#include <opencv2/imgproc.hpp>
+// C++ includes
 #include <deque>
+#include <opencv2/imgproc.hpp>
 #include <spdlog/spdlog.h>
-
 
 //  ----------- TRACK ---------------
 
@@ -259,7 +258,7 @@ void merge_top(std::vector<MergeOption> merges,
      // TODO tracker merging code is a mess
 
     // Sort the merges so best merges are first
-     spdlog::debug( "    Sorting differences");
+    spdlog::debug( "    Sorting differences");
     std::sort(merges.begin(), merges.end(),
               [](const MergeOption &a, const MergeOption &b) -> auto { return a.confidence > b.confidence; }
     );
@@ -281,9 +280,8 @@ void merge_top(std::vector<MergeOption> merges,
         const Detection& d = merge.extra->detection;
         Track* track = merge.track;
 
-        spdlog::trace("Merging d{} and t{}", merge.extra->index, track->index);
-
         // Merge the data
+        spdlog::trace("Merging d{} and t{}", merge.extra->index, track->index);
         track->box = d.box;
         track->confidence = std::max(d.confidence, track->confidence);
         track->wasDetected = true;
@@ -326,7 +324,8 @@ void delete_overlapping_tracks(std::vector<std::unique_ptr<Track>>&,
     // Delete tracks with very high overlap
     // This occurs when two detections are produced for the same person
     // TODO how to delete overlapping tracks
-    /*std::cout << "Deleting similar tracks " << std::endl;
+    /*
+    spdlog::debug("Deleting similar tracks ");
     for (size_t i = 0; i < this->tracks.size(); i++) {
         std::unique_ptr<Track> &track_i = this->tracks[i];
         for (size_t j = i+1; j < this->tracks.size(); j++) {
@@ -335,11 +334,11 @@ void delete_overlapping_tracks(std::vector<std::unique_ptr<Track>>&,
             if (IoU(track_i->box, track_j->box) > 0.95 &&
                 cosine_similarity(track_i->data, track_j->data) > netConfig.thresh) {
                 if (track_i->confidence > track_j->confidence) {
-                    std::cout << "Deleting j: " << j << std::endl;
+                    spdlog::debug("Deleting j: {}", j);
                     this->tracks.erase(this->tracks.begin()+j);
                     --j;
                 } else {
-                    std::cout << "Deleting i: " << i << std::endl;
+                    spdlog::debug("Deleting i: {}", i);
                     this->tracks.erase(this->tracks.begin()+i);
                     --i;
                     break;

@@ -1,10 +1,13 @@
-
 #include "detector_openvino.hpp"
 
+// Standard includes
+#include <iomanip>
+
+// C++ includes
+#include <inference_engine.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/dnn.hpp>
 #include <spdlog/spdlog.h>
-#include "spdlog/fmt/ostr.h"
 
 using namespace InferenceEngine;
 
@@ -39,10 +42,10 @@ static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
 
 
 DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::InferencePlugin &plugin):
-        Detector(),
-        config(config)
+        Detector(), config(config)
 {
     spdlog::info("Reading network");
+
     CNNNetReader netReader;
     netReader.ReadNetwork(config.meta);
     //netReader.getNetwork().setBatchSize(1);
@@ -123,7 +126,11 @@ Detections DetectorOpenVino::process(const cv::Mat &frame, int)
         cv::Rect2f r(cv::Point2f(x1, y1), cv::Point2f(x2, y2));
 
         if (lbl == config.clazz && con > config.thresh) {
-            spdlog::debug("    Found: {} {} ({}%) - {}", id, lbl, con*100, r);
+            spdlog::trace(
+                "    Found: {} {} ({}%) - {}x{} ({},{})",
+                id, lbl, con*100,
+                r.width, r.height, r.x, r.y
+            );
             results.emplace_back(r, con);
         }
     }

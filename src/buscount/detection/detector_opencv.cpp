@@ -1,8 +1,10 @@
+// C++ includes
+#include <spdlog/spdlog.h>
 
+// Project includes
 #include "detector_opencv.hpp"
 #include "../cv_utils.hpp"
 
-#include <spdlog/spdlog.h>
 
 DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
         config(config),
@@ -24,7 +26,7 @@ DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
     net.setPreferableTarget(config.preferableTarget);
 }
 
-DetectorOpenCV::~DetectorOpenCV() {}
+DetectorOpenCV::~DetectorOpenCV() = default;
 
 Detections DetectorOpenCV::process(const cv::Mat &frame, int) {
     cv::Mat blob = cv::dnn::blobFromImage(frame, config.scale, config.networkSize, this->config.mean);
@@ -68,7 +70,11 @@ Detections static_post_process(const cv::Mat &data, int clazz, float thresh)
             float y2 = detections.at<float>(i, 6);
             cv::Rect2d r(cv::Point2d(x1, y1), cv::Point2d(x2, y2));
 
-            spdlog::debug( "    Found: {} ({}%) - ({},{}),({}x{})", id, confidence, r.x, r.y, r.width, r.height);
+            spdlog::debug(
+                "    Found: {} ({}%) - {}x{} ({},{})",
+                id, confidence,
+                r.width, r.height, r.x, r.y
+            );
             if (id == clazz)
                 results.emplace_back(r, confidence);
         }
