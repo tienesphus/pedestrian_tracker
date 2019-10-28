@@ -24,9 +24,12 @@ std::vector<Bucket> read_gt(const std::string& location, bool front, const std::
 
     // check the header
     std::getline(source, line);
+    trim(line);
     if ("Arrive,Depart,In_F,In_R,Out_F,Out_R,Ignore" != line) {
         throw std::logic_error("CSV file in incorrect format");
     }
+
+    time_t previous = 0;
 
     // Read the rest of the data
     while (std::getline(source, line)) {
@@ -45,7 +48,16 @@ std::vector<Bucket> read_gt(const std::string& location, bool front, const std::
         }
 
         // pass the date
-        auto arrive_time = date + string_to_time(parts[0], "%H:%M:%S");
+        auto time = string_to_time(parts[0], "%H:%M:%S");
+        if (time == 0) {
+            throw std::logic_error("Time in incorrect format. Must be hh:mm:ss. Was: " + parts[0]);
+        }
+        auto arrive_time = date + time;
+        if (arrive_time <= previous) {
+            throw std::logic_error("Times out of order at: " + parts[0]);
+        } else {
+            previous = arrive_time;
+        }
         // ignore depart time (part[1])
 
         // pass the counts

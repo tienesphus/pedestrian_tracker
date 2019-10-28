@@ -7,6 +7,7 @@
 // The DB scale stuff is to remove oddities with floating point numbers
 // We scale float numbers from 0-1 to integers from 0-DB_SCALE
 const int DB_SCALE = 1000000;
+const int DB_TOL   = 2;
 
 FeatureCache::FeatureCache(const std::string& location, const std::string& tag):
         db(nullptr), tag(tag), feature_lookup({})
@@ -72,7 +73,7 @@ void FeatureCache::setTag(const std::string& new_tag) {
         }
 
         lookup_lock.lock();
-        feature_lookup[std::make_tuple(frame, x, y, w, h)] = std::move(f_features);
+        feature_lookup[frame][std::make_tuple(x, y, w, h)] = std::move(f_features);
         lookup_lock.unlock();
     }
 
@@ -122,7 +123,7 @@ void FeatureCache::clear(int frame_no, const Detection& d) {
 
     // Delete the detection from the ram database
     lookup_lock.lock();
-    feature_lookup.erase(std::make_tuple(frame_no, box.x, box.y, box.width, box.height));
+    feature_lookup[frame_no].erase(std::make_tuple(box.x, box.y, box.width, box.height));
     lookup_lock.unlock();
 }
 
@@ -162,7 +163,7 @@ void FeatureCache::store(const FeatureData &data, int frame_no, const Detection 
 
     // store it locally too
     lookup_lock.lock();
-    feature_lookup[std::make_tuple(frame_no, box.x, box.y, box.width, box.height)] = features;
+    feature_lookup[frame_no][std::make_tuple(box.x, box.y, box.width, box.height)] = features;
     lookup_lock.unlock();
 }
 
@@ -171,8 +172,21 @@ nonstd::optional<FeatureData> FeatureCache::fetch(int frame_no, const Detection 
     cv::Rect2i box = convert(d.box);
 
     std::lock_guard<std::mutex> lock(const_cast<FeatureCache*>(this)->lookup_lock);
-    auto index = feature_lookup.find(std::make_tuple(frame_no, box.x, box.y, box.width, box.height));
-    if (index == feature_lookup.end()) {
+    auto& frame_entries = const_cast<FeatureCache*>(this)->feature_lookup[frame_no];
+    auto index = std::find_if(frame_entries.begin(), frame_entries.end(),
+            [&box](const auto& test) -> bool {
+                int x = std::get<0>(test.first);
+                int y = std::get<1>(test.first);
+                int w = std::get<2>(test.first);
+                int h = std::get<3>(test.first);
+
+                return abs(x - box.x) < DB_TOL
+                    && abs(y - box.y) < DB_TOL
+                    && abs(w - box.width) < DB_TOL
+                    && abs(h - box.height) < DB_TOL;
+            }
+    );
+    if (index == frame_entries.end()) {
         return nonstd::nullopt;
     } else {
         return FeatureData(index->second);
