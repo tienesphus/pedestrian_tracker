@@ -38,6 +38,7 @@ add_library(buscount_static STATIC
     tracking/feature_affinity.cpp
     tracking/position_affinity.cpp
     cv_utils.cpp
+    image_stream.cpp
 )
 
 set_property(TARGET buscount_static PROPERTY POSITION_INDEPENDENT_CODE ON)

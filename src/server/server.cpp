@@ -278,5 +278,21 @@ namespace server {
                 },
                 {drogon::Post}
         );
+
+        drogon::app().registerHandler("/live.png", [](const drogon::HttpRequestPtr&,
+                        std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&)
+                {
+                    auto resp=drogon::HttpResponse::newFileResponse(SOURCE_DIR "/ram_disk/live.png");
+                    callback(resp);
+                }
+        );
+
+        drogon::app().registerHandler("/dirty.png", [](const drogon::HttpRequestPtr&,
+                        std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&)
+                {
+                    auto resp=drogon::HttpResponse::newFileResponse(SOURCE_DIR "/ram_disk/dirty.png");
+                    callback(resp);
+                }
+        );
     }
 }

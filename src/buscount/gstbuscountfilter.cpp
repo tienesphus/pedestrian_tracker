@@ -5,9 +5,11 @@
 #include "tracking/tracker_component.hpp"
 #include "tracking/feature_affinity.hpp"
 #include "tracking/position_affinity.hpp"
+#include "image_stream.hpp"
 
 #include <gstreamermm/wrap_init.h>
 #include <glib.h>
+#include <data_fetch.hpp>
 
 GST_DEBUG_CATEGORY_STATIC(buscount); // Define a new debug category for gstreamer output
 #define GST_CAT_DEFAULT buscount     // Set new category as the default category
@@ -47,6 +49,10 @@ const WorldConfig GstBusCountFilter::default_world_config = WorldConfig::from_fi
 Gst::ValueList GstBusCountFilter::formats;
 std::unique_ptr<Detector> GstBusCountFilter::detector;
 std::unique_ptr<Tracker> GstBusCountFilter::tracker;
+
+DataFetch event_database(SOURCE_DIR "/data/database.db");
+ImageStreamWriter image_writer_live(SOURCE_DIR "/ram_disk/live.png", 100);
+ImageStreamWriter image_writer_dirty(SOURCE_DIR "/ram_disk/dirty.png", 100);
 
 
 // ******** Function definitions ******** //
@@ -163,7 +169,6 @@ bool GstBusCountFilter::register_buscount_filter(GstPlugin *plugin)
     );
 }
 
-
 GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
         Glib::ObjectBase(typeid(GstBusCountFilter)),
         Gst::Element(gobj),
@@ -180,7 +185,10 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
                 std::bind(&GstBusCountFilter::next_frame, this),
                 std::bind(&GstBusCountFilter::push_frame, this, std::placeholders::_1),
                 std::bind(&GstBusCountFilter::test_quit, this),
-                [](Event){}
+                [](Event e) {
+                    GST_DEBUG("Event: %s", name(e).c_str());
+                    event_database.enter_event(e);
+                }
         ),
         buscount_running(false),
         pixel_size(format_descriptions[0].size),
@@ -218,15 +226,19 @@ nonstd::optional<cv::Mat> GstBusCountFilter::next_frame()
     cv::Mat ret(mat_queue->pop());
     frame_queue_popped.notify_one();
 
+    image_writer_live.write(ret);
     return ret;
 }
 
 void GstBusCountFilter::push_frame(const cv::Mat &frame)
 {
+    // TODO only write frames when they are needed
+    image_writer_dirty.write(frame);
+
     Glib::RefPtr<Gst::Buffer> buf;
     Gst::MapInfo mapinfo;
 
-    GST_DEBUG("Frame push requested");
+    GST_DEBUG("Pushing requested");
 
     do
     {
@@ -563,6 +575,8 @@ static gboolean plugin_init(GstPlugin* plugin)
     InferenceEngine::InferencePlugin ie_plugin; // initialisation not needed since using OpenCV
 
     GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config, ie_plugin);
+
+
 
     GST_DEBUG("Initializing plugin");
 

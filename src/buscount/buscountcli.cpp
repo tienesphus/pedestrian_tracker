@@ -20,6 +20,7 @@
 #include "detection/detector_opencv.hpp"
 #include "video_sync.hpp"
 #include "data_fetch.hpp"
+#include "image_stream.hpp"
 
 
 int main() {
@@ -88,27 +89,34 @@ int main() {
         }
     });
 
+    ImageStreamWriter writer_live(SOURCE_DIR "/ram_disk/live.png", 100);
+    ImageStreamWriter writer_dirty(SOURCE_DIR "/ram_disk/dirty.png", 100);
+    writer_live.start();
+    writer_dirty.start();
+
     BusCounter counter(detector, tracker, world_config,
             //[&cap]() -> nonstd::optional<cv::Mat> { return cap.next(); },
-            [&cv_cap]() -> nonstd::optional<cv::Mat> {
+            [&cv_cap, &writer_live]() -> nonstd::optional<cv::Mat> {
                 cv::Mat frame;
                 cv_cap->read(frame);
                 cv::resize(frame, frame, cv::Size(640, 480));
+                writer_live.write(frame);
                 return frame;
             },
-            [](const cv::Mat& frame) { 
-		cv::imshow("output", frame); 
-	    },
+            [&writer_dirty](const cv::Mat& frame) {
+		        cv::imshow("output", frame);
+                writer_dirty.write(frame);
+            },
             []() { 
-		return cv::waitKey(1) == 'q';
-	    },
+                return cv::waitKey(1) == 'q';
+            },
             [&data](Event event) {
                 spdlog::info("EVENT: {}", name(event));
                 data.enter_event(event);
             }
     );
 
-    counter.run(BusCounter::RUN_PARALLEL, true);
+    counter.run(BusCounter::RUN_SERIAL, true);
 
     running = false;
     config_updater.join();
