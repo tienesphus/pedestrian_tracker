@@ -1,3 +1,7 @@
+/**
+ * Buscountserver is designed to run locally on the pis. It handles all communication with the android application.
+ */
+
 #include "server.hpp"
 #include <data_fetch.hpp>
 

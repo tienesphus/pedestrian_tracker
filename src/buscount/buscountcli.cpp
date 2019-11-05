@@ -1,3 +1,7 @@
+/**
+ * Buscoundcli is for development and debugging.
+ */
+
 // Standard includes
 #include <iostream>
 #include <tuple>

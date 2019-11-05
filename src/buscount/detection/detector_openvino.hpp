@@ -5,6 +5,9 @@
 
 #include "detector.hpp"
 
+/**
+ * Runs detections using the OpenVino backend.
+ */
 class DetectorOpenVino: public Detector {
 
 public:

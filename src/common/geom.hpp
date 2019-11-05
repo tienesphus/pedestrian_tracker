@@ -3,6 +3,9 @@
 
 namespace geom {
 
+    /**
+     * Represents a point
+     */
     struct Point {
         float x, y;
 
@@ -27,6 +30,9 @@ namespace geom {
         bool operator==(const Point &other) const;
     };
 
+    /**
+     * Represents a line defined by two points
+     */
     struct Line {
         Point a;
         Point b;

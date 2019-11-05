@@ -4,9 +4,7 @@
 
 #include <drogon/drogon.h>
 
-
 namespace server {
-
 
     struct Device
     {

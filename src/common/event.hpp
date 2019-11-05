@@ -3,6 +3,9 @@
 
 #include <string>
 
+/**
+ * A entry/exit event
+ */
 enum Event {
     COUNT_IN,  // someone went in
     COUNT_OUT, // someone went out
