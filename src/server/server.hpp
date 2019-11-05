@@ -10,6 +10,7 @@
 #include <optional.hpp>
 #include <geom.hpp>
 #include <config.hpp>
+#include <data_fetch.hpp>
 
 namespace server {
 
@@ -17,13 +18,13 @@ namespace server {
      * Initialises the server with the master config
      * It is okay to initialise the server as both master and slave
      */
-    void init_master(const std::function<int()>& getCount, const std::function<void(int)>& addCount);
+    void init_master(DataFetch& data);
 
     /**
      * Initialises the server as a slave
      * It is okay to initialise the server as both master and slave
      */
-    void init_slave(const std::function<WorldConfig()> &getConfig, const std::function<void(WorldConfig)> &setConfig);
+    void init_slave(DataFetch& data);
 
     /**
      * Starts the server (blocking).

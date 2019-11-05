@@ -25,10 +25,22 @@ public:
     ~DataFetch();
 
     /**
-     * Logs an event into the database
+     * Enters an event into the database at the current time
      * @param event the event to log
      */
     void enter_event(Event event);
+
+    /**
+     * Deletes the given ids from the database.
+     * @param entries the ids to remove
+     */
+    void remove_events(const std::vector<int>& entries);
+
+    /**
+     * Fetches all the events logged in the database
+     * @return a list of (id, timestamp, Event)
+     */
+    std::vector<std::tuple<int, time_t, Event>> fetch_events() const;
 
     /**
      * Gets the current local count. Note that if the server is running, it will reset this count every few seconds.
@@ -43,21 +55,27 @@ public:
     void update_config(const WorldConfig& config);
 
     /**
-     * Gets the latest configuration stored
-     * @return the latest config
+     * Gets the world configuration stored
      */
-    WorldConfig get_latest_config() const;
+    WorldConfig get_config() const;
+
+    void set_name(const std::string& name);
+
+    std::string get_name();
+
+    void set_busid(const std::string& busid);
+
+    std::string get_busid();
+
+    void set_remote_url(const std::string& remoteurl);
+
+    std::string get_remote_url();
 
     /**
-     * Checks for any updates.
+     * Resets the local count
+     * @param count the new value
      */
-    void check_config_update(const std::function<void(WorldConfig)>& updater);
-
-    /**
-     * Adds an offset to the count
-     * @param delta the count offset
-     */
-    void add_count(int delta);
+    void set_count(int count);
 
 private:
     sqlite3* db;

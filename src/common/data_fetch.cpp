@@ -1,11 +1,14 @@
 #include "data_fetch.hpp"
 #include "optional.hpp"
+#include <spdlog/spdlog.h>
 
 #include <sqlite3.h>
 
 #include <string>
-#include <iostream>
 #include <json/json.h>
+#include <sstream>
+#include <iostream>
+
 
 DataFetch::DataFetch(const std::string& file):
     db(nullptr), last_count_update("")
@@ -25,24 +28,24 @@ DataFetch::~DataFetch()
 
 int DataFetch::count() const
 {
-    char* error;
+    sqlite3_stmt* stmt;
 
-    int in_out[] = {0, 0};
-    if (sqlite3_exec(db, "SELECT SUM(DeltaIn) as 'CountIn', SUM(DeltaOut) as 'CountOut' FROM CountEvents",
-                     [](void* in_out, int, char** argv, char**) -> int {
-                         std::string in = argv[0];
-                         std::string out = argv[1];
-                         int in_count = std::stoi(argv[0]);
-                         int out_count = std::stoi(argv[1]);
-                         ((int*)in_out)[0] = in_count;
-                         ((int*)in_out)[1] = out_count;
-                         return 0;
-                     }, in_out, &error) != SQLITE_OK) {
-        std::cout << "SELECT count ERROR: " << error << std::endl;
-        sqlite3_free(error);
+    const char* sql = "SELECT CurrentCount FROM ConfigUpdate";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot fetch counts: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot fetch count");
     }
 
-    return in_out[0] - in_out[1];
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+        throw std::logic_error("Cannot fetch count");
+    }
+
+    auto count = sqlite3_column_int(stmt, 0);
+
+    sqlite3_finalize(stmt);
+
+    return count;
 }
 
 // TODO Remove copy paste of JSON passers in data_fetch.cpp
@@ -93,14 +96,26 @@ Json::Value _to_json(const WorldConfig& config)
 
 void DataFetch::update_config(const WorldConfig& config)
 {
-    char* error;
     Json::StreamWriterBuilder builder;
     std::string output = Json::writeString(builder, _to_json(config));
-    if (sqlite3_exec(db, ("INSERT INTO ConfigUpdate(Config) VALUES ('" + output + "')").c_str(),
-                     nullptr, nullptr, &error) != SQLITE_OK) {
-        std::cout << "SQL ERROR insert config update: " << error << std::endl;
-        sqlite3_free(error);
+
+    sqlite3_stmt* stmt;
+
+    const char* sql = "UPDATE ConfigUpdate SET Config = ?";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot update world config: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot update world config");
     }
+
+    sqlite3_bind_text(stmt, 1, output.c_str(), -1, nullptr);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        throw std::logic_error("Cannot execute update world config");
+    }
+
+    sqlite3_finalize(stmt);
+
 }
 
 nonstd::optional<WorldConfig> _config_from_json(const Json::Value &data)
@@ -134,95 +149,249 @@ void DataFetch::enter_event(Event event)
         default:
             throw std::logic_error("Unknown event type");
     }
-    std::string sql = "INSERT INTO CountEvents(Name, DeltaIn, DeltaOut) VALUES ('" + name(event) + "', " +
+
+    // Store the event
+    std::string sql = "INSERT INTO CountEvents(Name, DeltaIn, DeltaOut) VALUES ('" + std::to_string(event) + "', " +
                       std::to_string(deltaIn) + ", " + std::to_string(deltaOut) + ")";
+    if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &error) != SQLITE_OK) {
+        std::cout << "SQL ERROR: " << error << std::endl;
+        sqlite3_free(error);
+    }
+
+    // Add the count
+    sql = "UPDATE ConfigUpdate SET CurrentCount = CurrentCount + " + std::to_string(deltaIn - deltaOut);
     if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &error) != SQLITE_OK) {
         std::cout << "SQL ERROR: " << error << std::endl;
         sqlite3_free(error);
     }
 }
 
-WorldConfig DataFetch::get_latest_config() const
+void DataFetch::remove_events(const std::vector<int>& entries)
+{
+    sqlite3_stmt* stmt;
+
+    std::string sql = "DELETE FROM CountEvents WHERE id IN (";
+    for (size_t i = 0; i < entries.size(); i++) {
+        sql += std::to_string(entries[i]);
+        if (i < entries.size()-1)
+            sql += ", ";
+    }
+    sql += ")";
+
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot prepare delete count events: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot select features");
+    }
+
+    int result = sqlite3_step(stmt);
+    while (result == SQLITE_BUSY) {
+        result = sqlite3_step(stmt);
+    }
+    if (result != SQLITE_DONE) {
+        throw std::logic_error("Cannot delete count events");
+    }
+
+    sqlite3_finalize(stmt);
+}
+
+/**
+ * Fetches all the events logged in the database
+ * @return a list of (id, timestamp, Event)
+ */
+std::vector<std::tuple<int, time_t, Event>> DataFetch::fetch_events() const
+{
+    sqlite3_stmt* stmt;
+
+    const char* sql = "SELECT id, time, name FROM CountEvents" ;
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot select count events: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot select count events");
+    }
+
+    std::vector<std::tuple<int, time_t, Event>> events;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 0);
+        time_t time = sqlite3_column_int(stmt, 1);
+        auto event = static_cast<Event>(sqlite3_column_int(stmt, 2));
+        events.emplace_back(id, time, event);
+    }
+
+    sqlite3_finalize(stmt);
+
+    return events;
+}
+
+WorldConfig DataFetch::get_config() const
+{
+    sqlite3_stmt* stmt;
+
+    const char* sql = "SELECT Config FROM ConfigUpdate LIMIT 1";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot fetch config: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot fetch config");
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+        throw std::logic_error("Cannot fetch config");
+    }
+    const char* text = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+    std::string text_str(text);
+
+    Json::Reader reader;
+    Json::Value json;
+    bool success = reader.parse(text, json);
+    if (!success)
+        throw std::logic_error("Cannot read json config from database");
+
+    nonstd::optional<WorldConfig> config = _config_from_json(json);
+    if (!config)
+        throw std::logic_error("Cannot convert json config to config");
+
+    sqlite3_finalize(stmt);
+
+    return *config;
+}
+
+void DataFetch::set_count(int count)
 {
     char* error;
 
-    WorldConfig config(geom::Line(geom::Point(0, 0), geom::Point(0, 0)), {});
-
-    if (sqlite3_exec(db, "SELECT Config FROM ConfigUpdate WHERE time = (SELECT max(Time) FROM ConfigUpdate)",
-                     [](void* config, int, char** argv, char**) -> int {
-                         // TODO store config as proper data instead of JSON
-                         Json::Reader reader;
-                         Json::Value json;
-                         reader.parse(argv[0], json);
-                         nonstd::optional<WorldConfig> op_config = _config_from_json(json);
-                         *(WorldConfig*)config = *op_config;
-                         return 0;
-                     }, &config, &error) != SQLITE_OK) {
-        std::cout << "SELECT config ERROR: " << error << std::endl;
-        sqlite3_free(error);
-    }
-
-    return config;
-}
-
-void DataFetch::check_config_update(const std::function<void(WorldConfig)>& updater)
-{
-    char *error = nullptr;
-
-    // fetch the latest update timestamp from the database
-    std::string latest_update = "?";
-    if (sqlite3_exec(db, "SELECT MAX(time) FROM ConfigUpdate",
-                     [](void* latest_update, int argc, char** argv, char**) -> int {
-                         if (argc != 1)
-                             throw std::logic_error("Required one result");
-                         *(std::string*)latest_update = argv[0];
-                         return 0;
-                     }, &latest_update, &error) != SQLITE_OK) {
-        std::cout << "SELECT ERROR: " << error << std::endl;
-        sqlite3_free(error);
-        return;
-    }
-
-    if (latest_update == "?") {
-        throw std::logic_error("Latest update was not updated");
-    }
-
-    WorldConfig world_config = WorldConfig(geom::Line(geom::Point(0, 0), geom::Point(1, 1)), {});
-
-    // fetch the config and update (if needed)
-    if (last_count_update < latest_update) {
-        if (sqlite3_exec(db, ("SELECT Config FROM ConfigUpdate WHERE Time='"+latest_update+"'").c_str(),
-                         [](void* world_config, int argc, char** data, char**) -> int {
-                             if (argc != 1)
-                                 throw std::logic_error("SELECT config must return one column");
-                             Json::Reader reader;
-                             Json::Value json;
-                             bool success = reader.parse(data[0], json);
-                             if (!success)
-                                 throw std::logic_error("Cannot read json config from database");
-                             nonstd::optional<WorldConfig> config = _config_from_json(json);
-                             if (!config)
-                                 throw std::logic_error("Cannot convert json config to config");
-                             *(WorldConfig*)world_config = *config;
-                             return 0;
-                         }, &world_config,
-                         &error) != SQLITE_OK) {
-            std::cout << "SELECT ERROR: " << error << std::endl;
-            sqlite3_free(error);
-        } else {
-            last_count_update = std::move(latest_update);
-            updater(world_config);
-        }
-    }
-}
-
-void DataFetch::add_count(int delta)
-{
-    char* error;
-
-    if (sqlite3_exec(db, ("INSERT INTO CountEvents (name, DeltaIn) VALUES ('Manual', " + std::to_string(delta) + ")").c_str(),
+    if (sqlite3_exec(db, ("UPDATE ConfigUpdate SET CurrentCount = " + std::to_string(count)).c_str(),
                      nullptr, nullptr, &error) != SQLITE_OK) {
-        std::cout << "INSERT count ERROR: " << error << std::endl;
+        std::cout << "UPDATE count ERROR: " << error << std::endl;
         sqlite3_free(error);
     }
+}
+
+
+void DataFetch::set_name(const std::string& name)
+{
+    sqlite3_stmt* stmt;
+
+    const char* sql = "UPDATE ConfigUpdate SET DeviceName = ?";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot update device name: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot update device name");
+    }
+
+    sqlite3_bind_text(stmt, 1, name.c_str(), -1, nullptr);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        throw std::logic_error("Cannot execute update device name");
+    }
+
+    sqlite3_finalize(stmt);
+}
+
+std::string DataFetch::get_name()
+{
+    sqlite3_stmt* stmt;
+
+    const char* sql = "SELECT DeviceName FROM ConfigUpdate LIMIT 1";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot fetch device name: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot fetch device name");
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+        throw std::logic_error("Cannot fetch device name");
+    }
+
+    const char* text = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+    std::string text_str(text);
+
+    sqlite3_finalize(stmt);
+
+    return text_str;
+}
+
+void DataFetch::set_busid(const std::string& busid)
+{
+    sqlite3_stmt* stmt;
+
+    const char* sql = "UPDATE ConfigUpdate SET BusID = ?";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot update bus id: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot update bus id");
+    }
+
+    sqlite3_bind_text(stmt, 1, busid.c_str(), -1, nullptr);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        throw std::logic_error("Cannot execute update bus id");
+    }
+
+    sqlite3_finalize(stmt);
+}
+
+std::string DataFetch::get_busid()
+{
+    sqlite3_stmt* stmt;
+
+    const char* sql = "SELECT BusID FROM ConfigUpdate LIMIT 1";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot fetch server bus id: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot fetch bus id");
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+        throw std::logic_error("Cannot fetch bus id");
+    }
+
+    const char* text = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+    std::string text_str(text);
+
+    sqlite3_finalize(stmt);
+
+    return text_str;
+}
+
+void DataFetch::set_remote_url(const std::string& remoteurl)
+{
+    sqlite3_stmt* stmt;
+
+    const char* sql = "UPDATE ConfigUpdate SET ServerURL = ?";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot update server url: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot update server url");
+    }
+
+    sqlite3_bind_text(stmt, 1, remoteurl.c_str(), -1, nullptr);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        throw std::logic_error("Cannot execute update server url");
+    }
+
+    sqlite3_finalize(stmt);
+}
+
+std::string DataFetch::get_remote_url()
+{
+    sqlite3_stmt* stmt;
+
+    const char* sql = "SELECT ServerURL FROM ConfigUpdate LIMIT 1";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        spdlog::error("Cannot fetch server url: {}", sqlite3_errmsg(db));
+        throw std::logic_error("Cannot fetch server url");
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+        throw std::logic_error("Cannot fetch server url");
+    }
+
+    const char* text = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+    std::string text_str(text);
+
+    sqlite3_finalize(stmt);
+
+    return text_str;
 }

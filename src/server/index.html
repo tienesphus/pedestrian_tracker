@@ -29,7 +29,7 @@
 
         function submitForm(form, url){
             let data = jsonifyForm(form);
-
+            console.log(data)
             let xhr = new XMLHttpRequest();
             xhr.open(form.method, url, true);
             xhr.setRequestHeader("Content-Type", "application/json");
@@ -47,7 +47,7 @@
                 }
             };
 
-            console.log('Sending to ' + url + "':");
+            console.log("Sending to '" + url + "':");
             console.log(data);
             xhr.send(JSON.stringify(data));
             //xhr.send('{"delta": "5"}');
@@ -99,13 +99,16 @@
         <label for="c_y2">y2</label> <input type="number" name="y2" id="c_y2" step="0.1" min="0" max="1"/>
     </fieldset>
 
+    <label for="busid">Busid</label><input type="text" name="busid" id="busid"/>
+    <label for="devicename">Device name</label><input type="text" name="devicename" id="devicename"/>
+    <label for="cloudurl">Cloud URL</label><input type="text" name="cloudurl" id="cloudurl"/>
+
     <input type="submit" value="Set Config">
 </form>
 
 <h3>Status Update</h3>
-<p>NOTE: this works, but the data format is wrong!!!!</p>
 <form method="post" action="javascript:void(0);" onsubmit="submitForm(this, 'status_update')">
-    <label for="change">Delta people</label><input type="number" name="delta" id="change"/>
+    <label for="count">People</label><input type="number" name="count" id="count"/>
 
     <input type="submit" value="Update">
 </form>

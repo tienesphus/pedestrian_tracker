@@ -14,3 +14,15 @@ std::string name(Event e)
     }
 }
 
+int delta_count(Event e) {
+    switch (e)
+    {
+        case COUNT_IN: return 1;
+        case COUNT_OUT: return -1;
+        case BACK_IN: return 1;
+        case BACK_OUT: return -1;
+        default:
+            throw std::logic_error("unhandled event: " + std::to_string(e));
+    }
+}
+

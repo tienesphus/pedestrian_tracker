@@ -1,4 +1,5 @@
 #include "server.hpp"
+#include "json_convert.hpp"
 
 #include <geom.hpp>
 
@@ -26,7 +27,6 @@ namespace server {
         json["ip"] = device.ip.toIp();
         json["id"] = device.id;
         json["name"] = device.name;
-        json["default_feed"] = "/live";
         return json;
     }
 
@@ -35,7 +35,6 @@ namespace server {
 
         Json::Value id = json["id"];
         Json::Value name = json["name"];
-        Json::Value default_feed = json["default_feed"];
 
         if (!id.isString() || !name.isString()) {
             std::cout << "Device id or name is not a string" << std::endl;
@@ -46,37 +45,6 @@ namespace server {
             return Device(s_name, s_id, ip);
         }
     }
-
-    Json::Value to_json(const geom::Line& l)
-    {
-        Json::Value json;
-        json["x1"] = l.a.x;
-        json["y1"] = l.a.y;
-        json["x2"] = l.b.x;
-        json["y2"] = l.b.y;
-        return json;
-    }
-
-    nonstd::optional<geom::Line> line_from_json(const Json::Value& json)
-    {
-        Json::Value x1 = json["x1"];
-        Json::Value y1 = json["y1"];
-        Json::Value x2 = json["x2"];
-        Json::Value y2 = json["y2"];
-
-        if (x1.isDouble() && y1.isDouble() && x2.isDouble() && y2.isDouble())
-        {
-            geom::Line line(
-                    geom::Point(x1.asDouble(), y1.asDouble()),
-                    geom::Point(x2.asDouble(), y2.asDouble())
-            );
-            return line;
-        } else {
-            std::cout << "One of the points is not a float" << std::endl;
-            return nonstd::nullopt;
-        }
-    }
-
 
     void start()
     {
@@ -119,7 +87,7 @@ namespace server {
         app().run();
     }
 
-    void init_master(const std::function<int()>& getCount, const std::function<void(int)>& addCount)
+    void init_master(DataFetch& data)
     {
         using namespace drogon;
 
@@ -129,10 +97,10 @@ namespace server {
         // TODO move these lambdas into separate files
         // I just threw them here because it was easy, but, its a bit clunky
         drogon::app().registerHandler("/count",
-                [getCount](const drogon::HttpRequestPtr&,
+                [&data](const drogon::HttpRequestPtr&,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
                     Json::Value json;
-                    json["count"] = std::to_string(getCount());
+                    json["count"] = std::to_string(data.count());
                     auto resp=HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
                 },
@@ -140,7 +108,7 @@ namespace server {
         );
 
         drogon::app().registerHandler("/status_update",
-                [addCount](const drogon::HttpRequestPtr& req,
+                [&data](const drogon::HttpRequestPtr& req,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
                     std::cout << "status_update" << std::endl;
                     std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
@@ -155,17 +123,17 @@ namespace server {
 
                         const Json::Value json = *json_ptr;
 
-                        Json::Value delta = json["delta"];
-                        if (!delta.isInt())
+                        Json::Value count = json["count"];
+                        if (!count.isInt())
                         {
                             auto resp=HttpResponse::newHttpResponse();
                             resp->setContentTypeCode(CT_TEXT_PLAIN);
                             resp->setStatusCode(k400BadRequest);
-                            resp->setBody("Must have an int in 'delta'");
+                            resp->setBody("Must have an int in 'count'");
                             callback(resp);
                         } else {
-                            int change = delta.asInt();
-                            addCount(change);
+                            int countValue = count.asInt();
+                            data.set_count(countValue);
                             auto resp=HttpResponse::newHttpResponse();
                             resp->setStatusCode(k200OK);
                             callback(resp);
@@ -225,14 +193,18 @@ namespace server {
         );
     }
 
-    void init_slave(const std::function<WorldConfig()>& getConfig, const std::function<void(WorldConfig)>& setConfig)
+    void init_slave(DataFetch& data)
     {
         drogon::app().registerHandler("/get_config",
-                [getConfig](const drogon::HttpRequestPtr&,
+                [&data](const drogon::HttpRequestPtr&,
                         std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&) {
 
-                    WorldConfig config = getConfig();
-                    Json::Value json = to_json(config);
+                    Json::Value json;
+                    geom::Line line = data.get_config().crossing;
+                    json["crossing"] = line_to_json(line);
+                    json["busid"] = data.get_busid();
+                    json["devicename"] = data.get_name();
+                    json["cloudurl"] = data.get_remote_url();
 
                     auto resp=drogon::HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
@@ -242,7 +214,7 @@ namespace server {
 
 
         drogon::app().registerHandler("/set_config",
-                [setConfig](const drogon::HttpRequestPtr& req,
+                [&data](const drogon::HttpRequestPtr& req,
                         std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&) {
                     std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
                     if (!json_ptr)
@@ -255,23 +227,79 @@ namespace server {
                         callback(resp);
                     } else {
                         const Json::Value& json = *json_ptr;
-                        nonstd::optional<WorldConfig> config = config_from_json(json);
 
-                        if (config)
-                        {
-                            setConfig(*config);
-
-                            auto resp=drogon::HttpResponse::newHttpResponse();
-                            resp->setStatusCode(drogon::k200OK);
-
-                            callback(resp);
-                        } else {
-                            auto resp=drogon::HttpResponse::newHttpResponse();
-                            resp->setContentTypeCode(drogon::CT_TEXT_PLAIN);
-                            resp->setStatusCode(drogon::k400BadRequest);
-                            resp->setBody("In/out lines not specified correctly");
-                            callback(resp);
+                        Json::Value crossingJson = json["crossing"];
+                        if (!crossingJson.empty()) {
+                            nonstd::optional<geom::Line> crossing = line_from_json(crossingJson);
+                            if (crossing) {
+                                WorldConfig config(*crossing, std::vector<geom::Line>());
+                                data.update_config(config);
+                            } else {
+                                auto resp = drogon::HttpResponse::newHttpResponse();
+                                resp->setContentTypeCode(drogon::CT_TEXT_PLAIN);
+                                resp->setStatusCode(drogon::k400BadRequest);
+                                resp->setBody("In/out lines not specified correctly");
+                                callback(resp);
+                                return;
+                            }
                         }
+
+                        // Attempt to read the name
+                        Json::Value name = json["devicename"];
+                        if (!name.empty()) {
+                            if (name.isString()) {
+                                const std::string& name_str = name.asString();
+                                if (!name_str.empty())
+                                    data.set_name(name_str);
+                            } else {
+                                auto resp = drogon::HttpResponse::newHttpResponse();
+                                resp->setContentTypeCode(drogon::CT_TEXT_PLAIN);
+                                resp->setStatusCode(drogon::k400BadRequest);
+                                resp->setBody("Name not set as a string");
+                                callback(resp);
+                                return;
+                            }
+                        }
+
+                        // Attempt to read the busid
+                        Json::Value busid = json["busid"];
+                        if (!busid.empty()) {
+                            if (busid.isString()) {
+                                const std::string& id_str = busid.asString();
+                                if (!id_str.empty())
+                                    data.set_busid(id_str);
+                            } else {
+                                auto resp = drogon::HttpResponse::newHttpResponse();
+                                resp->setContentTypeCode(drogon::CT_TEXT_PLAIN);
+                                resp->setStatusCode(drogon::k400BadRequest);
+                                resp->setBody("Busid is not a string");
+                                callback(resp);
+                                return;
+                            }
+                        }
+
+                        // Attempt to read the remote url
+                        Json::Value url = json["cloudurl"];
+                        if (!url.empty()) {
+                            if (url.isString()) {
+                                const std::string& url_str = url.asString();
+                                if (!url_str.empty())
+                                    data.set_remote_url(url_str);
+                            } else {
+                                auto resp = drogon::HttpResponse::newHttpResponse();
+                                resp->setContentTypeCode(drogon::CT_TEXT_PLAIN);
+                                resp->setStatusCode(drogon::k400BadRequest);
+                                resp->setBody("url is not a string");
+                                callback(resp);
+                                return;
+                            }
+                        }
+
+                        // All avaliable fields were okay
+                        auto resp = drogon::HttpResponse::newHttpResponse();
+                        resp->setStatusCode(drogon::k200OK);
+
+                        callback(resp);
                     }
                 },
                 {drogon::Post}
