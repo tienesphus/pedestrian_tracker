@@ -48,7 +48,7 @@ target_compile_definitions(buscount_static PUBLIC
 
 target_link_libraries(buscount_static PUBLIC
     ${TBB_LIBRARIES}
-    opencv_core opencv_dnn
+    opencv_core opencv_dnn opencv_imgcodecs
     IE::inference_engine
     Threads::Threads
     spdlog::spdlog

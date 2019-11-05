@@ -116,7 +116,7 @@ int main() {
             }
     );
 
-    counter.run(BusCounter::RUN_SERIAL, true);
+    counter.run(BusCounter::RUN_PARALLEL, true);
 
     running = false;
     config_updater.join();
