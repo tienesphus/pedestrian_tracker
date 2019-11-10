@@ -16,7 +16,7 @@ public:
 
     /**
      * @param filename where to write files to
-     * @param the time to sleep between each write
+     * @param the time to sleep between each write (milliseconds)
      */
     ImageStreamWriter(const std::string& filename, int sleep_time);
 

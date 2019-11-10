@@ -42,6 +42,8 @@ void ImageStreamWriter::start() {
             // Write the image to a temporary file, then move it across
             cv::imwrite(temp_filename, frame);
             std::rename(temp_filename.c_str(), filename.c_str());
+
+            usleep(1000 * sleep_time);
         }
     });
 }

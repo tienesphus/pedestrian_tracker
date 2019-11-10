@@ -51,8 +51,8 @@ std::unique_ptr<Detector> GstBusCountFilter::detector;
 std::unique_ptr<Tracker> GstBusCountFilter::tracker;
 
 DataFetch event_database(SOURCE_DIR "/data/database.db");
-ImageStreamWriter image_writer_live(SOURCE_DIR "/ram_disk/live.png", 100);
-ImageStreamWriter image_writer_dirty(SOURCE_DIR "/ram_disk/dirty.png", 100);
+ImageStreamWriter image_writer_live(SOURCE_DIR "/ram_disk/live.png", 500);
+ImageStreamWriter image_writer_dirty(SOURCE_DIR "/ram_disk/dirty.png", 500);
 
 
 // ******** Function definitions ******** //
@@ -179,9 +179,8 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
         test_property(*this, "test_property", "default_val"),
         mat_queue(Gst::AtomicQueue<cv::Mat>::create(10)),
         buf_queue(Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>::create(10)),
-        world_config(default_world_config),
         buscounter(
-                *detector, *tracker, world_config,
+                *detector, *tracker, default_world_config,
                 std::bind(&GstBusCountFilter::next_frame, this),
                 std::bind(&GstBusCountFilter::push_frame, this, std::placeholders::_1),
                 std::bind(&GstBusCountFilter::test_quit, this),
@@ -190,6 +189,14 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
                     event_database.enter_event(e);
                 }
         ),
+        config_updater([this]() {
+            // TODO is buscount_running what I think it is?
+            while (buscount_running) {
+                auto config = event_database.get_config();
+                buscounter.update_world_config(config);
+                usleep(300 * 1000); // 300 ms
+            }
+        }),
         buscount_running(false),
         pixel_size(format_descriptions[0].size),
         cv_type(format_descriptions[0].cv_type),
