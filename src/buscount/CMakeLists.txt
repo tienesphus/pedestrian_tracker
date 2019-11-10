@@ -20,10 +20,6 @@ find_package(InferenceEngine 1.5 REQUIRED)
 find_package(Threads REQUIRED)
 
 
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
 set(DEFAULT_ENC_TYPE "ENC_OMXH264" CACHE STRING "Sets the default encoder. Should be either ENC_OMXH264 or ENC_X264.")
 
 ### libbuscount object files.
