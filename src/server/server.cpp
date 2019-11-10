@@ -10,22 +10,20 @@ namespace server {
     struct Device
     {
         std::string name;
-        std::string id;
         trantor::InetAddress ip;
 
-        Device(std::string name, std::string id, const trantor::InetAddress& ip);
+        Device(std::string name, const trantor::InetAddress& ip);
 
     };
 
-    Device::Device(std::string name, std::string id, const trantor::InetAddress& ip):
-            name(std::move(name)), id(std::move(id)), ip(ip)
+    Device::Device(std::string name, const trantor::InetAddress& ip):
+            name(std::move(name)), ip(ip)
     {}
 
     Json::Value to_json(const Device& device)
     {
         Json::Value json;
         json["ip"] = device.ip.toIp();
-        json["id"] = device.id;
         json["name"] = device.name;
         return json;
     }
@@ -33,16 +31,14 @@ namespace server {
     nonstd::optional<Device> device_from_json(Json::Value json, trantor::InetAddress ip)
     {
 
-        Json::Value id = json["id"];
         Json::Value name = json["name"];
 
-        if (!id.isString() || !name.isString()) {
-            std::cout << "Device id or name is not a string" << std::endl;
+        if (!name.isString()) {
+            std::cout << "Device name is not a string" << std::endl;
             return nonstd::nullopt;
         } else {
-            std::string s_id = id.asString();
             std::string s_name = name.asString();
-            return Device(s_name, s_id, ip);
+            return Device(s_name, ip);
         }
     }
 
@@ -92,6 +88,7 @@ namespace server {
         using namespace drogon;
 
         static std::vector<Device> devices;
+        static std::mutex device_lock;
 
 
         // TODO move these lambdas into separate files
@@ -163,7 +160,14 @@ namespace server {
                             resp->setBody("Device not in correct format");
                             callback(resp);
                         } else {
-                            devices.push_back(*device);
+                            {
+                                std::lock_guard<std::mutex> lock(device_lock);
+                                devices.erase(std::remove_if(devices.begin(), devices.end(),
+                                        [&device](const Device& it) -> bool {
+                                            return it.ip.toIp() == (*device).ip.toIp();
+                                        }), devices.end());
+                                devices.push_back(*device);
+                            }
 
                             auto resp=HttpResponse::newHttpResponse();
                             resp->setStatusCode(k200OK);
@@ -175,16 +179,16 @@ namespace server {
         );
 
         drogon::app().registerHandler("/devices",
-                [](const drogon::HttpRequestPtr& req,
+                [](const drogon::HttpRequestPtr&,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
                     Json::Value json = Json::arrayValue;
 
-                    for (const Device& d : devices)
-                        json.append(to_json(d));
-
-                    // Assume I'm a client and add myself
-                    // TODO don't hardcode myself in
-                    json.append(to_json(Device("master", "master", req->localAddr())));
+                    {
+                        // TODO delete devices that don't regularly send a heartbeat
+                        std::lock_guard<std::mutex> lock(device_lock);
+                        for (const Device &d : devices)
+                            json.append(to_json(d));
+                    }
 
                     auto resp=HttpResponse::newHttpJsonResponse(json);
                     callback(resp);

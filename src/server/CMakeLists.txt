@@ -2,6 +2,7 @@ find_package(Drogon REQUIRED)
 
 add_library(server_static
     server.cpp
+    device_register.cpp
     json_convert.cpp
 )
 
@@ -17,6 +18,7 @@ target_link_libraries(server_static PUBLIC
     ssl
     crypto
     atomic
+    curl
 )
 
 # allow common header files to be used
