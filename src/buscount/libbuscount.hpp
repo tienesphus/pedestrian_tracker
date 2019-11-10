@@ -9,6 +9,10 @@
 #include "detection/detector.hpp"
 #include <optional.hpp>
 
+/**
+ * BusCounter handles the main running of the detection/tracking system. It ensures that frames are read in/processed
+ * in the correct order and syncronised on correct threads.
+ */
 class BusCounter {
 public:
     using src_cb_t = nonstd::optional<cv::Mat>();
@@ -16,6 +20,10 @@ public:
     using test_exit_t = bool();
     using event_handle_t = void(Event e);
 
+    /**
+     * How to run the BusCounter. In theory, parallel should get the exact same results as serial, except slower.
+     * In practice, the serial mode helps to debug threading issues
+     */
     enum RunStyle {
         RUN_PARALLEL,
         RUN_SERIAL
@@ -31,6 +39,11 @@ public:
             std::function<BusCounter::event_handle_t> event_handle
     );
 
+    /**
+     * Runs the counter in either style
+     * @param style parallel or serial
+     * @param draw whether drawing should be done or not
+     */
     void run(RunStyle style, bool draw);
 
 private:

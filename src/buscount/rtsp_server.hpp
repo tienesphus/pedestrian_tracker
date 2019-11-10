@@ -12,6 +12,9 @@
 #include "gstbuscountfilter.hpp"
 #include "rtsp_flexi_media_factory.h"
 
+/**
+ * Does encoding of stream based on machine archutecture being built for
+ */
 class EncoderBin : public Gst::Bin
 {
 public:
@@ -38,6 +41,9 @@ public:
     static Glib::RefPtr<EncoderBin> create(const Glib::ustring& name, EncoderType type = DEFAULT_ENC_TYPE);
 };
 
+/**
+ * Sets up an rtsp connection and waits for a client to connect
+ */
 class RtspServer
 {
     GstRTSPServer *server;

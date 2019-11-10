@@ -6,8 +6,8 @@
 #include <optional.hpp>
 #include <config.hpp>
 
-nonstd::optional<WorldConfig> config_from_json(const Json::Value &data);
+Json::Value line_to_json(const geom::Line& l);
 
-Json::Value to_json(const WorldConfig& config);
+nonstd::optional<geom::Line> line_from_json(const Json::Value& json);
 
 #endif

@@ -7,7 +7,11 @@
 #include "detection.hpp"
 
 /**
- * A class that handles detection of things
+ * A class that handles detection of things. A detector takes in an image and outputs the detections of humans.
+ *
+ * The detection may be done asyncronously, so implementations must be very careful with thread locking. The detector
+ * must guarentee that the output detections are for the correct input detection, but there is no guarentee on what
+ * timing order the output is.
  */
 class Detector {
 public:
@@ -20,7 +24,11 @@ public:
         DETECTOR_OPENVINO
     };
 
+    /**
+     * Alias for what the 'processing' state of a Detector is
+     */
     typedef std::shared_future<Detections> intermediate;
+
 
     /******** Object Methods ********/
 
@@ -28,7 +36,7 @@ public:
     virtual ~Detector() = 0;
 
     /**
-     * Begins the process of running inference on an image.
+     * Begins the process of running inference on an image asyncronously.
      */
     intermediate start_async(const cv::Mat &frame);
 
@@ -39,7 +47,7 @@ public:
     Detections wait_async(const intermediate &request) const;
 
     /**
-     * Runs detection for this frame and outputs the detected things.
+     * Runs detection for this frame and outputs the detected things
      * @param frame the RGB input image
      * @return the detections
      */

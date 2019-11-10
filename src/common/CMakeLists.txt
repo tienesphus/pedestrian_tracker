@@ -11,5 +11,5 @@ add_library(common STATIC
 )
 
 set_property(TARGET common PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(common sqlite3 jsoncpp_lib)
+target_link_libraries(common sqlite3 jsoncpp_lib spdlog::spdlog)
 
