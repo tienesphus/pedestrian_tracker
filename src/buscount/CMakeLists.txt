@@ -8,10 +8,6 @@ find_package(OpenCV 4.0 REQUIRED)
 find_package(InferenceEngine 1.5 REQUIRED)
 find_package(Threads REQUIRED)
 
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
 set(DEFAULT_ENC_TYPE "ENC_OMXH264" CACHE STRING "Sets the default encoder. Should be either ENC_OMXH264 or ENC_X264.")
 
 ### libbuscount object files.
@@ -27,13 +23,14 @@ add_library(buscount_static STATIC
     tracking/position_affinity.cpp
 	tracking/original_tracker.cpp
     cv_utils.cpp
+    image_stream.cpp
 )
 
 set_property(TARGET buscount_static PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(buscount_static PUBLIC)
 
 target_link_libraries(buscount_static PUBLIC
-    opencv_core opencv_dnn
+    opencv_core opencv_dnn opencv_imgcodecs
     IE::inference_engine
     Threads::Threads
     spdlog::spdlog

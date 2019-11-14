@@ -4,6 +4,9 @@
 #include "tracker_component.hpp"
 #include <inference_engine.hpp>
 
+/**
+ * Data for PositionAffinity. Just holds current position and velocity
+ */
 class PositionData: public TrackData
 {
     friend class PositionAffinity;
@@ -16,6 +19,9 @@ public:
     ~PositionData() override = default;
 };
 
+/**
+ * An affinity that runs purely on how close tracks are to each other
+ */
 class PositionAffinity: public Affinity<PositionData> {
 public:
 

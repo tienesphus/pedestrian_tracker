@@ -4,6 +4,10 @@
 #include "tracker_component.hpp"
 #include <inference_engine.hpp>
 
+
+/**
+ * Data for FeatureAffinity. Just holds the feature vector
+ */
 class FeatureData: public TrackData
 {
 public:
@@ -15,6 +19,9 @@ public:
     ~FeatureData() override = default;
 };
 
+/**
+ * An affinity that based on a 're-identification' network
+ */
 class FeatureAffinity: public Affinity<FeatureData> {
 public:
 

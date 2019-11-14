@@ -1,3 +1,7 @@
+/**
+ * Buscoundd is the entry point for streaming video. It has no graphical user interface.
+ */
+
 // C++ includes
 #include <gstreamermm.h>
 #include <glibmm/main.h>

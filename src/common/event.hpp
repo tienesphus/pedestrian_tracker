@@ -3,6 +3,9 @@
 
 #include <string>
 
+/**
+ * A entry/exit event
+ */
 enum Event {
     COUNT_IN,  // someone went in
     COUNT_OUT, // someone went out
@@ -11,5 +14,7 @@ enum Event {
 };
 
 std::string name(Event e);
+
+int delta_count(Event e);
 
 #endif //BUS_COUNT_EVENT_HPP

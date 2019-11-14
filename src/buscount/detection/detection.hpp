@@ -6,7 +6,6 @@
 
 /**
  * Represents a single detection output
- * The box points are scaled between 0 and 1
  */
 struct Detection {
 private:
@@ -16,13 +15,22 @@ private:
 
 public:
 
+    /**
+     * The detection bounds. Positions are scaled between 0 and 1
+     */
     cv::Rect2f box;
+    /**
+     * The confidence of a detection (between 0 and 1)
+     */
     float confidence;
 
+    /**
+     * Constructs a new Detection box
+     */
     Detection(cv::Rect2f box, float confidence);
     
     /**
-     * Draws this detection onto the image
+     * Draws this detection onto the image.
      */
     void draw(cv::Mat &display) const;
 
@@ -40,14 +48,14 @@ public:
 };
 
 /**
- * Keeps track of the detection results from a single frame 
+ * Keeps track of the detection results from a single frame. Effectively just a Vector of Detections
+ * TODO Detections class is useless?
  */
 class Detections {
 public:
 
     /**
      * Constructs a detection result
-     * @param frame the image the detections were made on
      * @param detections a list of detections that were made
      */
     explicit Detections(std::vector<Detection> detections);

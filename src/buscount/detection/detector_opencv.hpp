@@ -5,10 +5,17 @@
 
 #include <opencv2/dnn.hpp>
 
+/**
+ * Runs detections using OpenCV's dnn module. Note: if this method is used, it will hold locks on the backend system
+ * (internally in OpenCV's code. Thus, it is not possible to use this class alongside the OpenVino detector)
+ */
 class DetectorOpenCV: public Detector {
 
 public:
 
+    /**
+     * Configuration for how to detect things
+     */
     struct NetConfig {
         float thresh;           // confidence to threshold positive detections at (between 0-1)
         int clazz;              // class number of people (normally 0, 1, or 15)
@@ -25,7 +32,7 @@ public:
      * Constructs a detector from the given NetConfig
      */
     explicit DetectorOpenCV(const NetConfig &config);
-    virtual ~DetectorOpenCV();
+    ~DetectorOpenCV() override;
 
     Detections process(const cv::Mat &frame, int frame_no) override;
 

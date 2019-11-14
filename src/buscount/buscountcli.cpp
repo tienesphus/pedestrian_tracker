@@ -1,3 +1,7 @@
+/**
+ * Buscoundcli is for development and debugging.
+ */
+
 // Standard includes
 #include <iostream>
 #include <tuple>
@@ -23,6 +27,7 @@
 #include "detection/detector_opencv.hpp"
 #include "video_sync.hpp"
 #include "data_fetch.hpp"
+#include "image_stream.hpp"
 
 
 int main() {
@@ -59,9 +64,9 @@ int main() {
             cv::Size(48, 96),    // input size
     };
 
-    std::string input = SOURCE_DIR "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
-    VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
-    //auto cv_cap = std::make_shared<cv::VideoCapture>(0);
+    //std::string input = SOURCE_DIR "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    //VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
+    auto cv_cap = std::make_shared<cv::VideoCapture>(0);
 
     spdlog::info("Loading plugin");
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
@@ -75,35 +80,44 @@ int main() {
 
     DataFetch data(SOURCE_DIR "/data/database.db");
 
-    // Keep checking the database for any changes to the config
-    std::atomic_bool running = { true };
-    std::thread config_updater([&running, &data, &world_config]() {
-        while (running) {
+    ImageStreamWriter writer_live(SOURCE_DIR "/ram_disk/live.png", 500);
+    ImageStreamWriter writer_dirty(SOURCE_DIR "/ram_disk/dirty.png", 500);
+    writer_live.start();
+    writer_dirty.start();
 
-            data.check_config_update([&world_config](WorldConfig new_config) {
-                world_config.crossing = new_config.crossing;
-            });
-
-            // Don't hog the CPU
-            usleep(100 * 1000); // 100 ms
-        }
-    });
+    int frame_no = 0;
 
     BusCounter counter(detector, tracker, world_config,
-            [&cap]() -> nonstd::optional<std::tuple<cv::Mat, int>> { return cap.next(); },
-            /*[&cv_cap]() -> nonstd::optional<cv::Mat> {
+            //[&cap]() -> nonstd::optional<std::tuple<cv::Mat, int>> { return cap.next(); },
+            [&cv_cap, &writer_live, &frame_no]() -> nonstd::optional<std::tuple<cv::Mat, int>> {
                 cv::Mat frame;
                 cv_cap->read(frame);
                 cv::resize(frame, frame, cv::Size(640, 480));
-                return frame;
-            },*/
-            [](const cv::Mat& frame) { cv::imshow("output", frame); },
+                writer_live.write(frame);
+                return std::make_tuple(frame, ++frame_no);
+            },
+            [&writer_dirty](const cv::Mat& frame) {
+                cv::imshow("output", frame);
+                writer_dirty.write(frame);
+            },
             []() { return cv::waitKey(1) == 'q'; },
             [&data](Event event, const cv::Mat&, int frame_no) {
                 spdlog::info("EVENT: {}, {}", name(event), frame_no);
                 data.enter_event(event);
             }
     );
+
+    // Keep checking the database for any changes to the config
+    std::atomic_bool running = { true };
+    std::thread config_updater([&running, &data, &counter]() {
+        while (running) {
+            auto config = data.get_config();
+            counter.update_world_config(config);
+
+            // Don't hog the CPU
+            usleep(100 * 1000); // 100 ms
+        }
+    });
 
     counter.run(BusCounter::RUN_PARALLEL, true);
 

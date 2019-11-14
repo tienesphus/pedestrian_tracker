@@ -24,6 +24,7 @@ BusCounter::BusCounter(
         _detector(detector),
         _tracker(tracker),
         _world_config(wconf),
+        _world_config_waiting(nullptr),
         inside_count(0),
         outside_count(0)
 {
@@ -92,6 +93,16 @@ void BusCounter::run_serial(bool do_draw)
         _dest(frame);
         if (_test_exit())
             break;
+
+        {
+            // Update the config to the waiting config
+            std::lock_guard<std::mutex> lock(_config_update);
+            if (_world_config_waiting != nullptr) {
+                _world_config = *_world_config_waiting;
+                delete _world_config_waiting;
+                _world_config_waiting = nullptr;
+            }
+        }
     }
 }
 
@@ -198,4 +209,18 @@ void BusCounter::run_parallel(bool do_draw)
             processing.emplace_back(std::async(process_frame));
     }
 
+}
+
+void BusCounter::update_world_config(const WorldConfig &config)
+{
+    std::lock_guard<std::mutex> lock(_config_update);
+
+    // delete the old waiting config (if any)
+    if (_world_config_waiting != nullptr) {
+        delete _world_config_waiting;
+        _world_config_waiting = nullptr;
+    }
+
+    // Add the new config
+    _world_config_waiting = new WorldConfig(config);
 }

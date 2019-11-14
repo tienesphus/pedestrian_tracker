@@ -9,14 +9,12 @@
  */
 class Track;
 
-/**
- * Internal class used to convert different tracker types.
- */
+// See implementation notes below
 template <typename T>
 class AffAdaptor;
 
 /**
- * Simple base class for AffinityData
+ * Base class for holding data for Affinities
  */
 class TrackData {
 public:
@@ -25,6 +23,8 @@ public:
 
 /**
  * Pure abstract class which determines the similarity between a new detection and a track.
+ * Finding the affinity between a Track and Detection is a three step process - init, affinity and merge. See relevant
+ * methods for info on each step.
  *
  * TODO Affinities could be used to do more, such as deleting tracks, drawing all state and counting in/out.
  * It is possible that the Track class can be completely replaced by Affinities
@@ -45,16 +45,16 @@ public:
     virtual std::unique_ptr<T> init(const Detection& d, const cv::Mat& frame, int frame_no) const = 0;
 
     /**
-     * Determines the affinity between a 'Detection' and a 'Track'.
-     * This will be called on EVERY detection/track combination.
+     * Determines the affinity between a 'Detection' and a 'Track'. 0 is definitely not the same, 1 is the same.
+     * This will be called on EVERY detection/track combination, thus, it should be a relatively fast operation.
      * @param detectionData the data recently created in init()
-     * @param trackData data that has been carried over from a previous from through merge()
+     * @param trackData data that has been carried over from a previous call of merge()
      * @return the confidence that these two items are alike (between 0 and 1)
      */
     virtual float affinity(const T &detectionData, const T &trackData) const = 0;
 
     /**
-     * Called when it is decided that a detection an a track are the same.
+     * Called when it is decided that a detection an a track are the same (i.e affinity() was high).
      * @param detectionData the detection data to merge in
      * @param trackData the track data to merge into
      */
@@ -105,7 +105,7 @@ public:
     }
 
     /**
-     * Processes some detections
+     * Processes some detections and merges them into the current tracks
      * @returns a snapshot of the new state of the world
      */
     std::vector<Event> process(const Detections &detections, const cv::Mat& frame, int frame_no) override;

@@ -12,7 +12,7 @@
  * A class that tracks detections moving.
  *
  * Child implementations are very free to implement the system however they want.
- * All an implementation is REQUIRED to do is take some detections in and output the current counts each frame.
+ * All an implementation is REQUIRED to do is take some detections in and output any new in/out events each frame.
  */
 class Tracker
 {
