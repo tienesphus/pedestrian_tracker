@@ -3,11 +3,6 @@
 
 #include <event.hpp>
 #include <data_fetch.hpp>
-#include <spdlog/spdlog.h>
-
-#include <curl/curl.h>
-#include <string>
-#include <vector>
 
 class CloudUpdater {
 

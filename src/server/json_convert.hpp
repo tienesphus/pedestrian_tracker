@@ -1,5 +1,5 @@
-#ifndef BUS_COUNT_SERVER_CLIENT_HPP
-#define BUS_COUNT_SERVER_CLIENT_HPP
+#ifndef BUS_COUNT_JSON_CONVERT_HPP
+#define BUS_COUNT_JSON_CONVERT_HPP
 
 #include <json/json.h>
 

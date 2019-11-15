@@ -1,5 +1,7 @@
 #include "device_register.hpp"
-#include <data_fetch.hpp>
+#include <spdlog/spdlog.h>
+
+#include <curl/curl.h>
 
 DeviceRegister::DeviceRegister(DataFetch& data)
     :database(data)

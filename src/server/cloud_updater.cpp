@@ -1,5 +1,10 @@
 #include "cloud_updater.hpp"
 
+#include <spdlog/spdlog.h>
+
+#include <curl/curl.h>
+#include <vector>
+
 CloudUpdater::CloudUpdater(DataFetch& data)
     :database(data)
 {}

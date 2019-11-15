@@ -1,13 +1,8 @@
-#ifndef BUS_COUNT_CLOUD_UPDATER_HPP
-#define BUS_COUNT_CLOUD_UPDATER_HPP
+#ifndef BUS_COUNT_DEVICE_REGISTER_HPP
+#define BUS_COUNT_DEVICE_REGISTER_HPP
 
 #include <event.hpp>
 #include <data_fetch.hpp>
-#include <spdlog/spdlog.h>
-
-#include <curl/curl.h>
-#include <string>
-#include <vector>
 
 /**
  * DeviceRegister is designed to send heartbeat events to the master pi letting it know that this device
@@ -31,4 +26,4 @@ private:
 };
 
 
-#endif //BUS_COUNT_CLOUD_UPDATER_HPP
+#endif //BUS_COUNT_DEVICE_REGISTER_HPP
