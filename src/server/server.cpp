@@ -83,7 +83,7 @@ namespace server {
         app().run();
     }
 
-    void init_master(DataFetch& data)
+    void init_master(DataFetch&)
     {
         using namespace drogon;
 
@@ -93,52 +93,6 @@ namespace server {
 
         // TODO move these lambdas into separate files
         // I just threw them here because it was easy, but, its a bit clunky
-        drogon::app().registerHandler("/count",
-                [&data](const drogon::HttpRequestPtr&,
-                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
-                    Json::Value json;
-                    json["count"] = std::to_string(data.count());
-                    auto resp=HttpResponse::newHttpJsonResponse(json);
-                    callback(resp);
-                },
-                {Get}
-        );
-
-        drogon::app().registerHandler("/status_update",
-                [&data](const drogon::HttpRequestPtr& req,
-                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
-                    spdlog::debug("status_update");
-                    std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
-                    if (!json_ptr)
-                    {
-                        auto resp=HttpResponse::newHttpResponse();
-                        resp->setContentTypeCode(CT_TEXT_PLAIN);
-                        resp->setStatusCode(k400BadRequest);
-                        resp->setBody("Invalid json");
-                        callback(resp);
-                    } else {
-
-                        const Json::Value json = *json_ptr;
-
-                        Json::Value count = json["count"];
-                        if (!count.isInt())
-                        {
-                            auto resp=HttpResponse::newHttpResponse();
-                            resp->setContentTypeCode(CT_TEXT_PLAIN);
-                            resp->setStatusCode(k400BadRequest);
-                            resp->setBody("Must have an int in 'count'");
-                            callback(resp);
-                        } else {
-                            int countValue = count.asInt();
-                            data.set_count(countValue);
-                            auto resp=HttpResponse::newHttpResponse();
-                            resp->setStatusCode(k200OK);
-                            callback(resp);
-                        }
-                    }
-                },
-                {Post}
-        );
 
         drogon::app().registerHandler("/register",
                 [](const drogon::HttpRequestPtr& req,
@@ -199,6 +153,9 @@ namespace server {
 
     void init_slave(DataFetch& data)
     {
+
+        using namespace drogon;
+
         drogon::app().registerHandler("/get_config",
                 [&data](const drogon::HttpRequestPtr&,
                         std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&) {
@@ -307,6 +264,53 @@ namespace server {
                     }
                 },
                 {drogon::Post}
+        );
+
+        drogon::app().registerHandler("/count",
+                [&data](const drogon::HttpRequestPtr&,
+                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
+                    Json::Value json;
+                    json["count"] = std::to_string(data.count());
+                    auto resp=HttpResponse::newHttpJsonResponse(json);
+                    callback(resp);
+                },
+                {drogon::Get}
+        );
+
+        drogon::app().registerHandler("/status_update",
+                [&data](const drogon::HttpRequestPtr& req,
+                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
+                    spdlog::debug("status_update");
+                    std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
+                    if (!json_ptr)
+                    {
+                        auto resp=HttpResponse::newHttpResponse();
+                        resp->setContentTypeCode(CT_TEXT_PLAIN);
+                        resp->setStatusCode(k400BadRequest);
+                        resp->setBody("Invalid json");
+                        callback(resp);
+                    } else {
+
+                        const Json::Value json = *json_ptr;
+
+                        Json::Value count = json["count"];
+                        if (!count.isInt())
+                        {
+                            auto resp=HttpResponse::newHttpResponse();
+                            resp->setContentTypeCode(CT_TEXT_PLAIN);
+                            resp->setStatusCode(k400BadRequest);
+                            resp->setBody("Must have an int in 'count'");
+                            callback(resp);
+                        } else {
+                            int countValue = count.asInt();
+                            data.set_count(countValue);
+                            auto resp=HttpResponse::newHttpResponse();
+                            resp->setStatusCode(k200OK);
+                            callback(resp);
+                        }
+                    }
+                },
+                {Post}
         );
 
         drogon::app().registerHandler("/live.png", [](const drogon::HttpRequestPtr&,

@@ -12,13 +12,13 @@ bool DeviceRegister::send_registration()
 {
     auto name = database.get_name();
 
-    bool success = true;
+    bool success = false;
 
     CURL *curl;
     CURLcode res;
 
     curl = curl_easy_init();
-    if(curl) {
+    if (curl) {
 
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
         // TODO don't hardcode master device's IP address
@@ -38,6 +38,15 @@ bool DeviceRegister::send_registration()
         if(res != CURLE_OK){
             spdlog::warn("Failed to post data: {}", curl_easy_strerror(res));
             success = false;
+        } else {
+            long http_code = 0;
+            curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &http_code);
+            if (http_code == 200) {
+                success = true;
+            } else {
+                spdlog::warn("Response {} on device register", http_code);
+                success = false;
+            }
         }
 
         // cleanup curl
