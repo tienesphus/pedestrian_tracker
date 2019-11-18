@@ -204,6 +204,16 @@ void BusCounter::run_parallel(bool do_draw)
             finished = true;
         }
 
+        {
+            // Update the config to the waiting config
+            std::lock_guard<std::mutex> lock(_config_update);
+            if (_world_config_waiting != nullptr) {
+                _world_config = *_world_config_waiting;
+                delete _world_config_waiting;
+                _world_config_waiting = nullptr;
+            }
+        }
+
         // spin up another process for the sourced frame
         if (!finished)
             processing.emplace_back(std::async(process_frame));
