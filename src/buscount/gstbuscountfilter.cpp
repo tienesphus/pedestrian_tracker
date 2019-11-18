@@ -186,10 +186,11 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
         ),
         config_updater([this]() {
             // TODO is buscount_running what I think it is?
-            while (buscount_running) {
+            // it is, but it doesnt get set fast enough
+            while (true) { // while (buscount_running) {
                 auto config = event_database.get_config();
                 buscounter.update_world_config(config);
-
+		std::cout << "UPDATEING CONFIG" << std::endl;
                 usleep(300 * 1000); // 300 ms
             }
         }),
