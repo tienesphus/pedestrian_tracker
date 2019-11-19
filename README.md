@@ -73,13 +73,19 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 ### Running
 From within the build directory:
 
+To run the development prompt:
 ```
 ./bin/buscountcli
 ```
 
-To run the daemon:
+To run the rtsp daemon:
 ```
 ./bin/buscountd
+```
+
+To run the web server:
+```
+./bin/buscountserver
 ```
 
 The gstreamer buscount plugin may also be used outside of `buscountd`. You may use any gstreamer command (`gst-launch-1.0`, `gst-inspect-1.0`, etc) as follows:
@@ -93,3 +99,16 @@ GST_DEBUG=3,buscount:5 bin/buscountd
 ```
 
 For more information on the `GST_DEBUG` environment variable, take a look at the [relevant gstreamer documentation](https://gstreamer.freedesktop.org/documentation/tutorials/basic/debugging-tools.html#basic-tutorial-11-debugging-tools)
+
+
+### Installation
+To install the system so it runs on boot:
+
+```
+sudo make install
+
+# Enable each service
+sudo systemctl enable buscountd.service 
+sudo systemctl enable buswebserver.service 
+sudo systemctl enable home-pi-code-cpp_counting-ram_disk.mount
+```
