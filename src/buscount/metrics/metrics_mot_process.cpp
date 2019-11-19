@@ -137,7 +137,7 @@ int main() {
 
         std::ofstream results(std::string("results/") + set_name + ".txt");
 
-        TrackerComp tracker(world_config, 0.2f, 0.03, 0.2,
+        TrackerComp tracker(0.2f, 0.03, 0.2,
                 [&results](const cv::Mat& frame, uint32_t frameno, int index, const cv::Rect2f& box, float conf) {
                     // Write the MOT tracking results
                     int w = frame.cols;

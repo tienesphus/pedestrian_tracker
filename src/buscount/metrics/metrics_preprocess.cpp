@@ -127,7 +127,7 @@ int main() {
     DetectionCache detection_cache(SOURCE_DIR "/data/detections.db", "unitialised");
     CachedDetector cachedDetector(detection_cache, detector, 0.2f);
 
-    TrackerComp tracker(world_config, 0.5, 0.05/3, 0.2);
+    TrackerComp tracker(0.5, 0.05/3, 0.2);
     FeatureAffinity affinity(tracker_config, plugin);
     FeatureCache feature_cache(SOURCE_DIR "/data/features.db", "unitialised");
     tracker.use<CachedFeatures, FeatureData>(1.0f, affinity, feature_cache);

@@ -8,7 +8,7 @@
 #include "catch.hpp"
 
 // THIS TEST IS VERY MUCH SO UNFINISHED
-
+/*
 class TestData: public TrackData {
 public:
     friend class TestTracker;
@@ -74,3 +74,4 @@ TEST_CASE( "Tracker gives correct data", "[tracker_comp]" ) {
     REQUIRE(tracker_a->detector_calls.size() == 2);
     REQUIRE(tracker_b->detector_calls.size() == 2);
 }
+*/

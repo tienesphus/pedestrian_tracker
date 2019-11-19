@@ -4,7 +4,7 @@ set(WEBSTART_SCRIPT_LOC ${CMAKE_INSTALL_PREFIX}/bin/buscountwebstart)
 
 set(BUSCOUNTD_LOCATION ${SOURCE_DIR}/build/bin/buscountd)
 set(WEBSTART_LOCATION ${SOURCE_DIR}/build/bin/buscountserver)
-set(CHECKMASTER_LOCATION "/usr/local/lib/buscount-wifi/check_master")
+set(CHECKMASTER_LOCATION "/usr/local/lib/buscound-wifi/check-master")
 set(RAMDISK_LOCATION ${SOURCE_DIR}/ram_disk)
 
 if ("$ENV{INTEL_OPENVINO_DIR}" STREQUAL "")

@@ -101,7 +101,7 @@ void process(const std::string& pi, bool front, const std::string& bus, const ti
     CachedDetector cached_detector(detection_cache, /*detector, */0.2);
     TimedDetector timedDetector(cached_detector, &time, 0.1/25);
 
-    TrackerComp tracker(world_config, 0.5, 0.08, 0.2);
+    TrackerComp tracker(0.5, 0.08, 0.2);
     FeatureCache feature_cache(SOURCE_DIR "/data/cache/features.db", "uninitialised");
     CachedFeatures cached_features(feature_cache);
     tracker.use<TimedAffinity<FeatureData>, FeatureData>(1.0f, cached_features, &time, 1/100.0);

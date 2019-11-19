@@ -13,7 +13,7 @@ class DummyDetector: public Detector {
 };
 
 class DummyTracker: public Tracker {
-    std::vector<Event> process(const Detections& detections, const cv::Mat& frame, int) override {
+    std::vector<Event> process(const WorldConfig&, const Detections& detections, const cv::Mat& frame, int) override {
         REQUIRE(!frame.empty());
         REQUIRE(detections.get_detections().size() == 1);
         return std::vector<Event>();

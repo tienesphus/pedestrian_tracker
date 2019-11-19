@@ -168,7 +168,7 @@ void RtspServer::create_mounts()
 void RtspServer::init_buscount_pipeline()
 {
 
-    Glib::RefPtr<Gst::Element> v4l2, vflip cnvt, bcfilt, vtee, btee;
+    Glib::RefPtr<Gst::Element> v4l2, vflip, cnvt, bcfilt, vtee, btee;
 
     // Register the gstreamer buscount plugin
     GstBusCount::plugin_init_static();
