@@ -16,6 +16,8 @@ GST_DEBUG_CATEGORY_STATIC(buscount); // Define a new debug category for gstreame
 
 #define QUEUE_MAX_LEN 3
 
+#define WRITE_IMAGE_FILES (1)
+
 namespace GstBusCount {
 
 // ******** Compilation unit specific data ******** //
@@ -51,9 +53,10 @@ std::unique_ptr<Detector> GstBusCountFilter::detector;
 std::unique_ptr<Tracker> GstBusCountFilter::tracker;
 
 DataFetch event_database(SOURCE_DIR "/data/database.db");
+#ifdef WRITE_IMAGE_FILES
 ImageStreamWriter image_writer_live(SOURCE_DIR "/ram_disk/live.png", 500);
 ImageStreamWriter image_writer_dirty(SOURCE_DIR "/ram_disk/dirty.png", 500);
-
+#endif
 
 // ******** Function definitions ******** //
 
@@ -193,6 +196,7 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
             while (buscount_running) {
                 auto config = event_database.get_config();
                 buscounter.update_world_config(config);
+
                 usleep(300 * 1000); // 300 ms
             }
         }),
@@ -214,6 +218,11 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
     video_in->set_query_function(sigc::mem_fun(*this, &GstBusCountFilter::pad_query));
 
     video_out->set_query_function(sigc::mem_fun(*this, &GstBusCountFilter::pad_query));
+
+#ifdef WRITE_IMAGE_FILES
+    image_writer_live.start();
+    image_writer_dirty.start();
+#endif
 }
 
 // Private methods
@@ -233,14 +242,19 @@ nonstd::optional<std::tuple<cv::Mat, int>> GstBusCountFilter::next_frame()
     cv::Mat ret(mat_queue->pop());
     frame_queue_popped.notify_one();
 
+#ifdef WRITE_IMAGE_FILES
     image_writer_live.write(ret);
+#endif
+
     return std::make_tuple(ret, ++frame_no);
 }
 
 void GstBusCountFilter::push_frame(const cv::Mat &frame)
 {
+#ifdef WRITE_IMAGE_FILES
     // TODO only write frames when they are needed
     image_writer_dirty.write(frame);
+#endif
 
     Glib::RefPtr<Gst::Buffer> buf;
     Gst::MapInfo mapinfo;
@@ -427,7 +441,7 @@ bool GstBusCountFilter::pad_query(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPt
             // These are estimates for best case and worst case latencies under normal operating
             // conditions. These should not be determined by huristics, rather they should be
             // sane values. For heuristics and jitter fixup, try looking into QoS instead.
-            uint64_t base_latency = gst_util_uint64_scale(GST_SECOND, 12, 1);
+            uint64_t base_latency = gst_util_uint64_scale(GST_SECOND, 1, 12);
 
             min += base_latency;
             if (max != Gst::CLOCK_TIME_NONE)
