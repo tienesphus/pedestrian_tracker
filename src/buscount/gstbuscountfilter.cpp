@@ -146,7 +146,7 @@ void GstBusCountFilter::tracker_init(InferenceEngine::InferencePlugin& plugin)
                 cv::Size(48, 96),    // input size
         };
 
-        auto* track_ptr = new TrackerComp(default_world_config, 0.6, 0.03, 0.2);
+        auto* track_ptr = new TrackerComp(0.6, 0.03, 0.2);
         track_ptr->use<FeatureAffinity, FeatureData>(1, feature_config, plugin);
         track_ptr->use<PositionAffinity, PositionData>(1, 0.7);
 

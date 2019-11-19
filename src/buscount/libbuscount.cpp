@@ -77,7 +77,7 @@ void BusCounter::run_serial(bool do_draw)
         cv::Mat frame = std::get<0>(*got_frame);
         int frame_no = std::get<1>(*got_frame);
         auto detections = _detector.process(frame, frame_no);
-        auto events = _tracker.process(detections, frame, frame_no);
+        auto events = _tracker.process(_world_config, detections, frame, frame_no);
 
         handle_events(events, frame, frame_no);
 
@@ -161,7 +161,7 @@ void BusCounter::run_parallel(bool do_draw)
         tracking_lock.lock();
         detect_track_lock.unlock();
 
-        auto events = _tracker.process(detections, frame, frame_no);
+        auto events = _tracker.process(_world_config, detections, frame, frame_no);
 
         tracking_lock.unlock();
 
