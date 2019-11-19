@@ -6,6 +6,7 @@
 #include <json/json.h>
 
 #include "json_convert.hpp"
+#include "cloud_updater.hpp"
 
 #include <optional.hpp>
 #include <geom.hpp>
@@ -24,7 +25,7 @@ namespace server {
      * Initialises the server as a slave
      * It is okay to initialise the server as both master and slave
      */
-    void init_slave(DataFetch& data);
+    void init_slave(DataFetch& data, CloudUpdater& cloud);
 
     /**
      * Starts the server (blocking).

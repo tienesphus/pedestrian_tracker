@@ -67,6 +67,23 @@ bool CloudUpdater::post_to_server(const std::string& data)
     return success;
 }
 
+bool CloudUpdater::send_reset()
+{
+
+    auto start = std::chrono::system_clock::now();
+    std::time_t time = std::chrono::system_clock::to_time_t(start);
+
+    // Send the data
+    return post_to_server("{"
+           "\"event_timestamp\": " + std::to_string(time) + ", "
+            "\"busid\": \"" + database.get_busid() + "\", "
+            "\"latitude\": 0, "
+            "\"longitude\": 0, "
+            "\"event_count\": 0,"
+            "\"event_type\": count"
+      "}");
+}
+
 bool CloudUpdater::send_events()
 {
     // Build the events to send

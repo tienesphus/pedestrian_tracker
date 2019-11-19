@@ -16,6 +16,12 @@ public:
      */
     bool send_events();
 
+    /**
+     * Resets the remote count
+     * @return true if successfull
+     */
+    bool send_reset();
+
 private:
 
     DataFetch& database;

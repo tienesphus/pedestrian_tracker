@@ -22,6 +22,7 @@ int main(int argc, char** argv)
     using namespace server;
 
     DataFetch data(SOURCE_DIR "/data/database.db");
+    CloudUpdater updater(data);
 
     bool isServer = false;
     if (argc >= 2 && std::strcmp(argv[1], "master") == 0) {
@@ -30,7 +31,7 @@ int main(int argc, char** argv)
     }
 
     // Initialise
-    init_slave(data);
+    init_slave(data, updater);
     if (isServer)
         init_master(data);
 
@@ -46,7 +47,6 @@ int main(int argc, char** argv)
         }
     });
 
-    CloudUpdater updater(data);
     std::thread cloud_updater([&updater, &running]() {
         while (running) {
             updater.send_events();

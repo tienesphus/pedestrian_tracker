@@ -1,5 +1,6 @@
 #include "server.hpp"
 #include "json_convert.hpp"
+#include "cloud_updater.hpp"
 
 #include <geom.hpp>
 
@@ -151,7 +152,7 @@ namespace server {
         );
     }
 
-    void init_slave(DataFetch& data)
+    void init_slave(DataFetch& data, CloudUpdater& cloud)
     {
 
         using namespace drogon;
@@ -278,7 +279,7 @@ namespace server {
         );
 
         drogon::app().registerHandler("/status_update",
-                [&data](const drogon::HttpRequestPtr& req,
+                [&data, &cloud](const drogon::HttpRequestPtr& req,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
                     spdlog::debug("status_update");
                     std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
@@ -304,6 +305,9 @@ namespace server {
                         } else {
                             int countValue = count.asInt();
                             data.set_count(countValue);
+
+                            cloud.send_events();
+
                             auto resp=HttpResponse::newHttpResponse();
                             resp->setStatusCode(k200OK);
                             callback(resp);
