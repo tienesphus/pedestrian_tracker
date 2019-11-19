@@ -1,6 +1,7 @@
 #include "libbuscount.hpp"
 #include "tick_counter.hpp"
 #include "cv_utils.hpp"
+#include "image_stream.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -118,6 +119,12 @@ void BusCounter::run_parallel(bool do_draw)
     // large jitter will b
     std::mutex src_detect_lock, detect_track_lock;
 
+
+    ImageStreamWriter writer_live(SOURCE_DIR "/ram_disk/live.png", 100);
+    ImageStreamWriter writer_dirty(SOURCE_DIR "/ram_disk/dirty.png", 100);
+    writer_live.start();
+    writer_dirty.start();
+
     // define the wor
     auto process_frame = [&]() -> nonstd::optional<process_result> {
         // name this thread something meaningfull
@@ -136,6 +143,7 @@ void BusCounter::run_parallel(bool do_draw)
         }
         cv::Mat frame = std::get<0>(*next);
         int frame_no = std::get<1>(*next);
+        writer_live.write(frame.clone());
 
         detection_lock.lock();
         src_detect_lock.unlock();
@@ -200,6 +208,7 @@ void BusCounter::run_parallel(bool do_draw)
         // Output the frame/data
         handle_events(events, frame, frame_no);
         _dest(frame);
+        writer_dirty.write(frame.clone());
         if (_test_exit()) {
             finished = true;
         }

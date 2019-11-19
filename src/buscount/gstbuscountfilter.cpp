@@ -5,7 +5,6 @@
 #include "tracking/tracker_component.hpp"
 #include "tracking/feature_affinity.hpp"
 #include "tracking/position_affinity.hpp"
-#include "image_stream.hpp"
 
 #include <gstreamermm/wrap_init.h>
 #include <glib.h>
@@ -15,8 +14,6 @@ GST_DEBUG_CATEGORY_STATIC(buscount); // Define a new debug category for gstreame
 #define GST_CAT_DEFAULT buscount     // Set new category as the default category
 
 #define QUEUE_MAX_LEN 3
-
-#define WRITE_IMAGE_FILES (1)
 
 namespace GstBusCount {
 
@@ -53,10 +50,6 @@ std::unique_ptr<Detector> GstBusCountFilter::detector;
 std::unique_ptr<Tracker> GstBusCountFilter::tracker;
 
 DataFetch event_database(SOURCE_DIR "/data/database.db");
-#ifdef WRITE_IMAGE_FILES
-ImageStreamWriter image_writer_live(SOURCE_DIR "/ram_disk/live.png", 500);
-ImageStreamWriter image_writer_dirty(SOURCE_DIR "/ram_disk/dirty.png", 500);
-#endif
 
 // ******** Function definitions ******** //
 
@@ -219,10 +212,6 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
 
     video_out->set_query_function(sigc::mem_fun(*this, &GstBusCountFilter::pad_query));
 
-#ifdef WRITE_IMAGE_FILES
-    image_writer_live.start();
-    image_writer_dirty.start();
-#endif
 }
 
 // Private methods
@@ -242,19 +231,11 @@ nonstd::optional<std::tuple<cv::Mat, int>> GstBusCountFilter::next_frame()
     cv::Mat ret(mat_queue->pop());
     frame_queue_popped.notify_one();
 
-#ifdef WRITE_IMAGE_FILES
-    image_writer_live.write(ret);
-#endif
-
     return std::make_tuple(ret, ++frame_no);
 }
 
 void GstBusCountFilter::push_frame(const cv::Mat &frame)
 {
-#ifdef WRITE_IMAGE_FILES
-    // TODO only write frames when they are needed
-    image_writer_dirty.write(frame);
-#endif
 
     Glib::RefPtr<Gst::Buffer> buf;
     Gst::MapInfo mapinfo;

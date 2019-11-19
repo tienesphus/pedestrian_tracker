@@ -80,25 +80,18 @@ int main() {
 
     DataFetch data(SOURCE_DIR "/data/database.db");
 
-    ImageStreamWriter writer_live(SOURCE_DIR "/ram_disk/live.png", 500);
-    ImageStreamWriter writer_dirty(SOURCE_DIR "/ram_disk/dirty.png", 500);
-    writer_live.start();
-    writer_dirty.start();
-
     int frame_no = 0;
 
     BusCounter counter(detector, tracker, world_config,
             //[&cap]() -> nonstd::optional<std::tuple<cv::Mat, int>> { return cap.next(); },
-            [&cv_cap, &writer_live, &frame_no]() -> nonstd::optional<std::tuple<cv::Mat, int>> {
+            [&cv_cap, &frame_no]() -> nonstd::optional<std::tuple<cv::Mat, int>> {
                 cv::Mat frame;
                 cv_cap->read(frame);
                 cv::resize(frame, frame, cv::Size(640, 480));
-                writer_live.write(frame);
                 return std::make_tuple(frame, ++frame_no);
             },
-            [&writer_dirty](const cv::Mat& frame) {
+            [](const cv::Mat& frame) {
                 cv::imshow("output", frame);
-                writer_dirty.write(frame);
             },
             []() { return cv::waitKey(1) == 'q'; },
             [&data](Event event, const cv::Mat&, int frame_no) {
