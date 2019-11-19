@@ -1,3 +1,5 @@
+#include "detector_openvino.hpp"
+
 // Standard includes
 #include <iomanip>
 
@@ -6,9 +8,6 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/dnn.hpp>
 #include <spdlog/spdlog.h>
-
-// Project includes
-#include "detector_openvino.hpp"
 
 using namespace InferenceEngine;
 
@@ -43,8 +42,7 @@ static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
 
 
 DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::InferencePlugin &plugin):
-        Detector(),
-        config(config)
+        Detector(), config(config)
 {
     spdlog::info("Reading network");
 
@@ -55,7 +53,7 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::Inf
 
     CNNNetwork net = netReader.getNetwork();
 
-    spdlog::info("Configure Input layer");
+    spdlog::debug("Configure Input layer");
     InputsDataMap inputInfo(net.getInputsInfo());
     if (inputInfo.size() != 1) {
         throw std::logic_error("Network must have exactly one input");
@@ -65,8 +63,8 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::Inf
     input->setPrecision(Precision::U8);
     input->getPreProcess().setResizeAlgorithm(ResizeAlgorithm::RESIZE_BILINEAR);
     input->getInputData()->setLayout(Layout::NHWC);
-    
-    spdlog::info("Configure Output Layer");
+
+    spdlog::debug("Configure Output Layer");
     OutputsDataMap outputInfo(net.getOutputsInfo());
     if (outputInfo.size() != 1) {
         throw std::logic_error("This demo accepts networks having only one output");
@@ -85,28 +83,31 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::Inf
     output->setPrecision(Precision::FP32);
     output->setLayout(Layout::NCHW);
 
-    spdlog::info("Loading Model to Plugin");
+    spdlog::debug("Loading Model to Plugin");
     this->network = plugin.LoadNetwork(netReader.getNetwork(), {});
 
-    spdlog::info("End Loading detector");
+    spdlog::debug("End Loading detector");
 }
 
-DetectorOpenVino::~DetectorOpenVino() {}
+DetectorOpenVino::~DetectorOpenVino() = default;
 
-Detections DetectorOpenVino::process(const cv::Mat &frame)
+Detections DetectorOpenVino::process(const cv::Mat &frame, int)
 {
     spdlog::debug("Preprocess");
+    ncs_lock.lock();
     InferRequest::Ptr request = this->network.CreateInferRequestPtr();
     request->SetBlob(inputName, wrapMat2Blob(frame));
 
     spdlog::debug("Starting inference request");
     request->StartAsync();
+    ncs_lock.unlock();
 
     spdlog::debug("Waiting for inference request");
     request->Wait(IInferRequest::WaitMode::RESULT_READY);
 
     spdlog::debug("Interpreting results");
     std::vector<Detection> results;
+    ncs_lock.lock();
     const float *detections = request->GetBlob(outputName)->buffer().as<PrecisionTrait<Precision::FP32>::value_type*>();
     for (size_t i = 0; i < maxProposalCount; i++) {
         float id  = detections[i * objectSize + 0];
@@ -125,7 +126,7 @@ Detections DetectorOpenVino::process(const cv::Mat &frame)
         cv::Rect2f r(cv::Point2f(x1, y1), cv::Point2f(x2, y2));
 
         if (lbl == config.clazz && con > config.thresh) {
-            spdlog::debug(
+            spdlog::trace(
                 "    Found: {} {} ({}%) - {}x{} ({},{})",
                 id, lbl, con*100,
                 r.width, r.height, r.x, r.y
@@ -133,6 +134,7 @@ Detections DetectorOpenVino::process(const cv::Mat &frame)
             results.emplace_back(r, con);
         }
     }
+    ncs_lock.unlock();
 
     return Detections(results);
 }

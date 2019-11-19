@@ -1,5 +1,5 @@
+#include <spdlog/spdlog.h>
 #include "json_convert.hpp"
-#include <iostream>
 
 Json::Value line_to_json(const geom::Line& l)
 {
@@ -26,7 +26,7 @@ nonstd::optional<geom::Line> line_from_json(const Json::Value& json)
         );
         return line;
     } else {
-        std::cout << "One of the points is not a float" << std::endl;
+        spdlog::info("One of the points is not a float");
         return nonstd::nullopt;
     }
 }

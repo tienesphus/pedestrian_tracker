@@ -28,7 +28,7 @@ TEST_CASE( "Basic detection with OpenVino", "[detector_openvino]" ) {
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
     DetectorOpenVino detector(net_config, plugin);
 
-    Detections results = detector.process(image);
+    Detections results = detector.process(image, 0);
 
     require_detections_in_spec(results);
 }
@@ -40,7 +40,7 @@ TEST_CASE( "Detection with aysnc", "[detector_openvino]" ) {
     InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
     DetectorOpenVino detector(net_config, plugin);
 
-    Detections results = detector.wait_async(detector.start_async(image));
+    Detections results = detector.wait_async(detector.start_async(image, 0));
 
     require_detections_in_spec(results);
 }
@@ -56,7 +56,7 @@ TEST_CASE( "Multiprocessing with async", "[detector_openvino]" ) {
 
     for (int i = 0; i < iterations; i++) {
         cv::Mat image = load_test_image();
-        futures.push_back(detector.start_async(image));
+        futures.push_back(detector.start_async(image, 0));
     }
 
     for (int i = 0; i < iterations; i++) {

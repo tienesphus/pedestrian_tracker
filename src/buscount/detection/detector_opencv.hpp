@@ -34,7 +34,7 @@ public:
     explicit DetectorOpenCV(const NetConfig &config);
     ~DetectorOpenCV() override;
 
-    Detections process(const cv::Mat &frame) override;
+    Detections process(const cv::Mat &frame, int frame_no) override;
 
 private:
     // disallow copying

@@ -12,13 +12,22 @@ add_executable(tests
         buscount/test_tracker_comp.cpp
         buscount/test_affinity_features.cpp
         buscount/test_world.cpp
-        buscount/test_detector_opencv.cpp # must be last
         common/test_geom.cpp
+        common/test_time_utils.cpp
+        common/test_file_utils.cpp
+        metrics/test_read_simulator.cpp
+        metrics/test_detection_cache.cpp
+        metrics/test_feature_cache.cpp
+        metrics/test_gt_compare.cpp
+        # all opencv detection must be after openvino detection
+        buscount/test_detector_opencv.cpp
 )
 
 target_link_libraries(tests
     Catch2
     buscount_static
+    server_static
+    metrics
     opencv_highgui
 )
 

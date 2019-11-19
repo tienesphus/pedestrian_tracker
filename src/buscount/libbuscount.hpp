@@ -15,10 +15,10 @@
  */
 class BusCounter {
 public:
-    using src_cb_t = nonstd::optional<cv::Mat>();
+    using src_cb_t = nonstd::optional<std::tuple<cv::Mat, int>>();
     using dest_cb_t = void(const cv::Mat&);
     using test_exit_t = bool();
-    using event_handle_t = void(Event e);
+    using event_handle_t = void(Event e, const cv::Mat& frame, int frame_no);
 
     /**
      * How to run the BusCounter. In theory, parallel should get the exact same results as serial, except slower.
@@ -32,7 +32,7 @@ public:
     BusCounter(
             Detector& detector,
             Tracker& tracker,
-            WorldConfig& wconf,
+            const WorldConfig& wconf,
             std::function<BusCounter::src_cb_t> src,
             std::function<BusCounter::dest_cb_t> dest,
             std::function<BusCounter::test_exit_t> test_exit,
@@ -40,11 +40,18 @@ public:
     );
 
     /**
-     * Runs the counter in either style
+     * Runs the counter in either style. Will block permenantly until the provided source runs out of frames
+     * (which is never if a camera is used)
      * @param style parallel or serial
      * @param draw whether drawing should be done or not
      */
     void run(RunStyle style, bool draw);
+
+    /**
+     * Updates the current world config. Can be be called from any thread at any time
+     * @param config the config to switch to
+     */
+    void update_world_config(const WorldConfig& config);
 
 private:
     // Pointers to callback functions
@@ -56,14 +63,16 @@ private:
     // Internal data structures
     Detector& _detector;
     Tracker& _tracker;
-    WorldConfig& _world_config;
+    WorldConfig _world_config;
+    std::mutex _config_update;
+    WorldConfig* _world_config_waiting;
 
     int inside_count, outside_count;
 
     // How to execute the pipeline.
     void run_parallel(bool draw);
     void run_serial(bool draw);
-    void handle_events(const std::vector<Event>& events);
+    void handle_events(const std::vector<Event>& events, const cv::Mat& frame, int frame_no);
 };
 
 #endif

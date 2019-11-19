@@ -3,6 +3,7 @@
 
 // Project includes
 #include "detector_opencv.hpp"
+#include "../cv_utils.hpp"
 
 
 DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
@@ -25,9 +26,9 @@ DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :
     net.setPreferableTarget(config.preferableTarget);
 }
 
-DetectorOpenCV::~DetectorOpenCV() {}
+DetectorOpenCV::~DetectorOpenCV() = default;
 
-Detections DetectorOpenCV::process(const cv::Mat &frame) {
+Detections DetectorOpenCV::process(const cv::Mat &frame, int) {
     cv::Mat blob = cv::dnn::blobFromImage(frame, config.scale, config.networkSize, this->config.mean);
 
     cv::Mat result;
@@ -78,6 +79,8 @@ Detections static_post_process(const cv::Mat &data, int clazz, float thresh)
                 results.emplace_back(r, confidence);
         }
     }
+
+
 
     return Detections(results);
 }

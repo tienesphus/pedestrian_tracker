@@ -38,7 +38,7 @@ public:
     /**
      * Begins the process of running inference on an image asyncronously.
      */
-    intermediate start_async(const cv::Mat &frame);
+    intermediate start_async(const cv::Mat &frame, int frame_no);
 
     /**
      * Waits for the process to complete
@@ -51,7 +51,7 @@ public:
      * @param frame the RGB input image
      * @return the detections
      */
-    virtual Detections process(const cv::Mat &frame) = 0;
+    virtual Detections process(const cv::Mat &frame, int frame_no) = 0;
 
 private:
     // disallow copying

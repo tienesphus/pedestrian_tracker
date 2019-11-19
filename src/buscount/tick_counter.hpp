@@ -16,7 +16,7 @@ template<size_t size = 10>
 class TickCounter
 {
     typedef std::chrono::high_resolution_clock Time;
-    typedef std::chrono::milliseconds ms;
+    typedef std::chrono::microseconds us;
 
 public:
     TickCounter(): fps(-1)
@@ -46,12 +46,12 @@ public:
         // Get the average duration
         auto last = times.back();
         auto duration = current - last;
-        ms millis = std::chrono::duration_cast<ms>(duration);
+        us micro = std::chrono::duration_cast<us>(duration);
 
         // Minus 1 because we measure from the END of the first frame, thus, it's duration
         // does not count.
         long frames = times.size() - 1;
-        this->fps = (frames*1000.0f)/millis.count();
+        this->fps = (frames*1000.0f*1000)/micro.count();
 
         // don't let the list get too big
         if (times.size() > size)

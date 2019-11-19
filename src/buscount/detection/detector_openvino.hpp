@@ -1,9 +1,9 @@
 #ifndef DETECTION_OPENVINO_H
 #define DETECTION_OPENVINO_H
 
-#include <inference_engine.hpp>
-
 #include "detector.hpp"
+
+#include <inference_engine.hpp>
 
 /**
  * Runs detections using the OpenVino backend.
@@ -24,9 +24,9 @@ public:
      */
     DetectorOpenVino(const NetConfig &config, InferenceEngine::InferencePlugin &plugin);
 
-    virtual ~DetectorOpenVino();
+    ~DetectorOpenVino() override;
 
-    Detections process(const cv::Mat &frame) override;
+    Detections process(const cv::Mat &frame, int frame_no) override;
 
 private:
     // disallow copying
@@ -38,6 +38,7 @@ private:
     std::string inputName, outputName;
     size_t objectSize;
     size_t maxProposalCount;
+    std::mutex ncs_lock;
 };
 
 #endif

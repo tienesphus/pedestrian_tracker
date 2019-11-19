@@ -21,7 +21,7 @@ DataFetch::DataFetch(const std::string& file):
 DataFetch::~DataFetch()
 {
     if (db) {
-        std::cout << "Closing SQL" << std::endl;
+        spdlog::debug("Closing SQL");
         sqlite3_close(db);
     }
 }
@@ -78,7 +78,7 @@ nonstd::optional<geom::Line> _line_from_json(const Json::Value& json)
         );
         return line;
     } else {
-        std::cout << "One of the points is not a float" << std::endl;
+        spdlog::error("One of the points is not a float");
         return nonstd::nullopt;
     }
 }
@@ -98,7 +98,6 @@ void DataFetch::update_config(const WorldConfig& config)
 {
     Json::StreamWriterBuilder builder;
     std::string output = Json::writeString(builder, _to_json(config));
-
     sqlite3_stmt* stmt;
 
     const char* sql = "UPDATE ConfigUpdate SET Config = ?";
@@ -130,7 +129,7 @@ nonstd::optional<WorldConfig> _config_from_json(const Json::Value &data)
 
 void DataFetch::enter_event(Event event)
 {
-    std::cout << "EVENT: " << name(event) << std::endl;
+    spdlog::debug("EVENT: {}", name(event));
     char *error = nullptr;
     int deltaIn = 0, deltaOut = 0;
     switch (event) {
@@ -154,7 +153,7 @@ void DataFetch::enter_event(Event event)
     std::string sql = "INSERT INTO CountEvents(Name, DeltaIn, DeltaOut) VALUES ('" + std::to_string(event) + "', " +
                       std::to_string(deltaIn) + ", " + std::to_string(deltaOut) + ")";
     if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &error) != SQLITE_OK) {
-        std::cout << "SQL ERROR: " << error << std::endl;
+        spdlog::error("SQL ERROR: {}", error);
         sqlite3_free(error);
     }
 
@@ -261,7 +260,7 @@ void DataFetch::set_count(int count)
 
     if (sqlite3_exec(db, ("UPDATE ConfigUpdate SET CurrentCount = " + std::to_string(count)).c_str(),
                      nullptr, nullptr, &error) != SQLITE_OK) {
-        std::cout << "UPDATE count ERROR: " << error << std::endl;
+        spdlog::error("INSERT count ERROR: {}", error);
         sqlite3_free(error);
     }
 }

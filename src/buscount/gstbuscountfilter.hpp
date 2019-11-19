@@ -45,10 +45,10 @@ class GstBusCountFilter : public Gst::Element
     std::condition_variable frame_queue_popped;
     std::mutex cond_m;
 
-    WorldConfig world_config;
     BusCounter buscounter;
 
     std::thread buscount_thread;
+    std::thread config_updater;
     bool buscount_running;
 
     uint8_t pixel_size;
@@ -60,7 +60,7 @@ class GstBusCountFilter : public Gst::Element
 
     /******** Object methods ********/
 
-    nonstd::optional<cv::Mat> next_frame();
+    nonstd::optional<std::tuple<cv::Mat, int>> next_frame();
     void push_frame(const cv::Mat &frame);
     bool test_quit();
 

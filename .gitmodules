@@ -10,3 +10,6 @@
 	path = models/Reidentify0031
 	url = https://gitlab.com/buspassengercount/networks.git
 	branch = Reidentify0031
+[submodule "include/spdlog"]
+	path = include/spdlog
+	url = https://github.com/gabime/spdlog

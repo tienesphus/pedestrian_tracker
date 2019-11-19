@@ -8,6 +8,7 @@
 
 #include <gstreamermm/wrap_init.h>
 #include <glib.h>
+#include <data_fetch.hpp>
 
 GST_DEBUG_CATEGORY_STATIC(buscount); // Define a new debug category for gstreamer output
 #define GST_CAT_DEFAULT buscount     // Set new category as the default category
@@ -48,6 +49,7 @@ Gst::ValueList GstBusCountFilter::formats;
 std::unique_ptr<Detector> GstBusCountFilter::detector;
 std::unique_ptr<Tracker> GstBusCountFilter::tracker;
 
+DataFetch event_database(SOURCE_DIR "/data/database.db");
 
 // ******** Function definitions ******** //
 
@@ -142,12 +144,11 @@ void GstBusCountFilter::tracker_init(InferenceEngine::InferencePlugin& plugin)
                 SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
                 SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
                 cv::Size(48, 96),    // input size
-                0.6,                 // similarity thresh
         };
 
-        auto* track_ptr = new TrackerComp(default_world_config, 0.6);
-        track_ptr->use<FeatureAffinity, FeatureData>(0.6, feature_config, plugin);
-        track_ptr->use<PositionAffinity, PositionData>(0.4, 0.7);
+        auto* track_ptr = new TrackerComp(default_world_config, 0.6, 0.03, 0.2);
+        track_ptr->use<FeatureAffinity, FeatureData>(1, feature_config, plugin);
+        track_ptr->use<PositionAffinity, PositionData>(1, 0.7);
 
         tracker = std::unique_ptr<TrackerComp>(track_ptr);
     }
@@ -163,7 +164,6 @@ bool GstBusCountFilter::register_buscount_filter(GstPlugin *plugin)
     );
 }
 
-
 GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
         Glib::ObjectBase(typeid(GstBusCountFilter)),
         Gst::Element(gobj),
@@ -174,14 +174,26 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
         test_property(*this, "test_property", "default_val"),
         mat_queue(Gst::AtomicQueue<cv::Mat>::create(10)),
         buf_queue(Gst::AtomicQueue<Glib::RefPtr<Gst::Buffer>>::create(10)),
-        world_config(default_world_config),
         buscounter(
-                *detector, *tracker, world_config,
+                *detector, *tracker, default_world_config,
                 std::bind(&GstBusCountFilter::next_frame, this),
                 std::bind(&GstBusCountFilter::push_frame, this, std::placeholders::_1),
                 std::bind(&GstBusCountFilter::test_quit, this),
-                [](Event){}
+                [](Event e, const cv::Mat&, int) {
+                    GST_DEBUG("Event: %s", name(e).c_str());
+                    event_database.enter_event(e);
+                }
         ),
+        config_updater([this]() {
+            // TODO is buscount_running what I think it is?
+            // it is, but it doesnt get set fast enough
+            while (true) { // while (buscount_running) {
+                auto config = event_database.get_config();
+                buscounter.update_world_config(config);
+		std::cout << "UPDATEING CONFIG" << std::endl;
+                usleep(300 * 1000); // 300 ms
+            }
+        }),
         buscount_running(false),
         pixel_size(format_descriptions[0].size),
         cv_type(format_descriptions[0].cv_type),
@@ -200,11 +212,13 @@ GstBusCountFilter::GstBusCountFilter(GstElement *gobj):
     video_in->set_query_function(sigc::mem_fun(*this, &GstBusCountFilter::pad_query));
 
     video_out->set_query_function(sigc::mem_fun(*this, &GstBusCountFilter::pad_query));
+
 }
 
 // Private methods
-nonstd::optional<cv::Mat> GstBusCountFilter::next_frame()
+nonstd::optional<std::tuple<cv::Mat, int>> GstBusCountFilter::next_frame()
 {
+    static int frame_no = 0;
     std::unique_lock<std::mutex> lk(cond_m);
 
     GST_DEBUG("Getting next frame");
@@ -218,15 +232,16 @@ nonstd::optional<cv::Mat> GstBusCountFilter::next_frame()
     cv::Mat ret(mat_queue->pop());
     frame_queue_popped.notify_one();
 
-    return ret;
+    return std::make_tuple(ret, ++frame_no);
 }
 
 void GstBusCountFilter::push_frame(const cv::Mat &frame)
 {
+
     Glib::RefPtr<Gst::Buffer> buf;
     Gst::MapInfo mapinfo;
 
-    GST_DEBUG("Frame push requested");
+    GST_DEBUG("Pushing requested");
 
     do
     {
@@ -408,7 +423,7 @@ bool GstBusCountFilter::pad_query(const Glib::RefPtr<Gst::Pad> &pad, Glib::RefPt
             // These are estimates for best case and worst case latencies under normal operating
             // conditions. These should not be determined by huristics, rather they should be
             // sane values. For heuristics and jitter fixup, try looking into QoS instead.
-            uint64_t base_latency = gst_util_uint64_scale(GST_SECOND, 12, 1);
+            uint64_t base_latency = gst_util_uint64_scale(GST_SECOND, 1, 12);
 
             min += base_latency;
             if (max != Gst::CLOCK_TIME_NONE)
@@ -563,6 +578,8 @@ static gboolean plugin_init(GstPlugin* plugin)
     InferenceEngine::InferencePlugin ie_plugin; // initialisation not needed since using OpenCV
 
     GstBusCount::GstBusCountFilter::detector_init(Detector::DETECTOR_OPENCV, &net_config, ie_plugin);
+
+
 
     GST_DEBUG("Initializing plugin");
 

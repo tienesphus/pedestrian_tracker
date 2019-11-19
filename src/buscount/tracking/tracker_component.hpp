@@ -2,6 +2,7 @@
 #define TRACKER_COMP_H
 
 #include "tracker.hpp"
+#include <functional>
 
 /**
  * Internal tracking data class
@@ -41,7 +42,7 @@ public:
      * @param frame the image the person was detected in
      * @return the initialised custom data
      */
-    virtual std::unique_ptr<T> init(const Detection& d, const cv::Mat& frame) const = 0;
+    virtual std::unique_ptr<T> init(const Detection& d, const cv::Mat& frame, int frame_no) const = 0;
 
     /**
      * Determines the affinity between a 'Detection' and a 'Track'. 0 is definitely not the same, 1 is the same.
@@ -59,13 +60,6 @@ public:
      */
     virtual void merge(const T& detectionData, T& trackData) const = 0;
 
-    /**
-     * Draws information about this track.
-     * TODO Affinity::draw is currently never called
-     * @param data the track data
-     * @param img the image to draw onto
-     */
-    virtual void draw(const T& data, cv::Mat &img) const = 0;
 };
 
 /**
@@ -84,7 +78,8 @@ public:
      * The created tracker will do nothing by default. Must call "use" to add tracking components
      * @param world the world configuration
      */
-    explicit TrackerComp(const WorldConfig& world, float merge_thresh);
+    TrackerComp(const WorldConfig& world, float merge_thresh, double conf_decrease_rate, double conf_thresh,
+                std::function<void(const cv::Mat&, uint32_t, int, const cv::Rect2f&, float conf)> track_listener=nullptr);
 
     ~TrackerComp() override;
 
@@ -113,7 +108,7 @@ public:
      * Processes some detections and merges them into the current tracks
      * @returns a snapshot of the new state of the world
      */
-    std::vector<Event> process(const Detections &detections, const cv::Mat& frame) override;
+    std::vector<Event> process(const Detections &detections, const cv::Mat& frame, int frame_no) override;
     
     /**
      * Draws the current state
@@ -130,10 +125,14 @@ private:
     float merge_thresh;
     int index_count;
     std::vector<std::tuple<std::unique_ptr<Affinity<TrackData>>, float>> affinities;
+    double conf_decrease_rate, conf_thresh;
+    int pre_frame_no;
+    std::function<void(const cv::Mat&, uint32_t, int, const cv::Rect2f&, float conf)> track_listener;
+
 
     void use_affinity(float weighting, std::unique_ptr<Affinity<TrackData>> affinity);
-    void merge(const Detections &detections,  const cv::Mat& frame);
-    std::vector<Event> update();
+    void merge(const Detections &detections,  const cv::Mat& frame, int frame_no);
+    std::vector<Event> update(int deltaFrames);
 };
 
 
@@ -154,8 +153,8 @@ public:
 
     ~AffAdaptor() override = default;;
 
-    std::unique_ptr<TrackData> init(const Detection& d, const cv::Mat& frame) const override {
-        return delegate->init(d, frame);
+    std::unique_ptr<TrackData> init(const Detection& d, const cv::Mat& frame, int frame_no) const override {
+        return delegate->init(d, frame, frame_no);
     }
 
     float affinity(const TrackData &detectionData, const TrackData &trackData) const override {
@@ -164,11 +163,6 @@ public:
 
     void merge(const TrackData& detectionData, TrackData& trackData) const override {
         delegate->merge(dynamic_cast<const T&>(detectionData), dynamic_cast<T&>(trackData));
-    }
-
-    void draw(const TrackData& data, cv::Mat &img) const override
-    {
-        delegate->draw(dynamic_cast<const T&>(data), img);
     }
 
 };

@@ -4,7 +4,7 @@
 #include "testing_utils.hpp"
 
 class DummyDetector: public Detector {
-    Detections process(const cv::Mat& frame) override {
+    Detections process(const cv::Mat& frame, int) override {
         REQUIRE(!frame.empty());
         std::vector<Detection> results;
         results.emplace_back(cv::Rect(1, 2, 3, 4), 0.5);
@@ -13,7 +13,7 @@ class DummyDetector: public Detector {
 };
 
 class DummyTracker: public Tracker {
-    std::vector<Event> process(const Detections& detections, const cv::Mat& frame) override {
+    std::vector<Event> process(const Detections& detections, const cv::Mat& frame, int) override {
         REQUIRE(!frame.empty());
         REQUIRE(detections.get_detections().size() == 1);
         return std::vector<Event>();
@@ -29,8 +29,8 @@ TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
 
     int count = 50;
     BusCounter counter(detector, tracker, config,
-            []() -> nonstd::optional<cv::Mat> {
-                return load_test_image();
+            []() -> nonstd::optional<std::tuple<cv::Mat, int>> {
+                return std::make_tuple(load_test_image(), 0);
             },
             [](const cv::Mat&) {
             },
@@ -38,7 +38,7 @@ TEST_CASE( "Bus Counter runs in serial", "[libbuscount]" ) {
                 --count;
                 return count < 0;
             },
-            [](Event) {}
+            [](Event, const cv::Mat&, int) {}
     );
 
     counter.run(BusCounter::RUN_SERIAL, false);
@@ -54,8 +54,8 @@ TEST_CASE( "Bus Counter runs in parallel", "[libbuscount]" ) {
 
     int count = 50;
     BusCounter counter(detector, tracker, config,
-                       []() -> nonstd::optional<cv::Mat> {
-                           return load_test_image();
+                       []() -> nonstd::optional<std::tuple<cv::Mat, int>> {
+                           return std::make_tuple(load_test_image(), 0);
                        },
                        [](const cv::Mat&) {
                        },
@@ -63,7 +63,7 @@ TEST_CASE( "Bus Counter runs in parallel", "[libbuscount]" ) {
                            --count;
                            return count < 0;
                        },
-                       [](Event) {}
+                       [](Event, const cv::Mat&, int) {}
     );
 
     counter.run(BusCounter::RUN_PARALLEL, false);

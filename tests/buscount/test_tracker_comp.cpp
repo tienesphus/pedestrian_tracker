@@ -35,7 +35,7 @@ public:
 
     ~TestTracker() override = default;
 
-    std::unique_ptr<TestData> init(const Detection &d, const cv::Mat &frame) const override {
+    std::unique_ptr<TestData> init(const Detection &d, const cv::Mat &frame, int) const override {
         const_cast<TestTracker*>(this)->detector_calls.emplace_back(number, d, frame);
         return std::make_unique<TestData>(number, d, frame);
     }
@@ -51,15 +51,12 @@ public:
         REQUIRE(trackData.owner == number);
     }
 
-    void draw(const TestData &data, cv::Mat&) const override {
-        REQUIRE(data.owner == number);
-    }
 };
 
 TEST_CASE( "Tracker gives correct data", "[tracker_comp]" ) {
 
     auto config = WorldConfig::from_file(std::string(SOURCE_DIR)+"/config.csv");
-    TrackerComp tracker(config, 0.5);
+    TrackerComp tracker(config, 0.5, 0.05, 0.2);
 
     TestTracker* tracker_a = new TestTracker(1);
     TestTracker* tracker_b = new TestTracker(2);
@@ -72,7 +69,7 @@ TEST_CASE( "Tracker gives correct data", "[tracker_comp]" ) {
     tracker.process(Detections({
                 Detection(cv::Rect2f(.1f, .2f, .3f, .4f), 0.5),
                 Detection(cv::Rect2f(.6f, .7f, .8f, .9f), 0.10)
-            }), frame);
+            }), frame, 0);
 
     REQUIRE(tracker_a->detector_calls.size() == 2);
     REQUIRE(tracker_b->detector_calls.size() == 2);

@@ -4,45 +4,41 @@
 #include <geom.hpp>
 
 #include <drogon/drogon.h>
+#include <spdlog/spdlog.h>
 
 namespace server {
 
     struct Device
     {
         std::string name;
-        std::string id;
         trantor::InetAddress ip;
 
-        Device(std::string name, std::string id, const trantor::InetAddress& ip);
+        Device(std::string name, const trantor::InetAddress& ip);
 
     };
 
-    Device::Device(std::string name, std::string id, const trantor::InetAddress& ip):
-            name(std::move(name)), id(std::move(id)), ip(ip)
+    Device::Device(std::string name, const trantor::InetAddress& ip):
+            name(std::move(name)), ip(ip)
     {}
 
     Json::Value to_json(const Device& device)
     {
         Json::Value json;
         json["ip"] = device.ip.toIp();
-        json["id"] = device.id;
         json["name"] = device.name;
         return json;
     }
 
-    nonstd::optional<Device> device_from_json(Json::Value json, trantor::InetAddress ip)
-    {
+    nonstd::optional<Device> device_from_json(Json::Value json, trantor::InetAddress ip) {
 
-        Json::Value id = json["id"];
         Json::Value name = json["name"];
 
-        if (!id.isString() || !name.isString()) {
-            std::cout << "Device id or name is not a string" << std::endl;
+        if (!name.isString()) {
+            std::cout << "Device name is not a string" << std::endl;
             return nonstd::nullopt;
         } else {
-            std::string s_id = id.asString();
             std::string s_name = name.asString();
-            return Device(s_name, s_id, ip);
+            return Device(s_name, ip);
         }
     }
 
@@ -83,65 +79,20 @@ namespace server {
         app().setThreadNum(2);
         app().setDocumentRoot(std::string(SOURCE_DIR) + "/src/server/");
 
-        std::cout << "Server running at http://localhost:8080" << std::endl;
+        spdlog::info("Server running at http://localhost:8080");
         app().run();
     }
 
-    void init_master(DataFetch& data)
+    void init_master(DataFetch&)
     {
         using namespace drogon;
 
         static std::vector<Device> devices;
+        static std::mutex device_lock;
 
 
         // TODO move these lambdas into separate files
         // I just threw them here because it was easy, but, its a bit clunky
-        drogon::app().registerHandler("/count",
-                [&data](const drogon::HttpRequestPtr&,
-                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
-                    Json::Value json;
-                    json["count"] = std::to_string(data.count());
-                    auto resp=HttpResponse::newHttpJsonResponse(json);
-                    callback(resp);
-                },
-                {Get}
-        );
-
-        drogon::app().registerHandler("/status_update",
-                [&data](const drogon::HttpRequestPtr& req,
-                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
-                    std::cout << "status_update" << std::endl;
-                    std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
-                    if (!json_ptr)
-                    {
-                        auto resp=HttpResponse::newHttpResponse();
-                        resp->setContentTypeCode(CT_TEXT_PLAIN);
-                        resp->setStatusCode(k400BadRequest);
-                        resp->setBody("Invalid json");
-                        callback(resp);
-                    } else {
-
-                        const Json::Value json = *json_ptr;
-
-                        Json::Value count = json["count"];
-                        if (!count.isInt())
-                        {
-                            auto resp=HttpResponse::newHttpResponse();
-                            resp->setContentTypeCode(CT_TEXT_PLAIN);
-                            resp->setStatusCode(k400BadRequest);
-                            resp->setBody("Must have an int in 'count'");
-                            callback(resp);
-                        } else {
-                            int countValue = count.asInt();
-                            data.set_count(countValue);
-                            auto resp=HttpResponse::newHttpResponse();
-                            resp->setStatusCode(k200OK);
-                            callback(resp);
-                        }
-                    }
-                },
-                {Post}
-        );
 
         drogon::app().registerHandler("/register",
                 [](const drogon::HttpRequestPtr& req,
@@ -163,7 +114,14 @@ namespace server {
                             resp->setBody("Device not in correct format");
                             callback(resp);
                         } else {
-                            devices.push_back(*device);
+                            {
+                                std::lock_guard<std::mutex> lock(device_lock);
+                                devices.erase(std::remove_if(devices.begin(), devices.end(),
+                                        [&device](const Device& it) -> bool {
+                                            return it.ip.toIp() == (*device).ip.toIp();
+                                        }), devices.end());
+                                devices.push_back(*device);
+                            }
 
                             auto resp=HttpResponse::newHttpResponse();
                             resp->setStatusCode(k200OK);
@@ -175,16 +133,16 @@ namespace server {
         );
 
         drogon::app().registerHandler("/devices",
-                [](const drogon::HttpRequestPtr& req,
+                [](const drogon::HttpRequestPtr&,
                         std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
                     Json::Value json = Json::arrayValue;
 
-                    for (const Device& d : devices)
-                        json.append(to_json(d));
-
-                    // Assume I'm a client and add myself
-                    // TODO don't hardcode myself in
-                    json.append(to_json(Device("master", "master", req->localAddr())));
+                    {
+                        // TODO delete devices that don't regularly send a heartbeat
+                        std::lock_guard<std::mutex> lock(device_lock);
+                        for (const Device &d : devices)
+                            json.append(to_json(d));
+                    }
 
                     auto resp=HttpResponse::newHttpJsonResponse(json);
                     callback(resp);
@@ -195,6 +153,9 @@ namespace server {
 
     void init_slave(DataFetch& data)
     {
+
+        using namespace drogon;
+
         drogon::app().registerHandler("/get_config",
                 [&data](const drogon::HttpRequestPtr&,
                         std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&) {
@@ -303,6 +264,69 @@ namespace server {
                     }
                 },
                 {drogon::Post}
+        );
+
+        drogon::app().registerHandler("/count",
+                [&data](const drogon::HttpRequestPtr&,
+                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
+                    Json::Value json;
+                    json["count"] = std::to_string(data.count());
+                    auto resp=HttpResponse::newHttpJsonResponse(json);
+                    callback(resp);
+                },
+                {drogon::Get}
+        );
+
+        drogon::app().registerHandler("/status_update",
+                [&data](const drogon::HttpRequestPtr& req,
+                        std::function<void (const HttpResponsePtr &)> &&callback, const std::string&) {
+                    spdlog::debug("status_update");
+                    std::shared_ptr<Json::Value> json_ptr = req->jsonObject();
+                    if (!json_ptr)
+                    {
+                        auto resp=HttpResponse::newHttpResponse();
+                        resp->setContentTypeCode(CT_TEXT_PLAIN);
+                        resp->setStatusCode(k400BadRequest);
+                        resp->setBody("Invalid json");
+                        callback(resp);
+                    } else {
+
+                        const Json::Value json = *json_ptr;
+
+                        Json::Value count = json["count"];
+                        if (!count.isInt())
+                        {
+                            auto resp=HttpResponse::newHttpResponse();
+                            resp->setContentTypeCode(CT_TEXT_PLAIN);
+                            resp->setStatusCode(k400BadRequest);
+                            resp->setBody("Must have an int in 'count'");
+                            callback(resp);
+                        } else {
+                            int countValue = count.asInt();
+                            data.set_count(countValue);
+                            auto resp=HttpResponse::newHttpResponse();
+                            resp->setStatusCode(k200OK);
+                            callback(resp);
+                        }
+                    }
+                },
+                {Post}
+        );
+
+        drogon::app().registerHandler("/live.png", [](const drogon::HttpRequestPtr&,
+                        std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&)
+                {
+                    auto resp=drogon::HttpResponse::newFileResponse(SOURCE_DIR "/ram_disk/live.png");
+                    callback(resp);
+                }
+        );
+
+        drogon::app().registerHandler("/dirty.png", [](const drogon::HttpRequestPtr&,
+                        std::function<void (const drogon::HttpResponsePtr &)> &&callback, const std::string&)
+                {
+                    auto resp=drogon::HttpResponse::newFileResponse(SOURCE_DIR "/ram_disk/dirty.png");
+                    callback(resp);
+                }
         );
     }
 }

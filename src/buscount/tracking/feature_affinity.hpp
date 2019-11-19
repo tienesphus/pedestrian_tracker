@@ -10,8 +10,7 @@
  */
 class FeatureData: public TrackData
 {
-    friend class FeatureAffinity;
-
+public:
     std::vector<float> features;
 
 public:
@@ -30,24 +29,20 @@ public:
         std::string meta;       // path to the meta file (.xml)
         std::string model;      // path to the model file (.bin)
         cv::Size size;          // Size of input layer
-        float thresh;           // confidence to threshold positive detections at (between 0-1)
     };
 
     FeatureAffinity(const NetConfig& net, InferenceEngine::InferencePlugin &plugin);
 
     ~FeatureAffinity() override;
 
-    std::unique_ptr<FeatureData> init(const Detection& d, const cv::Mat& frame) const override;
+    std::unique_ptr<FeatureData> init(const Detection& d, const cv::Mat& frame, int frame_no) const override;
 
     float affinity(const FeatureData &detectionData, const FeatureData &trackData) const override;
 
     void merge(const FeatureData& detectionData, FeatureData& trackData) const override;
 
-    void draw(const FeatureData& data, cv::Mat &img) const override;
-
 private:
 
-    NetConfig netConfig;
     InferenceEngine::ExecutableNetwork network;
     std::string inputName, outputName;
 

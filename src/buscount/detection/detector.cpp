@@ -1,15 +1,16 @@
-#include <opencv2/dnn.hpp>
 #include "detector.hpp"
+
+#include <opencv2/core/mat.hpp>
 
 // TODO Detector is just a wrapper around std::future. Perhaps the caller should handle that instead?
 
 Detector::~Detector() = default;
 
-Detector::intermediate Detector::start_async(const cv::Mat &frame)
+Detector::intermediate Detector::start_async(const cv::Mat &frame, int frame_no)
 {
     return std::async(
             [=]() -> auto {
-                return this->process(frame);
+                return this->process(frame, frame_no);
             }
     );
 }

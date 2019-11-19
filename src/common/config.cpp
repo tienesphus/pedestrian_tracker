@@ -4,7 +4,6 @@
 
 #include <utility>
 #include <fstream>
-#include <iostream>
 
 //  ----------- WORLD CONFIG ---------------
 

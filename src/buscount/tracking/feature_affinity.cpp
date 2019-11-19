@@ -7,8 +7,7 @@
 FeatureData::FeatureData(std::vector<float> features): features(std::move(features))
 {}
 
-FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::InferencePlugin &plugin):
-        netConfig(netConfig)
+FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::InferencePlugin &plugin)
 {
     using namespace InferenceEngine;
 
@@ -16,8 +15,9 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
     CNNNetReader netReader;
     /** Read network model **/
     netReader.ReadNetwork(netConfig.meta);
+
     /** Set batch size to 1 **/
-    spdlog::info("Batch size is forced to  1");
+    spdlog::debug("Batch size is forced to  1");
     netReader.getNetwork().setBatchSize(1);
     /** Extract model name and load it's weights **/
     netReader.ReadWeights(netConfig.model);
@@ -25,7 +25,7 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
 
     /** SSD-based network should have one input and one output **/
     // ---------------------------Check inputs ------------------------------------------------------
-    spdlog::info("Checking Person Reidentification inputs");
+    spdlog::debug("Checking Person Reidentification inputs");
     InputsDataMap inputInfo(netReader.getNetwork().getInputsInfo());
     if (inputInfo.size() != 1) {
         throw std::logic_error("Person Reidentification network should have only one input");
@@ -40,7 +40,7 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
     // -----------------------------------------------------------------------------------------------------
 
     // ---------------------------Check outputs ------------------------------------------------------
-    spdlog::info("Checking Person Reidentification outputs");
+    spdlog::debug("Checking Person Reidentification outputs");
     OutputsDataMap outputInfo(netReader.getNetwork().getOutputsInfo());
     if (outputInfo.size() != 1) {
         throw std::logic_error("Person Reidentification network should have only one output");
@@ -53,12 +53,15 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
 
 FeatureAffinity::~FeatureAffinity() = default;
 
-std::unique_ptr<FeatureData> FeatureAffinity::init(const Detection& d, const cv::Mat& frame) const
+std::unique_ptr<FeatureData> FeatureAffinity::init(const Detection& d, const cv::Mat& frame, int) const
 {
     int w = frame.cols;
     int h = frame.rows;
-    cv::Rect2f person(d.box.x*w, d.box.y*h, d.box.width*w, d.box.height*h);
-    person = geom::intersection(person, cv::Rect2f(0, 0, frame.cols, frame.rows));
+    cv::Rect2i person(d.box.x*w, d.box.y*h, d.box.width*w, d.box.height*h);
+    person = geom::intersection(person, cv::Rect2i(0, 0, frame.cols, frame.rows));
+    // gracefully handle zero width detections (sometimes the detection algorithm gives strange results)
+    if (person.width < 1 || person.height < 1)
+        person = cv::Rect2i(1, 1, 3, 3);
     cv::Mat crop = frame(person);
     return std::make_unique<FeatureData>(identify(crop));
 }
@@ -71,10 +74,6 @@ float FeatureAffinity::affinity(const FeatureData &detectionData, const FeatureD
 void FeatureAffinity::merge(const FeatureData& detectionData, FeatureData& trackData) const
 {
     trackData.features = detectionData.features;
-}
-
-void FeatureAffinity::draw(const FeatureData&, cv::Mat&) const
-{
 }
 
 /**
@@ -116,6 +115,9 @@ std::vector<float> FeatureAffinity::identify(const cv::Mat &person) const {
     cv::Mat person_scaled;
     // TODO if the person input image is too big, the reid network starts segfaulting?
     // Thus, I manually scale here. Only occurs on Pi with images taking nearly entire frame.
+    if (person.cols < 1 || person.rows < 1) {
+        throw std::logic_error("Feature affinity requires a size >= 1");
+    }
     cv::resize(person, person_scaled, cv::Size(48, 96));
     cv::Mat person_clone = person_scaled.clone(); // clone is needed so the Mat is dense
     Blob::Ptr inputBlob = wrapMat2Blob(person_clone);

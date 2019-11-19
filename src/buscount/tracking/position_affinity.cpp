@@ -9,7 +9,7 @@ PositionData::PositionData(cv::Rect2f loc, float xspeed, float yspeed)
 PositionAffinity::PositionAffinity(float scale): scale(scale)
 {}
 
-std::unique_ptr<PositionData> PositionAffinity::init(const Detection& d, const cv::Mat&) const
+std::unique_ptr<PositionData> PositionAffinity::init(const Detection& d, const cv::Mat&, int) const
 {
     return std::make_unique<PositionData>(d.box, 0, 0);
 }
@@ -44,7 +44,4 @@ void PositionAffinity::merge(const PositionData& detection, PositionData& track)
     track.loc = detection.loc;
 }
 
-void PositionAffinity::draw(const PositionData&, cv::Mat&) const
-{
-}
 
