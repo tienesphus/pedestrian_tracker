@@ -1,0 +1,14 @@
+[Unit]
+Description=Buscountd service
+After=network.target
+
+[Service]
+ExecStart=@WEBSTART_SCRIPT_LOC@
+User=pi
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+
+
