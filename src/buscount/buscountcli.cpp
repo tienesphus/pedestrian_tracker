@@ -73,7 +73,7 @@ int main() {
 
     DetectorOpenVino detector(net_config, plugin);
     WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config.csv");
-    TrackerComp tracker(world_config, 0.5, 0.03, 0.2);
+    TrackerComp tracker(0.5, 0.03, 0.2);
 
     tracker.use<FeatureAffinity, FeatureData>(1, tracker_config, plugin);
     tracker.use<PositionAffinity, PositionData>(1, 1);
@@ -93,7 +93,9 @@ int main() {
             [](const cv::Mat& frame) {
                 cv::imshow("output", frame);
             },
-            []() { return cv::waitKey(1) == 'q'; },
+            []() {
+                return cv::waitKey(1) == 'q';
+            },
             [&data](Event event, const cv::Mat&, int frame_no) {
                 spdlog::info("EVENT: {}, {}", name(event), frame_no);
                 data.enter_event(event);

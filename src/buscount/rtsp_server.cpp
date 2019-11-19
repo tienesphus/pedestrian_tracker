@@ -168,7 +168,7 @@ void RtspServer::create_mounts()
 void RtspServer::init_buscount_pipeline()
 {
 
-    Glib::RefPtr<Gst::Element> v4l2, cnvt, bcfilt, vtee, btee;
+    Glib::RefPtr<Gst::Element> v4l2, vflip cnvt, bcfilt, vtee, btee;
 
     // Register the gstreamer buscount plugin
     GstBusCount::plugin_init_static();
@@ -185,6 +185,7 @@ void RtspServer::init_buscount_pipeline()
 
     // Create/add elements to pipeline
     buscountpipe->add(v4l2 = Gst::ElementFactory::create_element("v4l2src"))
+	    	    ->add(vflip = Gst::ElementFactory::create_element("videoflip"))
                     ->add(bcfilt = Gst::ElementFactory::create_element("buscountfilter"))
                     ->add(cnvt = Gst::ElementFactory::create_element("videoconvert"))
                     //->add(vtee = Gst::ElementFactory::create_element("tee"))
@@ -194,11 +195,13 @@ void RtspServer::init_buscount_pipeline()
 
     // Link elements together
     v4l2->link(cnvt, caps);
-    cnvt->link(bcfilt);
+    cnvt->link(vflip);
+    vflip->link(bcfilt);
     bcfilt->link(bprox);
 
     // Set video device
     //v4l2->set_property<Glib::ustring>("device", "/dev/video1");
+    vflip->set_property("video-direction", 5);
 
     // Set clock
     Glib::RefPtr<Gst::Clock> clock = Gst::SystemClock::obtain();

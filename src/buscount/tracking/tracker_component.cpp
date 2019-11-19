@@ -139,9 +139,9 @@ void Track::draw(cv::Mat &img) const {
 
 //  -----------  TRACKER ---------------
 
-TrackerComp::TrackerComp(const WorldConfig& world, float merge_thresh, double conf_decrease_rate, double conf_thresh,
+TrackerComp::TrackerComp(float merge_thresh, double conf_decrease_rate, double conf_thresh,
                          std::function<void(const cv::Mat&, uint32_t, int, const cv::Rect2f&, float conf)> track_listener):
-        worldConfig(world), merge_thresh(merge_thresh), index_count(0),
+        merge_thresh(merge_thresh), index_count(0),
         conf_decrease_rate(conf_decrease_rate), conf_thresh(conf_thresh), pre_frame_no(-1), track_listener(std::move(track_listener))
 {
 }
@@ -152,7 +152,7 @@ void TrackerComp::use_affinity(float weighting, std::unique_ptr<Affinity<TrackDa
     this->affinities.emplace_back(std::move(affinity), weighting);
 }
 
-std::vector<Event> TrackerComp::process(const Detections &detections, const cv::Mat& frame, int frame_no)
+std::vector<Event> TrackerComp::process(const WorldConfig& config, const Detections &detections, const cv::Mat& frame, int frame_no)
 {
     // Reset all tracks detection status
     for (const auto& track : tracks) {
@@ -176,7 +176,7 @@ std::vector<Event> TrackerComp::process(const Detections &detections, const cv::
         delta = 1;
     pre_frame_no = frame_no;
 
-    return update(delta);
+    return update(delta, config);
 }
 
 
@@ -374,13 +374,13 @@ void TrackerComp::merge(const Detections &detection_results, const cv::Mat& fram
  * Updates the status of each Track. Updates the world count.
  * Deletes old tracks.
  */
-std::vector<Event> TrackerComp::update(int deltaFrames)
+std::vector<Event> TrackerComp::update(int deltaFrames, const WorldConfig& config)
 {
     std::vector<Event> events;
 
     this->tracks.erase(std::remove_if(std::begin(this->tracks), std::end(this->tracks),
-                                      [this, &events, deltaFrames](std::unique_ptr<Track>& t) {
-                                          return !t->update(this->worldConfig, events, this->conf_decrease_rate, this->conf_thresh, deltaFrames);
+                                      [this, &events, deltaFrames, &config](std::unique_ptr<Track>& t) {
+                                          return !t->update(config, events, this->conf_decrease_rate, this->conf_thresh, deltaFrames);
                                       }
     ), std::end(this->tracks));
 
