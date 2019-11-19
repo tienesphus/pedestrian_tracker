@@ -303,14 +303,18 @@ namespace server {
                             resp->setBody("Must have an int in 'count'");
                             callback(resp);
                         } else {
-                            int countValue = count.asInt();
-                            data.set_count(countValue);
+                            if (cloud.send_reset()) {
+                                int countValue = count.asInt();
+                                data.set_count(countValue);
 
-                            cloud.send_events();
-
-                            auto resp=HttpResponse::newHttpResponse();
-                            resp->setStatusCode(k200OK);
-                            callback(resp);
+                                auto resp=HttpResponse::newHttpResponse();
+                                resp->setStatusCode(k200OK);
+                                callback(resp);
+                            } else {
+                                auto resp=HttpResponse::newHttpResponse();
+                                resp->setStatusCode(k503ServiceUnavailable);
+                                callback(resp);
+                            }
                         }
                     }
                 },

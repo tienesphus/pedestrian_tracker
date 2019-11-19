@@ -74,14 +74,14 @@ bool CloudUpdater::send_reset()
     std::time_t time = std::chrono::system_clock::to_time_t(start);
 
     // Send the data
-    return post_to_server("{"
+    return post_to_server("[{"
            "\"event_timestamp\": " + std::to_string(time) + ", "
             "\"busid\": \"" + database.get_busid() + "\", "
             "\"latitude\": 0, "
             "\"longitude\": 0, "
             "\"event_count\": 0,"
-            "\"event_type\": count"
-      "}");
+            "\"event_type\": \"count\""
+      "}]");
 }
 
 bool CloudUpdater::send_events()
