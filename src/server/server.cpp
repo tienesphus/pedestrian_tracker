@@ -74,7 +74,7 @@ namespace server {
                 {Post, Get}
         );
 
-        app().setLogPath("./");
+        //app().setLogPath("./");
         app().setLogLevel(trantor::Logger::WARN);
         app().addListener("0.0.0.0", 8080);
         app().setThreadNum(2);

@@ -6,3 +6,7 @@ What=tmpfs
 Where=@RAMDISK_LOCATION@
 Type=tmpfs
 Options=size=50M
+
+[Install]
+WantedBy=multi-user.target
+
