@@ -112,3 +112,9 @@ sudo systemctl enable buscountd.service
 sudo systemctl enable buswebserver.service 
 sudo systemctl enable home-pi-code-cpp_counting-ram_disk.mount
 ```
+
+Reboot the Pi. The system can be monitored through 
+```
+journalctl -u buscountd.service
+journalctl -u buswebserver.service
+```
