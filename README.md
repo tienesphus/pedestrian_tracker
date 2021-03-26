@@ -19,6 +19,7 @@ sudo apt install libgstrtspserver-1.0-dev
 sudo apt install gstreamer1.0-omx-rpi # on Pi only
 sudo apt install gstreamer1.0-plugins-base
 sudo apt install libgstreamermm-1.0-dev
+sudo apt install libgstrtspserver-1.0-dev gstreamer1.0-rtsp
 sudo apt install libsqlite3-dev
 sudo apt install libjsoncpp-dev
 sudo ln -s /usr/include/jsoncpp/json/ /usr/include/json
