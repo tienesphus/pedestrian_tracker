@@ -1,3 +1,12 @@
-[submodule "include/spdlog"]
-	path = include/spdlog
-	url = https://github.com/gabime/spdlog
+[submodule "MobileNetSSD_IE"]
+	path = models/MobileNetSSD_IE
+	url = https://github.com/tienesphus/networks/
+	branch = MobileNetSSD_IE
+[submodule "MobileNetSSD_caffe"]
+	path = models/MobileNetSSD_caffe
+	url = https://github.com/tienesphus/networks/
+	branch = MobileNetSSD_caffe
+[submodule "Reidentify0288"]
+	path = models/Reidentify0288
+	url = https://github.com/tienesphus/networks/
+	branch = Reidentify0288
