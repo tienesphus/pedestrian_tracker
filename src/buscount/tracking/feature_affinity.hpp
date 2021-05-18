@@ -31,7 +31,7 @@ public:
         cv::Size size;          // Size of input layer
     };
 
-    FeatureAffinity(const NetConfig& net, InferenceEngine::InferencePlugin &plugin);
+    FeatureAffinity(const NetConfig& net, InferenceEngine::Core &plugin);
 
     ~FeatureAffinity() override;
 

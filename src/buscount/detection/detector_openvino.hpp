@@ -22,7 +22,7 @@ public:
     /**
      * Constructs a detector from the given NetConfig
      */
-    DetectorOpenVino(const NetConfig &config, InferenceEngine::InferencePlugin &plugin);
+    DetectorOpenVino(const NetConfig &config, InferenceEngine::Core &plugin);
 
     ~DetectorOpenVino() override;
 

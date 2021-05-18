@@ -51,37 +51,37 @@ set_property(TARGET gstbuscountplugin_obj_if PROPERTY INTERFACE_INCLUDE_DIRECTOR
     ${GStreamerMM_INCLUDE_DIRS}
 )
 
-add_library(gstbuscountplugin_obj OBJECT gstbuscountfilter.cpp)
-set_property(TARGET gstbuscountplugin_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(gstbuscountplugin_obj PUBLIC
-    $<TARGET_PROPERTY:gstbuscountplugin_obj_if,INTERFACE_INCLUDE_DIRECTORIES>
-)
+#add_library(gstbuscountplugin_obj OBJECT gstbuscountfilter.cpp)
+#set_property(TARGET gstbuscountplugin_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
+#target_include_directories(gstbuscountplugin_obj PUBLIC
+#    $<TARGET_PROPERTY:gstbuscountplugin_obj_if,INTERFACE_INCLUDE_DIRECTORIES>
+#)
 
 
 # Static library is for linking directly with gstreamer. Dynamic library is only for
 # debugging with gst-launch-1.0 and gst-inspect-1.0
-add_library(gstbuscountplugin_static STATIC $<TARGET_OBJECTS:gstbuscountplugin_obj>)
-target_link_libraries(gstbuscountplugin_static
-    PUBLIC gstbuscountplugin_obj_if
-    PRIVATE buscount_static
-)
-add_library(gstbuscountplugin MODULE $<TARGET_OBJECTS:gstbuscountplugin_obj>)
-target_link_libraries(gstbuscountplugin
-    PUBLIC gstbuscountplugin_obj_if
-    PRIVATE buscount_static
-)
+#add_library(gstbuscountplugin_static STATIC $<TARGET_OBJECTS:gstbuscountplugin_obj>)
+#target_link_libraries(gstbuscountplugin_static
+#    PUBLIC gstbuscountplugin_obj_if
+#    PRIVATE buscount_static
+#)
+#add_library(gstbuscountplugin MODULE $<TARGET_OBJECTS:gstbuscountplugin_obj>)
+#target_link_libraries(gstbuscountplugin
+#    PUBLIC gstbuscountplugin_obj_if
+#    PRIVATE buscount_static
+#)
 
 add_executable(buscountcli buscountcli.cpp)
-add_executable(buscountd
-    buscountd.cpp
-    rtsp_server.cpp
-    rtsp_flexi_media_factory.c
-)
+#add_executable(buscountd
+#    buscountd.cpp
+#    rtsp_server.cpp
+#    rtsp_flexi_media_factory.c
+#)
 
 target_link_libraries(buscountcli buscount_static opencv_highgui)
-target_link_libraries(buscountd gstbuscountplugin_static)
+#target_link_libraries(buscountd gstbuscountplugin_static)
 
-target_compile_definitions(buscountd PUBLIC DEFAULT_ENC_TYPE=${DEFAULT_ENC_TYPE})
+#target_compile_definitions(buscountd PUBLIC DEFAULT_ENC_TYPE=${DEFAULT_ENC_TYPE})
 
 # Buscount must be built with different arch type on Pis to work with OpenVino
 execute_process(COMMAND uname -m OUTPUT_VARIABLE SYS_ARCH)
@@ -95,4 +95,4 @@ target_include_directories(buscount_static PUBLIC
         $<TARGET_PROPERTY:common,SOURCE_DIR>
 )
 
-add_subdirectory(metrics)
+#add_subdirectory(metrics)

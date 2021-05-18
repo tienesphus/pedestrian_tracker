@@ -4,6 +4,7 @@
 // Project includes
 #include "detector_opencv.hpp"
 #include "../cv_utils.hpp"
+#include <inference_engine.hpp>
 
 
 DetectorOpenCV::DetectorOpenCV(const NetConfig &config) :

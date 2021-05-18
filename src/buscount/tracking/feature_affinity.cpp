@@ -7,32 +7,34 @@
 FeatureData::FeatureData(std::vector<float> features): features(std::move(features))
 {}
 
-FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::InferencePlugin &plugin)
+FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::Core &plugin)
 {
     using namespace InferenceEngine;
 
     spdlog::info("Loading network files for PersonREID");
-    CNNNetReader netReader;
+    InferenceEngine::CNNNetwork netReader;
+    netReader = plugin.ReadNetwork(netConfig.meta);
+
     /** Read network model **/
-    netReader.ReadNetwork(netConfig.meta);
+    netReader.getName();
 
     /** Set batch size to 1 **/
     spdlog::debug("Batch size is forced to  1");
-    netReader.getNetwork().setBatchSize(1);
+    netReader.setBatchSize(1);
     /** Extract model name and load it's weights **/
-    netReader.ReadWeights(netConfig.model);
+    netReader.serialize(netConfig.meta);
     // -----------------------------------------------------------------------------------------------------
 
     /** SSD-based network should have one input and one output **/
     // ---------------------------Check inputs ------------------------------------------------------
     spdlog::debug("Checking Person Reidentification inputs");
-    InputsDataMap inputInfo(netReader.getNetwork().getInputsInfo());
+    InputsDataMap inputInfo(netReader.getInputsInfo());
     if (inputInfo.size() != 1) {
         throw std::logic_error("Person Reidentification network should have only one input");
     }
     inputName = inputInfo.begin()->first;
     InputInfo::Ptr& inputInfoFirst = inputInfo.begin()->second;
-    inputInfoFirst->setInputPrecision(Precision::U8);
+    inputInfoFirst->setPrecision(Precision::U8);
 
     inputInfoFirst->getPreProcess().setResizeAlgorithm(ResizeAlgorithm::RESIZE_BILINEAR);
     inputInfoFirst->getInputData()->setLayout(Layout::NHWC);
@@ -41,13 +43,13 @@ FeatureAffinity::FeatureAffinity(const NetConfig& netConfig, InferenceEngine::In
 
     // ---------------------------Check outputs ------------------------------------------------------
     spdlog::debug("Checking Person Reidentification outputs");
-    OutputsDataMap outputInfo(netReader.getNetwork().getOutputsInfo());
+    OutputsDataMap outputInfo(netReader.getOutputsInfo());
     if (outputInfo.size() != 1) {
         throw std::logic_error("Person Reidentification network should have only one output");
     }
     outputName = outputInfo.begin()->first;
 
-    this->network = plugin.LoadNetwork(netReader.getNetwork(), {});
+    this->network = plugin.LoadNetwork(netReader,"CPU",{});
 }
 
 

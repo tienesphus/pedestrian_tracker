@@ -8,6 +8,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/dnn.hpp>
 #include <spdlog/spdlog.h>
+#include <inference_engine.hpp>
 
 using namespace InferenceEngine;
 
@@ -41,17 +42,16 @@ static InferenceEngine::Blob::Ptr wrapMat2Blob(const cv::Mat &mat) {
 }
 
 
-DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::InferencePlugin &plugin):
+DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::Core &plugin):
         Detector(), config(config)
 {
     spdlog::info("Reading network");
 
-    CNNNetReader netReader;
-    netReader.ReadNetwork(config.meta);
-    //netReader.getNetwork().setBatchSize(1);
-    netReader.ReadWeights(config.model);
 
-    CNNNetwork net = netReader.getNetwork();
+    Core netReader;
+    netReader.ReadNetwork(config.meta).setBatchSize(1);
+
+    CNNNetwork net = netReader.ReadNetwork(config.meta);
 
     spdlog::debug("Configure Input layer");
     InputsDataMap inputInfo(net.getInputsInfo());
@@ -84,7 +84,7 @@ DetectorOpenVino::DetectorOpenVino(const NetConfig &config, InferenceEngine::Inf
     output->setLayout(Layout::NCHW);
 
     spdlog::debug("Loading Model to Plugin");
-    this->network = plugin.LoadNetwork(netReader.getNetwork(), {});
+    this->network = plugin.LoadNetwork(net,"CPU",{});
 
     spdlog::debug("End Loading detector");
 }
@@ -138,4 +138,3 @@ Detections DetectorOpenVino::process(const cv::Mat &frame, int)
 
     return Detections(results);
 }
-

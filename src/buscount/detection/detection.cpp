@@ -6,7 +6,6 @@
 #include <opencv2/core/cvstd.hpp>
 #include <opencv2/imgproc.hpp>
 
-
 //  ----------- DETECTION ---------------
 
 Detection::Detection(cv::Rect2f  box, float confidence):

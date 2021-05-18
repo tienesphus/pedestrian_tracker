@@ -29,7 +29,6 @@
 #include "data_fetch.hpp"
 #include "image_stream.hpp"
 
-
 int main() {
     std::cout << "STARTING" << std::endl;
 
@@ -59,17 +58,18 @@ int main() {
     };
 
     FeatureAffinity::NetConfig tracker_config {
-            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.xml", // config
-            SOURCE_DIR "/models/Reidentify0031/person-reidentification-retail-0031.bin", // model
+            SOURCE_DIR "/models/Reidentify0288/person-reidentification-retail-0288.xml", // config
+            SOURCE_DIR "/models/Reidentify0288/person-reidentification-retail-0288.bin", // model
             cv::Size(48, 96),    // input size
     };
 
-    //std::string input = SOURCE_DIR "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
-    //VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
-    auto cv_cap = std::make_shared<cv::VideoCapture>(0);
+    std::string input = SOURCE_DIR "/../samplevideos/pi3_20181213/2018-12-13--08-26-02--snippit-1.mp4";
+    VideoSync<cv::Mat> cap = VideoSync<cv::Mat>::from_video(input);
+    //ENABLE THIS FOR REAL TIME FEED
+    //auto cv_cap = std::make_shared<cv::VideoCapture>(0);
 
     spdlog::info("Loading plugin");
-    InferenceEngine::InferencePlugin plugin = InferenceEngine::PluginDispatcher({""}).getPluginByDevice("MYRIAD");
+    InferenceEngine::Core plugin;
 
     DetectorOpenVino detector(net_config, plugin);
     WorldConfig world_config = WorldConfig::from_file(SOURCE_DIR "/config.csv");
@@ -83,13 +83,15 @@ int main() {
     int frame_no = 0;
 
     BusCounter counter(detector, tracker, world_config,
-            //[&cap]() -> nonstd::optional<std::tuple<cv::Mat, int>> { return cap.next(); },
-            [&cv_cap, &frame_no]() -> nonstd::optional<std::tuple<cv::Mat, int>> {
+            [&cap]() -> nonstd::optional<std::tuple<cv::Mat, int>> { return cap.next(); }
+
+            //ENABLE THIS FOR REAL TIME FEED
+            /*[&cv_cap, &frame_no]() -> nonstd::optional<std::tuple<cv::Mat, int>> {
                 cv::Mat frame;
                 cv_cap->read(frame);
                 cv::resize(frame, frame, cv::Size(640, 480));
                 return std::make_tuple(frame, ++frame_no);
-            },
+            }*/,
             [](const cv::Mat& frame) {
                 cv::imshow("output", frame);
             },
@@ -103,21 +105,21 @@ int main() {
     );
 
     // Keep checking the database for any changes to the config
-    std::atomic_bool running = { true };
-    std::thread config_updater([&running, &data, &counter]() {
-        while (running) {
-            auto config = data.get_config();
-            counter.update_world_config(config);
+    //std::atomic_bool running = { true };
+    //std::thread config_updater([&running, &data, &counter]() {
+    //    while (running) {
+    //        auto config = data.get_config();
+    //        counter.update_world_config(config);
 
             // Don't hog the CPU
-            usleep(100 * 1000); // 100 ms
-        }
-    });
+    //        usleep(100 * 1000); // 100 ms
+    //    }
+    //});
 
     counter.run(BusCounter::RUN_PARALLEL, true);
 
-    running = false;
-    config_updater.join();
+    //running = false;
+    //config_updater.join();
 
     return 0;
 }

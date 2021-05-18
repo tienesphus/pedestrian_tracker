@@ -17,5 +17,3 @@ add_compile_options(-D SOURCE_DIR="${SOURCE_DIR}")
 
 add_subdirectory(extras)
 add_subdirectory(src)
-add_subdirectory(tests)
-add_subdirectory(systemd)
