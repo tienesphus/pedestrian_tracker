@@ -52,7 +52,7 @@ git submodule update --init models/<network>
 If the test videos are being used, it is assumed that the sample video repo has been downloaded to `../samplevideos`.
 ```
 cd ..
-git clone https://gitlab.com/buspassengercount/samplevideos.git
+git clone https://github.com/tienesphus/samplevideos
 ```
 
 ### Build using cmake
