@@ -1,15 +1,3 @@
-[submodule "MobileNetSSD_caffe"]
-	path = models/MobileNetSSD_caffe
-	url = https://gitlab.com/buspassengercount/networks.git
-	branch = MobileNetSSD_caffe
-[submodule "MobileNetSSD_IE"]
-	path = models/MobileNetSSD_IE
-	url = https://gitlab.com/buspassengercount/networks.git
-	branch = MobileNetSSD_IE
-[submodule "models/Reidentify0031/networks"]
-	path = models/Reidentify0031
-	url = https://gitlab.com/buspassengercount/networks.git
-	branch = Reidentify0031
 [submodule "include/spdlog"]
 	path = include/spdlog
 	url = https://github.com/gabime/spdlog
