@@ -2,64 +2,61 @@
 
 Counts passengers entering and exiting a bus.
 
-## Building
+## Dependencies
 
 This has only been tested on:
 - Ubuntu 18.04
-- Raspberrian Stretch
-- Rasperrian Buster
+- Ubuntu 20.04.2.0 LTS
 
 ### Install system libraries
 Install these libraries:
-
+- Make (4.2.1-1.2)
+- Cmake (3.16.3-1ubuntu1)
+- Libsqlite3-dev (3.31.1-4ubuntu0.2)
+- Libjsoncpp-dev (1.7.4-3.1ubuntu2)
 ```
 sudo apt install make cmake
-sudo apt install libtbb-dev libtbb2
-sudo apt install libgstrtspserver-1.0-dev
-sudo apt install gstreamer1.0-omx-rpi # on Pi only
-sudo apt install gstreamer1.0-plugins-base
-sudo apt install libgstreamermm-1.0-dev
-sudo apt install libgstrtspserver-1.0-dev gstreamer1.0-rtsp
 sudo apt install libsqlite3-dev
 sudo apt install libjsoncpp-dev
-sudo ln -s /usr/include/jsoncpp/json/ /usr/include/json
 ```
 
-### Install OpenCV/OpenVino
-You will need to install OpenVino and OpenCV. You do not need to install OpenCV from source; it is fine to just use the OpenCV binaries that come with OpenVino. However, if you do install OpenCV from source, make sure it includes the Inference Engine.
-
-Install instructions:
-- Pi: https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_raspbian.html
-- Ubuntu: https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_linux.html
+### Install OpenCV/OpenVino and its dependencies
+OpenVino 2021.3 [Direct download for Linux/Ubuntu](https://registrationcenter-download.intel.com/akdlm/irc_nas/17662/l_openvino_toolkit_p_2021.3.394.tgz) | [Installation Instruction](https://docs.openvinotoolkit.org/2021.3/openvino_docs_install_guides_installing_openvino_linux.html)
 
 Make sure OpenVino is setup with:
 ```
 . /opt/intel/openvino/bin/setupvars.sh 
 ```
 
-### Install Drogon
-See instructions here:
-https://github.com/an-tao/drogon/wiki/02-Installation
+It is recommended to run sample scripts come with OpenVino to verify OpenVino is installed correctly [Instruction](https://docs.openvinotoolkit.org/2021.3/openvino_docs_get_started_get_started_linux.html)
 
-### Download Related repos
+## Clone and build this repo
+```
+git clone https://github.com/tienesphus/cpp_counting
+```
+### Initialise network submodules
 Only once, you will have to download the required Neural Network modules.
 
+Initialise all submodules
+
+```
+git submodule update --init
+```
+
+Or initialise individual submodule
 ```
 git submodule update --init models/<network>
 # replace <network> with the folder that needs initialising
 ```
-
-Note: All submodules are stored in private repos, hence will require logging in for each (git doesn't have any concept of gitlab groups, so can't share the same password for each repo). To circumvent this, we will probably need to modify the submodules to make use of SSH, which will allow us to use either `ssh-agent` or SSH public-private keys.
-
+### Sample videos
 If the test videos are being used, it is assumed that the sample video repo has been downloaded to `../samplevideos`.
 ```
 cd ..
 git clone https://gitlab.com/buspassengercount/samplevideos.git
 ```
 
-### Building
+### Build using cmake
 ```
-git clone https://gitlab.com/buspassengercount/cpp_counting.git
 cd cpp_counting
 mkdir build && cd build
 cmake ..
@@ -79,43 +76,5 @@ To run the development prompt:
 ./bin/buscountcli
 ```
 
-To run the rtsp daemon:
-```
-./bin/buscountd
-```
-
-To run the web server:
-```
-./bin/buscountserver
-```
-
-The gstreamer buscount plugin may also be used outside of `buscountd`. You may use any gstreamer command (`gst-launch-1.0`, `gst-inspect-1.0`, etc) as follows:
-```
-gst-inspect-1.0 --gst-plugin-load=lib/libgstbuscountplugin.so buscountfilter
-```
-
-Verbosity of messages printed to the screen by the GStreamer portion of the daemon and any gstreamer related commands (`gst-inspect-1.0`, `gst-launch-1.0`, etc) can be increased by setting the `GST_DEBUG` environment variable. Verbosity can be increased for individual log categories, or for all categories. Multiple related categories may also be set by using a wildcard `*`. Here is a simple example:
-```
-GST_DEBUG=3,buscount:5 bin/buscountd
-```
-
-For more information on the `GST_DEBUG` environment variable, take a look at the [relevant gstreamer documentation](https://gstreamer.freedesktop.org/documentation/tutorials/basic/debugging-tools.html#basic-tutorial-11-debugging-tools)
 
 
-### Installation
-To install the system so it runs on boot:
-
-```
-sudo make install
-
-# Enable each service
-sudo systemctl enable buscountd.service 
-sudo systemctl enable buswebserver.service 
-sudo systemctl enable home-pi-code-cpp_counting-ram_disk.mount
-```
-
-Reboot the Pi. The system can be monitored through 
-```
-journalctl -u buscountd.service
-journalctl -u buswebserver.service
-```
