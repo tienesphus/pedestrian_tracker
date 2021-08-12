@@ -13,11 +13,7 @@ if(NOT GENERATOR_IS_MULTI_CONFIG_VAR AND NOT DEFINED CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel ...")
 endif()
 
-project(Demos)
-
-option(ENABLE_PYTHON "Whether to build extension modules for Python demos" OFF)
-option(MULTICHANNEL_DEMO_USE_TBB "Use TBB-based threading in multichannel demos" OFF)
-option(MULTICHANNEL_DEMO_USE_NATIVE_CAM "Use native camera api in multichannel demos" OFF)
+project(pedestrian_tracker)
 
 if(NOT BIN_FOLDER)
     string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} ARCH)
@@ -90,12 +86,12 @@ endfunction()
 
 include(CMakeParseArguments)
 
-# add_demo(NAME <target name>
+# add_project(NAME <target name>
 #     SOURCES <source files>
 #     [HEADERS <header files>]
 #     [INCLUDE_DIRECTORIES <include dir>]
 #     [DEPENDENCIES <dependencies>])
-macro(add_demo)
+macro(add_project)
     set(oneValueArgs NAME)
     set(multiValueArgs SOURCES HEADERS DEPENDENCIES INCLUDE_DIRECTORIES)
     cmake_parse_arguments(IE_SAMPLE "${options}" "${oneValueArgs}"
@@ -133,28 +129,9 @@ find_package(ngraph REQUIRED)
 
 add_subdirectory(thirdparty/gflags)
 add_subdirectory(common/cpp)
-# add_subdirectory(multi_channel_common/cpp)
 
 # collect all samples subdirectories
 file(GLOB samples_dirs RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *)
 # skip building of unnecessary subdirectories
 list(REMOVE_ITEM samples_dirs common thirdparty multi_channel_common)
 add_samples_to_build(${samples_dirs})
-
-if(ENABLE_PYTHON)
-    find_package(PythonInterp 3.6 REQUIRED)
-    find_package(PythonLibs "${PYTHON_VERSION_STRING}" EXACT REQUIRED)
-
-    execute_process(
-    COMMAND "${PYTHON_EXECUTABLE}" -c "import numpy; print(numpy.get_include())"
-    OUTPUT_VARIABLE NUMPY_INCLUDE_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    RESULT_VARIABLE NUMPY_NOT_FOUND)
-    if(NUMPY_NOT_FOUND)
-        message(FATAL_ERROR "NumPy headers not found")
-    endif()
-
-    add_subdirectory(human_pose_estimation_3d_demo/python/pose_extractor)
-    add_subdirectory(common/python/monitors_extension)
-    add_subdirectory(speech_recognition_deepspeech_demo/python/ctcdecode-numpy)
-endif()

@@ -46,14 +46,14 @@ add_library(gflags::gflags_nothreads_static STATIC IMPORTED)
 
 set_target_properties(gflags::gflags_nothreads_static PROPERTIES
   INTERFACE_COMPILE_DEFINITIONS "GFLAGS_IS_A_DLL=0"
-  INTERFACE_INCLUDE_DIRECTORIES "/Users/tphungo/Desktop/demos/thirdparty/gflags/include"
+  INTERFACE_INCLUDE_DIRECTORIES "/Users/tphungo/Documents/dev/GitHub/cpp_counting/thirdparty/gflags/include"
 )
 
 # Import target "gflags::gflags_nothreads_static" for configuration "Release"
 set_property(TARGET gflags::gflags_nothreads_static APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(gflags::gflags_nothreads_static PROPERTIES
   IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
-  IMPORTED_LOCATION_RELEASE "/Users/tphungo/Desktop/demos/intel64/Release/lib/libgflags_nothreads.a"
+  IMPORTED_LOCATION_RELEASE "/Users/tphungo/Documents/dev/GitHub/cpp_counting/intel64/Release/lib/libgflags_nothreads.a"
   )
 
 # This file does not depend on other imported targets which have

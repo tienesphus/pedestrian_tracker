@@ -8,7 +8,7 @@
 #include "descriptor.hpp"
 #include "distance.hpp"
 #include "detector.hpp"
-#include "pedestrian_tracker_demo.hpp"
+#include "pedestrian_tracker.hpp"
 
 #include <monitors/presenter.h>
 #include <utils/images_capture.h>
