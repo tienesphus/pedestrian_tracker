@@ -58,7 +58,7 @@ DEFINE_bool(r, false, raw_output_message);
 DEFINE_bool(no_show, false, no_show_message);
 DEFINE_int32(delay, 3, delay_message);
 DEFINE_string(out, "", output_log_message);
-DEFINE_string(location, "", output_log_message);
+DEFINE_string(location, "", location_message);
 DEFINE_string(u, "", utilization_monitors_message);
 
 
