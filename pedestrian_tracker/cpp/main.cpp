@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
                 presenter.handleKey(k);
             }
 
-            if (should_save_det_log && (frameIdx % 100 == 0) && !detlocation.empty()) {
+            if (should_save_det_log && (frameIdx % 100 == 0)) {
                 DetectionLog log = tracker->GetDetectionLog(true);
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
             }
