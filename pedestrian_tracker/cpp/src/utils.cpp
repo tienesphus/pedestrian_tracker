@@ -12,6 +12,8 @@
 #include <string>
 #include <set>
 #include <memory>
+#include <chrono>
+#include <ctime>
 
 using namespace InferenceEngine;
 
@@ -19,6 +21,11 @@ namespace {
 template <typename StreamType>
 void SaveDetectionLogToStream(StreamType& stream,
                               const DetectionLog& log) {
+    struct tm * timestamp;
+    time_t tTime;
+    std::chrono::system_clock::time_point tPoint;
+    std::string timeStr;
+    
     for (const auto& entry : log) {
         std::vector<TrackedObject> objects(entry.objects.begin(),
                                            entry.objects.end());
@@ -29,7 +36,13 @@ void SaveDetectionLogToStream(StreamType& stream,
         for (const auto& object : objects) {
             auto frame_idx_to_save = entry.frame_idx;
             stream << frame_idx_to_save << ',';
-            stream  << object.timestamp << ',' << object.object_id << ','
+            //convert unix timestamp to local system time
+            tPoint = std::chrono::system_clock::from_time_t(0) + std::chrono::milliseconds(object.timestamp);
+            tTime = std::chrono::system_clock::to_time_t(tPoint);
+            timestamp = localtime(&tTime);
+            timeStr = asctime(timestamp);
+            timeStr.pop_back();
+            stream  << timeStr << ',' << object.object_id << ','
                 << object.rect.x << ',' << object.rect.y << ','
                 << object.rect.width << ',' << object.rect.height << ',' << object.confidence; 
             stream << '\n';
