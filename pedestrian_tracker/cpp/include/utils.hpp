@@ -83,7 +83,8 @@ using DetectionLog = std::vector<DetectionLogEntry>;
 /// \param[in] log  -- detection log to store
 ///
 void SaveDetectionLogToTrajFile(const std::string& path,
-                                const DetectionLog& log);
+                                const DetectionLog& log,
+                                const std::string& location);
 
 ///
 /// \brief Print DetectionLog to stdout in the format
@@ -91,7 +92,7 @@ void SaveDetectionLogToTrajFile(const std::string& path,
 ///        evaluation tool.
 /// \param[in] log  -- detection log to print
 ///
-void PrintDetectionLog(const DetectionLog& log);
+void PrintDetectionLog(const DetectionLog& log, const std::string& location);
 
 ///
 /// \brief Draws a polyline on a frame.

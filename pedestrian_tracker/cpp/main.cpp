@@ -97,6 +97,10 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
         throw std::logic_error("Parameter -m_reid is not set");
     }
 
+    if((!FLAGS_out.empty() || FLAGS_r) && FLAGS_location.empty()){
+        throw std::logic_error("Parameter -location is not set for output file");
+    }
+
     return true;
 }
 
@@ -113,6 +117,7 @@ int main(int argc, char **argv) {
         auto reid_model = FLAGS_m_reid;
 
         auto detlog_out = FLAGS_out;
+        auto detlocation = FLAGS_location;
 
         auto detector_mode = FLAGS_d_det;
         auto reid_mode = FLAGS_d_reid;
@@ -213,9 +218,9 @@ int main(int argc, char **argv) {
                 presenter.handleKey(k);
             }
 
-            if (should_save_det_log && (frameIdx % 100 == 0)) {
+            if (should_save_det_log && (frameIdx % 100 == 0) && !detlocation.empty()) {
                 DetectionLog log = tracker->GetDetectionLog(true);
-                SaveDetectionLogToTrajFile(detlog_out, log);
+                SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
             }
             frame = cap->read();
             if (!frame.data) break;
@@ -227,9 +232,9 @@ int main(int argc, char **argv) {
             DetectionLog log = tracker->GetDetectionLog(true);
 
             if (should_save_det_log)
-                SaveDetectionLogToTrajFile(detlog_out, log);
+                SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
             if (should_print_out)
-                PrintDetectionLog(log);
+                PrintDetectionLog(log, detlocation);
         }
         if (should_use_perf_counter) {
             pedestrian_detector.PrintPerformanceCounts(getFullDeviceName(ie, FLAGS_d_det));

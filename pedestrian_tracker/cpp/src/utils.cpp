@@ -20,7 +20,8 @@ using namespace InferenceEngine;
 namespace {
 template <typename StreamType>
 void SaveDetectionLogToStream(StreamType& stream,
-                              const DetectionLog& log) {
+                              const DetectionLog& log,
+                              const std::string& location) {
     struct tm * timestamp;
     time_t tTime;
     std::chrono::system_clock::time_point tPoint;
@@ -45,6 +46,7 @@ void SaveDetectionLogToStream(StreamType& stream,
             stream  << timeStr << ',' << object.object_id << ','
                 << object.rect.x << ',' << object.rect.y << ','
                 << object.rect.width << ',' << object.rect.height << ',' << object.confidence; 
+            stream << "," << location;
             stream << '\n';
         }
     }
@@ -65,14 +67,15 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
 }
 
 void SaveDetectionLogToTrajFile(const std::string& path,
-                                const DetectionLog& log) {
+                                const DetectionLog& log,
+                                const std::string& location) {
     std::ofstream file(path.c_str());
     PT_CHECK(file.is_open());
-    SaveDetectionLogToStream(file, log);
+    SaveDetectionLogToStream(file, log, location);
 }
 
-void PrintDetectionLog(const DetectionLog& log) {
-    SaveDetectionLogToStream(std::cout, log);
+void PrintDetectionLog(const DetectionLog& log, const std::string& location) {
+    SaveDetectionLogToStream(std::cout, log, location);
 }
 
 InferenceEngine::Core
