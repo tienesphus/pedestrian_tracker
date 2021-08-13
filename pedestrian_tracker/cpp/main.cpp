@@ -14,7 +14,7 @@
 #include <utils/images_capture.h>
 
 #include <opencv2/core.hpp>
-
+#include <chrono>
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -178,7 +178,8 @@ int main(int argc, char **argv) {
             TrackedObjects detections = pedestrian_detector.getResults();
 
             // timestamp in milliseconds
-            uint64_t cur_timestamp = static_cast<uint64_t >(1000.0 / video_fps * frameIdx);
+            //uint64_t cur_timestamp = static_cast<uint64_t >(1000.0 / video_fps * frameIdx);
+            uint64_t cur_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             tracker->Process(frame, detections, cur_timestamp);
 
             presenter.drawGraphs(frame);
