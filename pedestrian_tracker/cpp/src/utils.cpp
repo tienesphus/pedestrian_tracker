@@ -5,6 +5,12 @@
 #include "utils.hpp"
 
 #include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/core.hpp>
+
+#include <fstream>
+#include <string>
+#include <sstream>
 
 #include <algorithm>
 #include <vector>
@@ -16,7 +22,6 @@
 #include <ctime>
 
 using namespace InferenceEngine;
-
 namespace {
 template <typename StreamType>
 void SaveDetectionLogToStream(StreamType& stream,
@@ -64,6 +69,103 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
     for (size_t i = 1; i < polyline.size(); i++) {
         cv::line(*image, polyline[i - 1], polyline[i], color, lwd);
     }
+}
+void MouseCallBack(int event, int x, int y, int flags, void* param)
+{
+    MouseParams* mp = (MouseParams *)param;
+    cv::Mat *frame = ((cv::Mat *)mp->frame);
+	if (event == cv::EVENT_LBUTTONDOWN)
+	{
+		if (mp->mouse_input.size() < 4) {
+			cv::circle(*frame, cv::Point2f(x, y), 
+            5, 
+            cv::Scalar(0, 0, 255),
+            4);
+                
+		}
+		else
+		{
+			cv::circle(*frame, 
+            cv::Point2f(x, y), 
+            5, 
+            cv::Scalar(255, 0, 0),
+            4);
+          
+		}
+		if (mp->mouse_input.size() >= 1 and mp->mouse_input.size() <= 3) {
+            /*vector<Point2f> points {Point2f(197,364),Point2f(367,81),
+        Point2f(454,86),
+        Point2f(599,396),
+        Point2f(426,335),
+        Point2f(480,336),
+        Point2f(426,291),
+        Point2f(472,287)};*/
+			
+			cv::line(*frame, cv::Point2f(x, y), 
+            cv::Point2f(mp->mouse_input[mp->mouse_input.size() - 1].x,mp->mouse_input[mp->mouse_input.size() - 1].y),
+            cv::Scalar(70, 70, 70), 
+            2);
+			if (mp->mouse_input.size() == 3) {
+				line(*frame,  cv::Point2f(x, y),
+                  cv::Point2f(mp->mouse_input[0].x, mp->mouse_input[0].y),
+                    cv::Scalar(70, 70, 70), 
+                   2);
+			}
+
+		}
+        std::cout << "Point2f(" << x << ", " << y << ")," << std::endl;
+		mp->mouse_input.push_back( cv::Point2f((float)x, (float)y));
+        
+        
+	}
+}
+
+void SetCameraPoints(MouseParams *mp){
+
+    for (;;) {
+        cv::Mat* frame_copy = mp->frame;
+        cv::imshow("image", *frame_copy);
+        cv::waitKey(1);
+        if (mp->mouse_input.size() == 8) {
+            cv::destroyWindow("image");
+            break;
+            }
+        
+        }
+
+}
+std::vector<cv::Point2f> ReadConfig(const std::string& path){
+    std::ifstream config_file(path);
+    std::string line;
+    std::vector<cv::Point2f>  points;
+    if(!config_file.is_open()){
+        throw std::runtime_error("Can't open camera config file (" +path+ ")");
+    }
+    if (config_file.peek() == std::ifstream::traits_type::eof()){
+        throw std::runtime_error("config file is empty (" +path+ ")");
+    }
+    while (getline(config_file,line))
+    {
+        std::istringstream iss(line);
+        int x,y;
+        if(!(iss >>x >> y)){
+            break;
+        }
+        points.push_back(cv::Point2f(x,y));
+    }
+    return points;
+}
+
+void write_config(const std::string &path, std::vector<cv::Point2f> points){
+    std::ofstream config_file(path, std::ofstream::out | std::ofstream::trunc);
+
+    if(!config_file.is_open()){
+        throw std::runtime_error("Can't open camera config file (" +path+ ")");
+    }
+    for(const cv::Point2f &point :points){
+        config_file << point.x << " " << point.y << std::endl;
+    }
+    config_file.close();
 }
 
 void SaveDetectionLogToTrajFile(const std::string& path,

@@ -16,7 +16,7 @@
 #include <map>
 
 #include <utils/common.hpp>
-
+#include <opencv2/core.hpp>
 ///
 /// \brief The DetectionLogEntry struct
 ///
@@ -105,6 +105,41 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
                   const cv::Scalar& color, cv::Mat* image,
                   int lwd = 5);
 
+
+///
+/// \brief The mouse parameters struct 
+///
+/// passing frame and mouse points
+///
+struct MouseParams{
+    cv::Mat *frame;
+    std::vector<cv::Point2f> mouse_input;
+};
+///
+/// \brief capture coordinates of mouse click, draw circles on those points
+/// \param[in] event one of cv::MouseEventTypes constants (EVENT_LBUTTONDOWN,EVENT_RBUTTONDOWN)
+/// \param[in] x the x-coordinate of the mouse event.
+/// \param[in] y the y-coordinate of the mouse event.
+/// \param[in] flags one of the cv::MouseEventFlags constants
+/// \param[in] param reference to the MouseParams,contating reference frame and mouse points for drawing circles.
+void MouseCallBack(int event, int x, int y, int flags, void* param);
+
+///
+/// \brief allow user to configure camera by clicking 7 points
+/// \param[in] MouseParams struct containing reference frame and mouse points
+void SetCameraPoints(MouseParams* mp);
+
+/// 
+/// \brief reading the camera config file (a text file containing points)
+/// \param[in] path Path to the file
+/// \return points a list of points(x,y coordinates) 
+std::vector<cv::Point2f> ReadConfig(const std::string& path);
+
+///
+/// \brief writing camera configuration to file (x,y coordinates)
+/// \param[in] path Path to the file
+/// \return points a list of points(x,y coordinates)
+void write_config(const std::string &path, std::vector<cv::Point2f> points);
 ///
 /// \brief Stream output operator for deque of elements.
 /// \param[in,out] os Output stream.

@@ -9,12 +9,16 @@
 #include "distance.hpp"
 #include "detector.hpp"
 #include "pedestrian_tracker.hpp"
+#include "distance_estimate.hpp"
 
 #include <monitors/presenter.h>
 #include <utils/images_capture.h>
 
-#include <opencv2/core.hpp>
+
 #include <chrono>
+
+
+
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -89,6 +93,11 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
         throw std::logic_error("Parameter -i is not set");
     }
 
+    //-----//
+    if(FLAGS_config.empty()){
+        throw std::logic_error("Parameter -config is not set");
+    }
+    //-----//
     if (FLAGS_m_det.empty()) {
         throw std::logic_error("Parameter -m_det is not set");
     }
@@ -127,9 +136,12 @@ int main(int argc, char **argv) {
         bool should_use_perf_counter = FLAGS_pc;
 
         bool should_print_out = FLAGS_r;
-
+       
         bool should_show = !FLAGS_no_show;
+        
         int delay = FLAGS_delay;
+
+        bool is_re_config = FLAGS_reconfig;
         if (!should_show)
             delay = -1;
         should_show = (delay >= 0);
@@ -156,6 +168,9 @@ int main(int argc, char **argv) {
             // the default frame rate for DukeMTMC dataset
             video_fps = 60.0;
         }
+        std::vector<cv::Point2f> mouse_input;
+        std::vector<cv::Point2f> points;
+
 
         cv::Mat frame = cap->read();
         if (!frame.data) throw std::runtime_error("Can't read an image from the input");
@@ -175,8 +190,25 @@ int main(int argc, char **argv) {
             std::cout << " or switch to the output window and press ESC key";
         }
         std::cout << std::endl;
+        MouseParams mp ={&frame,mouse_input};
 
+        if(is_re_config){
+            cv::namedWindow("image", 1);
+	        cv::setMouseCallback("image", MouseCallBack, (void *) &mp);
+            SetCameraPoints(&mp);
+            points = mp.mouse_input;
+            write_config(FLAGS_config,points);
+        }
+        else{
+            points = ReadConfig(FLAGS_config);
+            mp.mouse_input = points;
+        }
+
+        DistanceEstimate estimator(frame,mp.mouse_input);
+        
+        //------------------//
         for (unsigned frameIdx = 0; ; ++frameIdx) {
+
             pedestrian_detector.submitFrame(frame, frameIdx);
             pedestrian_detector.waitAndFetchResults();
 
@@ -202,32 +234,35 @@ int main(int argc, char **argv) {
                 cv::rectangle(frame, detection.rect, cv::Scalar(0, 0, 255), 3);
                 std::string text = std::to_string(detection.object_id) +
                     " conf: " + std::to_string(detection.confidence);
-                cv::putText(frame, text, detection.rect.tl(), cv::FONT_HERSHEY_COMPLEX,
-                            1.0, cv::Scalar(0, 0, 255), 3);
+                //cv::putText(frame, text, detection.rect.tl(), cv::FONT_HERSHEY_COMPLEX,
+               //             1.0, cv::Scalar(0, 0, 255), 3);
             }
-
+            
             framesProcessed++;
-            if (videoWriter.isOpened() && (FLAGS_limit == 0 || framesProcessed <= FLAGS_limit)) {
-                videoWriter.write(frame);
-            }
+
             if (should_show) {
+                estimator.DrawDistance(detections);
                 cv::imshow("dbg", frame);
                 char k = cv::waitKey(delay);
                 if (k == 27)
                     break;
                 presenter.handleKey(k);
+               
             }
-
+            if (videoWriter.isOpened() && (FLAGS_limit == 0 || framesProcessed <= FLAGS_limit)) {
+                videoWriter.write(frame);
+            }
             if (should_save_det_log && (frameIdx % 100 == 0)) {
                 DetectionLog log = tracker->GetDetectionLog(true);
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
             }
             frame = cap->read();
+            cv::waitKey(20);
             if (!frame.data) break;
             if (frame.size() != firstFrameSize)
                 throw std::runtime_error("Can't track objects on images of different size");
         }
-
+        
         if (should_keep_tracking_info) {
             DetectionLog log = tracker->GetDetectionLog(true);
 
