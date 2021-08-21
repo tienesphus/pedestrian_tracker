@@ -26,6 +26,10 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <sstream>
+#include <vector>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/opencv.hpp>
 
 #include "lodepng.h"
 #include "heatmap.h"
@@ -175,6 +179,54 @@ std::map<std::string, const heatmap_colorscheme_t*> g_schemes = {
     {"YlOrRd_mixed_exp", heatmap_cs_YlOrRd_mixed_exp},
 };
 
+std::vector<int> praise_csv(std::string line) {
+    std::vector<int> result;
+    std::vector<std::string> temp;
+    std::stringstream s_stream(line);
+        while(s_stream.good()) {
+            std::string substr;
+            std::getline(s_stream, substr, ',');
+            temp.push_back(substr);
+        }
+    try {
+        result.push_back(std::stoi(temp[3]) + std::stoi(temp[5])/2);
+        result.push_back(std::stoi(temp[4]) + std::stoi(temp[6]));
+    }
+    catch (std::exception e) {
+        std::cerr << "Error praising input data." << std::endl;
+    }
+    return result;
+}
+void blend(cv::Mat background, cv::Mat foreground, float opacity) {
+    if(background.empty())
+        std::cerr << "Background is empty!" << std::endl;
+
+    if(foreground.empty())
+        std::cerr << "Foreground is empty!" << std::endl;
+
+    if(background.size() != foreground.size())
+        std::cerr << "Dimension Mismatch: background and foreground must have the same dimensions" << std::endl;
+
+
+    int h = foreground.size().height;
+    int w = foreground.size().width;
+
+    int rows = background.size().height; 
+    int columns = background.size().width;
+
+    for(int i = 0; i < h; i++){
+        for(int j = 0; j < w; j++){
+            if(i >= rows || j >= columns)
+                continue;
+
+            float alpha = (foreground.at<cv::Vec4b>(i,j)[3]/255.0)*opacity;
+            for(int z = 0; z < 3; z++){
+                background.at<cv::Vec3b>(i,j)[z] = alpha*foreground.at<cv::Vec4b>(i,j)[z]+(1-alpha)*background.at<cv::Vec3b>(i,j)[z];
+            }
+        }
+    }
+}
+
 int main(int argc, char* argv[])
 {
     if(argc == 2 && std::string(argv[1]) == "-l") {
@@ -184,29 +236,22 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if(argc < 3 || 6 < argc) {
+    if(argc < 2 || 5 < argc) {
         std::cerr << "Invalid number of arguments!" << std::endl;
         std::cout << "Usage:" << std::endl;
-        std::cout << "  " << argv[0] << " WIDTH HEIGHT [STAMP_RADIUS [COLORSCHEME]] < points.txt > heatmap.png" << std::endl;
+        std::cout << "  " << argv[0] << " reference.png [STAMP_RADIUS [COLORSCHEME]] < data.csv" << std::endl;
         std::cout << std::endl;
-#ifdef WEIGHTED
-        std::cout << "  points.txt should contain a list of space-separated triplets of x, y and w" << std::endl;
-        std::cout << "  where x and y are coordinates (as unsigned integers) of points to put onto" << std::endl;
-        std::cout << "  the heatmap and w is the weight (as float) of the point, e.g.:" << std::endl;
-        std::cout << "    5 10 0.5 1 13 12.3 125 10 1.0" << std::endl;
-        std::cout << "  will add the points (5, 10) with weight 0.5, (1, 13) with weight 12.3," << std::endl;
-        std::cout << "  and (125, 10) with weight 1.0 onto the map." << std::endl;
-#else
-        std::cout << "  points.txt should contain a list of space-separated pairs of x and y" << std::endl;
-        std::cout << "  coordinates (as unsigned integers) of points to put onto the heatmap, e.g.:" << std::endl;
-        std::cout << "    5 10 1 13 125 10" << std::endl;
-        std::cout << "  will add the points (5, 10), (1, 13), and (125, 10) onto the map." << std::endl;
-#endif // WEIGHTED
-        std::cout << "  Note that a newline counts as a space, so you may input one point per line." << std::endl;
+        std::cout << "  data.csv is the output of pedestrian_tracker and it should contains" << std::endl;
+        std::cout << "  coordinates (x, y) as well as (width, height) in " << std::endl;
+        std::cout << "  column 4, 5, 6, 7 respectively" << std::endl;
         std::cout << std::endl;
-        std::cout << "  The default STAMP_RADIUS is a twentieth of the smallest heatmap dimension." << std::endl;
-        std::cout << "  For instance, for a 512x1024 heatmap, the default stamp_radius is 25," << std::endl;
-        std::cout << "  resulting in a stamp of 51x51 pixels." << std::endl;
+        std::cout << "  This module calculates feet coordinates from input data using the following formulas:" << std::endl;
+        std::cout << "  feet_x = x + width/2 || feet_y = y + height" << std::endl;
+        std::cout << "  Then (feet_x, feet_y) will be used to create points to put onto the heatmap." << std::endl;
+        std::cout << std::endl;
+        std::cout << "  The default STAMP_RADIUS is 1/10th of the smallest heatmap dimension." << std::endl;
+        std::cout << "  For instance, for a 512x1024 heatmap, the default stamp_radius is 51," << std::endl;
+        std::cout << "  resulting in a stamp of 102x102 pixels." << std::endl;
         std::cout << std::endl;
         std::cout << "  To get a list of available colorschemes, run" << std::endl;
         std::cout << "  " << argv[0] << " -l" << std::endl;
@@ -215,31 +260,37 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    const size_t w = atoi(argv[1]), h = atoi(argv[2]);
+    cv::Mat background = cv::imread(argv[1]);
+    if (background.empty()) {
+        std::cerr << "Can't read " << argv[1];
+        return 1;
+    }
+        
+    size_t w = background.size().width, h = background.size().height;
     heatmap_t* hm = heatmap_new(w, h);
 
-    const size_t r = argc >= 4 ? atoi(argv[3]) : std::min(w, h)/10;
+    const size_t r = argc >= 3 ? atoi(argv[2]) : std::min(w, h)/10;
     heatmap_stamp_t* stamp = heatmap_stamp_gen(r);
 
-    if(argc >= 5 && g_schemes.find(argv[4]) == g_schemes.end()) {
+    if(argc >= 4 && g_schemes.find(argv[3]) == g_schemes.end()) {
         std::cerr << "Unknown colorscheme. Run " << argv[0] << " -l for a list of valid ones." << std::endl;
         return 1;
     }
-    const heatmap_colorscheme_t* colorscheme = argc == 5 ? g_schemes[argv[4]] : heatmap_cs_default;
+    const heatmap_colorscheme_t* colorscheme = argc == 4 ? g_schemes[argv[3]] : heatmap_cs_default;
 
+    std::vector<int> praised_result;
+    std::string line;
     unsigned int x, y;
     float weight = 1.0f;
-#ifdef WEIGHTED
-    while(std::cin >> x >> y >> weight) {
-#else
-    while(std::cin >> x >> y) {
-#endif // WEIGHTED
-        if(x < w && y < h) {
-            // Always using the weighted one even on unweighted data is not a
-            // drama for this example and keeps the code somewhat clearer.
+
+    while( std::getline(std::cin, line) ) {
+        praised_result = praise_csv(line);
+        x = praised_result[0];
+        y = praised_result[1];
+        if(x <= w && y <= h) {
             heatmap_add_weighted_point_with_stamp(hm, x, y, weight, stamp);
         } else {
-            std::cerr << "Warning: Skipping out-of-bound input coordinate: (" << x << "," << y << ")." << std::endl;
+            std::cerr << "[Warning]: Skipping out-of-bound input coordinate: (" << x << "," << y << ")." << std::endl;
         }
     }
     heatmap_stamp_free(stamp);
@@ -247,14 +298,19 @@ int main(int argc, char* argv[])
     std::vector<unsigned char> image(w*h*4);
     heatmap_render_to(hm, colorscheme, &image[0]);
     heatmap_free(hm);
-
+    
     std::vector<unsigned char> png;
     if(unsigned error = lodepng::encode(png, image, w, h)) {
-        std::cerr << "encoder error " << error << ": "<< lodepng_error_text(error) << std::endl;
-        return 1;
+       std::cerr << "encoder error " << error << ": "<< lodepng_error_text(error) << std::endl;
+       return 1;
     }
-
-    std::cout.write((char*)&png[0], png.size());
+    lodepng::save_file(png, "result.png");
+    
+    cv::Mat foreground = cv::imread("result.png", cv::IMREAD_UNCHANGED);
+    //blend background and foreground
+    blend(background, foreground, 0.30);
+    cv::imwrite("result.png", background);
 
     return 0;
 }
+
