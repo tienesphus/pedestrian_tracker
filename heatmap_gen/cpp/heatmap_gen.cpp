@@ -236,12 +236,14 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if(argc < 2 || 5 < argc) {
+    if(argc < 3 || 6 < argc) {
         std::cerr << "Invalid number of arguments!" << std::endl;
         std::cout << "Usage:" << std::endl;
-        std::cout << "  " << argv[0] << " reference.png [STAMP_RADIUS [COLORSCHEME]] < data.csv" << std::endl;
+        std::cout << "  " << argv[0] << " reference.png output.png [STAMP_RADIUS [COLORSCHEME]] < data.csv" << std::endl;
         std::cout << std::endl;
-        std::cout << "  data.csv is the output of pedestrian_tracker and it should contains" << std::endl;
+        std::cout << "  output.png is the name of the output image file." << std::endl;
+        std::cout << std::endl;
+        std::cout << "  data.csv should follow output format of pedestrian_tracker and it should contain" << std::endl;
         std::cout << "  coordinates (x, y) as well as (width, height) in " << std::endl;
         std::cout << "  column 4, 5, 6, 7 respectively" << std::endl;
         std::cout << std::endl;
@@ -269,14 +271,14 @@ int main(int argc, char* argv[])
     size_t w = background.size().width, h = background.size().height;
     heatmap_t* hm = heatmap_new(w, h);
 
-    const size_t r = argc >= 3 ? atoi(argv[2]) : std::min(w, h)/10;
+    const size_t r = argc >= 4 ? atoi(argv[3]) : std::min(w, h)/10;
     heatmap_stamp_t* stamp = heatmap_stamp_gen(r);
 
-    if(argc >= 4 && g_schemes.find(argv[3]) == g_schemes.end()) {
+    if(argc >= 5 && g_schemes.find(argv[4]) == g_schemes.end()) {
         std::cerr << "Unknown colorscheme. Run " << argv[0] << " -l for a list of valid ones." << std::endl;
         return 1;
     }
-    const heatmap_colorscheme_t* colorscheme = argc == 4 ? g_schemes[argv[3]] : heatmap_cs_default;
+    const heatmap_colorscheme_t* colorscheme = argc == 5 ? g_schemes[argv[4]] : heatmap_cs_default;
 
     std::vector<int> praised_result;
     std::string line;
@@ -304,12 +306,12 @@ int main(int argc, char* argv[])
        std::cerr << "encoder error " << error << ": "<< lodepng_error_text(error) << std::endl;
        return 1;
     }
-    lodepng::save_file(png, "result.png");
+    lodepng::save_file(png, argv[2]);
     
-    cv::Mat foreground = cv::imread("result.png", cv::IMREAD_UNCHANGED);
+    cv::Mat foreground = cv::imread(argv[2], cv::IMREAD_UNCHANGED);
     //blend background and foreground
     blend(background, foreground, 0.30);
-    cv::imwrite("result.png", background);
+    cv::imwrite(argv[2], background);
 
     return 0;
 }
