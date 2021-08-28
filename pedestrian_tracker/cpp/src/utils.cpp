@@ -39,6 +39,7 @@ void SaveDetectionLogToStream(StreamType& stream,
                   [](const TrackedObject& a,
                      const TrackedObject& b)
                   { return a.object_id < b.object_id; });
+        int totalCount = objects.size();
         for (const auto& object : objects) {
             auto frame_idx_to_save = entry.frame_idx;
             stream << frame_idx_to_save << ',';
@@ -51,7 +52,7 @@ void SaveDetectionLogToStream(StreamType& stream,
             stream  << timeStr << ',' << object.object_id << ','
                 << object.rect.x << ',' << object.rect.y << ','
                 << object.rect.width << ',' << object.rect.height << ',' << object.confidence; 
-            stream << "," << location;
+            stream << "," << location << "," << totalCount;
             stream << '\n';
         }
     }
