@@ -139,7 +139,7 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path);
 /// \brief writing camera configuration to file (x,y coordinates)
 /// \param[in] path Path to the file
 /// \return points a list of points(x,y coordinates)
-void write_config(const std::string &path, std::vector<cv::Point2f> points);
+void WriteConfig(const std::string &path, std::vector<cv::Point2f> points);
 ///
 /// \brief Stream output operator for deque of elements.
 /// \param[in,out] os Output stream.

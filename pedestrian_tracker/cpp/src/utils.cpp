@@ -147,16 +147,27 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path){
     while (getline(config_file,line))
     {
         std::istringstream iss(line);
+        std::string x_input,y_input;
         int x,y;
-        if(!(iss >>x >> y)){
+        if(!(iss >>x_input >> y_input)){
             break;
         }
-        points.push_back(cv::Point2f(x,y));
+        try{
+            x =std::stoi(x_input);
+            y =std::stoi(y_input);
+            points.push_back(cv::Point2f(x,y));
+        }catch(std::invalid_argument& e){
+            throw std::runtime_error("config file is in a wrong format (" +path+ ")");
+        }
+        
+    }
+    if(points.size() !=8){
+        throw std::runtime_error("config file should have total size of 8 (" +path+ ")");
     }
     return points;
 }
 
-void write_config(const std::string &path, std::vector<cv::Point2f> points){
+void WriteConfig(const std::string &path, std::vector<cv::Point2f> points){
     std::ofstream config_file(path, std::ofstream::out | std::ofstream::trunc);
 
     if(!config_file.is_open()){
@@ -167,6 +178,7 @@ void write_config(const std::string &path, std::vector<cv::Point2f> points){
     }
     config_file.close();
 }
+
 
 void SaveDetectionLogToTrajFile(const std::string& path,
                                 const DetectionLog& log,

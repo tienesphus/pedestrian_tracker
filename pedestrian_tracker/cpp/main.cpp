@@ -93,11 +93,6 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
         throw std::logic_error("Parameter -i is not set");
     }
 
-    //-----//
-    if(FLAGS_config.empty()){
-        throw std::logic_error("Parameter -config is not set");
-    }
-    //-----//
     if (FLAGS_m_det.empty()) {
         throw std::logic_error("Parameter -m_det is not set");
     }
@@ -141,7 +136,9 @@ int main(int argc, char **argv) {
         
         int delay = FLAGS_delay;
 
+        auto path_to_config = FLAGS_config;
         bool is_re_config = FLAGS_reconfig;
+    
         if (!should_show)
             delay = -1;
         should_show = (delay >= 0);
@@ -168,8 +165,7 @@ int main(int argc, char **argv) {
             // the default frame rate for DukeMTMC dataset
             video_fps = 60.0;
         }
-        std::vector<cv::Point2f> mouse_input;
-        std::vector<cv::Point2f> points;
+        
 
 
         cv::Mat frame = cap->read();
@@ -190,21 +186,27 @@ int main(int argc, char **argv) {
             std::cout << " or switch to the output window and press ESC key";
         }
         std::cout << std::endl;
+        
+        std::vector<cv::Point2f> mouse_input;
+        std::vector<cv::Point2f> points;
         MouseParams mp ={&frame,mouse_input};
-
-        if(is_re_config){
-            cv::namedWindow("image", 1);
-	        cv::setMouseCallback("image", MouseCallBack, (void *) &mp);
-            SetCameraPoints(&mp);
-            points = mp.mouse_input;
-            write_config(FLAGS_config,points);
+        DistanceEstimate estimator(frame);
+        if(!path_to_config.empty()){
+            
+            if(is_re_config){
+                cv::namedWindow("image", 1);
+                cv::setMouseCallback("image", MouseCallBack, (void *) &mp);
+                SetCameraPoints(&mp);
+                points = mp.mouse_input;
+                WriteConfig(FLAGS_config,points);
+            }
+            else{
+                points = ReadConfig(FLAGS_config);
+                mp.mouse_input = points;
+            }
+            DistanceEstimate temp(frame,mp.mouse_input);
+            estimator = temp;
         }
-        else{
-            points = ReadConfig(FLAGS_config);
-            mp.mouse_input = points;
-        }
-
-        DistanceEstimate estimator(frame,mp.mouse_input);
         
         //------------------//
         for (unsigned frameIdx = 0; ; ++frameIdx) {
@@ -241,7 +243,9 @@ int main(int argc, char **argv) {
             framesProcessed++;
 
             if (should_show) {
-                estimator.DrawDistance(detections);
+                if(!path_to_config.empty()){
+                    estimator.DrawDistance(detections);
+                }              
                 cv::imshow("dbg", frame);
                 char k = cv::waitKey(delay);
                 if (k == 27)

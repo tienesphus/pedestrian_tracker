@@ -43,6 +43,7 @@ static const char output_log_message[] = "Optional. The file name to write outpu
 static const char location_message[] = "Required for output log file.";
 static const char utilization_monitors_message[] = "Optional. List of monitors to show initially.";
 static const char re_configuration_message[] ="Optional.re-calibrate camera. New (x,y) coordinates will be re-written to file provided by -config";
+static const char configuration_message[] = "Optional.An input file to calibrate camera";
 
 DEFINE_bool(h, false, help_message);
 DEFINE_uint32(first, 0, first_frame_message);
@@ -61,6 +62,7 @@ DEFINE_string(out, "", output_log_message);
 DEFINE_string(location, "", location_message);
 DEFINE_string(u, "", utilization_monitors_message);
 //-----//
+DEFINE_string(config, "",configuration_message);
 DEFINE_bool(reconfig, false,re_configuration_message);
 //-----//
 /**
