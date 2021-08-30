@@ -165,7 +165,9 @@ int main(int argc, char **argv) {
             // the default frame rate for DukeMTMC dataset
             video_fps = 60.0;
         }
-        
+        if(is_re_config && path_to_config.empty()){
+            throw std::logic_error("Parameter -config is not set(to use -reconfig, -config must be provided)");
+        }
 
 
         cv::Mat frame = cap->read();
