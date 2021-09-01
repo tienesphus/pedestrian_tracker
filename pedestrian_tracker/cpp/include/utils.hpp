@@ -115,6 +115,7 @@ struct MouseParams{
     cv::Mat *frame;
     std::vector<cv::Point2f> mouse_input;
 };
+cv::Point2f GetBottomPoint(TrackedObject box);
 ///
 /// \brief capture coordinates of mouse click, draw circles on those points
 /// \param[in] event one of cv::MouseEventTypes constants (EVENT_LBUTTONDOWN,EVENT_RBUTTONDOWN)

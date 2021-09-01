@@ -26,7 +26,7 @@
 #include <memory>
 #include <string>
 #include <gflags/gflags.h>
-
+#include <math.h>
 using namespace InferenceEngine;
 using ImageWithFrameIndex = std::pair<cv::Mat, int>;
 
@@ -107,7 +107,81 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
 
     return true;
 }
+void roiCallback(int event, int x, int y, int flags, void* param){
+    MouseParams* mp = (MouseParams *)param;
+    cv::Mat *frame = ((cv::Mat *)mp->frame);
+	if (event == cv::EVENT_LBUTTONDOWN)
+	{
+		if (mp->mouse_input.size() < 4) {
+			cv::circle(*frame, cv::Point2f(x, y), 
+            5, 
+            cv::Scalar(0, 0, 255),
+            4);
+                
+		}
+		else
+		{
+			cv::circle(*frame, 
+            cv::Point2f(x, y), 
+            5, 
+            cv::Scalar(255, 0, 0),
+            4);
+          
+		}
+		if (mp->mouse_input.size() >= 1 and mp->mouse_input.size() <= 3) {			
+			cv::line(*frame, cv::Point2f(x, y), 
+            cv::Point2f(mp->mouse_input[mp->mouse_input.size() - 1].x,mp->mouse_input[mp->mouse_input.size() - 1].y),
+            cv::Scalar(70, 70, 70), 
+            2);
+			if (mp->mouse_input.size() == 3) {
+				line(*frame,  cv::Point2f(x, y),
+                  cv::Point2f(mp->mouse_input[0].x, mp->mouse_input[0].y),
+                    cv::Scalar(70, 70, 70), 
+                   2);
+			}
 
+		}
+        std::cout << "Point2f(" << x << ", " << y << ")," << std::endl;
+		mp->mouse_input.push_back( cv::Point2f((float)x, (float)y));
+        
+        
+	}
+}
+
+void setPoint(MouseParams *mp){
+
+    for (;;) {
+        cv::Mat* frame_copy = mp->frame;
+        cv::imshow("ROI-selection", *frame_copy);
+        cv::waitKey(1);
+        if (mp->mouse_input.size() == 5) {
+            cv::destroyWindow("ROI-selection");
+            break;
+            }
+        
+        }
+
+}
+void drawline(MouseParams *mp){
+    MouseParams* roi = (MouseParams *)mp;
+    cv::Mat *frame = ((cv::Mat *)mp->frame);
+    cv::line(*frame, cv::Point2f(roi->mouse_input[0].x, roi->mouse_input[0].y), 
+            cv::Point2f(roi->mouse_input[1].x,roi->mouse_input[1].y),
+            cv::Scalar(70, 70, 70), 
+            2);
+    cv::line(*frame, cv::Point2f(roi->mouse_input[1].x, roi->mouse_input[1].y), 
+            cv::Point2f(roi->mouse_input[2].x,roi->mouse_input[2].y),
+            cv::Scalar(70, 70, 70), 
+            2);
+    cv::line(*frame, cv::Point2f(roi->mouse_input[2].x, roi->mouse_input[2].y), 
+            cv::Point2f(roi->mouse_input[3].x,roi->mouse_input[3].y),
+            cv::Scalar(70, 70, 70), 
+            2);
+    cv::line(*frame, cv::Point2f(roi->mouse_input[3].x, roi->mouse_input[3].y), 
+            cv::Point2f(roi->mouse_input[0].x,roi->mouse_input[0].y),
+            cv::Scalar(70, 70, 70), 
+            2);
+}
 int main(int argc, char **argv) {
     try {
         std::cout << "InferenceEngine: " << printable(*GetInferenceEngineVersion()) << std::endl;
@@ -189,7 +263,7 @@ int main(int argc, char **argv) {
         }
         std::cout << std::endl;
         
-        std::vector<cv::Point2f> mouse_input;
+        std::vector<cv::Point2f> mouse_input,mouse;
         std::vector<cv::Point2f> points;
         MouseParams mp ={&frame,mouse_input};
         DistanceEstimate estimator(frame);
@@ -209,10 +283,17 @@ int main(int argc, char **argv) {
             DistanceEstimate temp(frame,mp.mouse_input);
             estimator = temp;
         }
+        //------------------//
+        MouseParams roi ={&frame,mouse};
+        cv::namedWindow("ROI-selection", 1);
+        cv::setMouseCallback("ROI-selection",roiCallback,(void *)&roi);
+        setPoint(&roi);
+        std::vector<TrackedObject> pedestrian_roi;
+
         
         //------------------//
         for (unsigned frameIdx = 0; ; ++frameIdx) {
-
+            drawline(&roi);
             pedestrian_detector.submitFrame(frame, frameIdx);
             pedestrian_detector.waitAndFetchResults();
 
@@ -234,12 +315,20 @@ int main(int argc, char **argv) {
 
             // Drawing tracked detections only by RED color and print ID and detection
             // confidence level.
-            for (const auto &detection : tracker->TrackedDetections()) {
+            for (auto &detection : tracker->TrackedDetections(roi.mouse_input)) {
                 cv::rectangle(frame, detection.rect, cv::Scalar(0, 0, 255), 3);
                 std::string text = std::to_string(detection.object_id) +
                     " conf: " + std::to_string(detection.confidence);
                 //cv::putText(frame, text, detection.rect.tl(), cv::FONT_HERSHEY_COMPLEX,
                //             1.0, cv::Scalar(0, 0, 255), 3);
+
+                double check;
+                check = cv::pointPolygonTest(roi.mouse_input,GetBottomPoint(detection),false);
+                uint64_t cur_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                if(check!=-1){
+                    detection.time_of_stay = cur_timestamp - detection.timestamp;
+                    std::cout << "person-"<<detection.object_id << "stayed in the ROI for " << detection.time_of_stay << "\n";
+                }
             }
             
             framesProcessed++;

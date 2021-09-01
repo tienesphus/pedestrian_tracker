@@ -134,8 +134,8 @@ float DistanceEstimate::EstimateRealDist(cv::Point2f point_1, cv::Point2f point_
 	y = abs(point_1.y - point_2.y);
 	x = abs(point_1.x - point_2.x);
     //getting the pixel ratio for 150cm = 1.5m
-	dist_x = (float)(y / distance_h) * 150;
-	dist_y = (float)(x / distance_w) * 150;
+	dist_y = (float)(y / distance_h) * 150;
+	dist_x = (float)(x / distance_w) * 150;
 
 	result = (float)sqrtf((powf(dist_x, 2) + powf(dist_y, 2)));
     //convert cm to m

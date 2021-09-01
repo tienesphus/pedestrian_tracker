@@ -70,6 +70,17 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
         cv::line(*image, polyline[i - 1], polyline[i], color, lwd);
     }
 }
+cv::Point2f GetBottomPoint(TrackedObject box){
+
+    cv::Point2f temp_pnt(1); 
+
+    float width, height;
+    width = box.rect.width;
+    height = box.rect.height;
+    temp_pnt = cv::Point2f((box.rect.x + (width*0.5)), (box.rect.y+height));	
+		
+	return temp_pnt;
+}
 void MouseCallBack(int event, int x, int y, int flags, void* param)
 {
     MouseParams* mp = (MouseParams *)param;
@@ -93,13 +104,7 @@ void MouseCallBack(int event, int x, int y, int flags, void* param)
           
 		}
 		if (mp->mouse_input.size() >= 1 and mp->mouse_input.size() <= 3) {
-            /*vector<Point2f> points {Point2f(197,364),Point2f(367,81),
-        Point2f(454,86),
-        Point2f(599,396),
-        Point2f(426,335),
-        Point2f(480,336),
-        Point2f(426,291),
-        Point2f(472,287)};*/
+            
 			
 			cv::line(*frame, cv::Point2f(x, y), 
             cv::Point2f(mp->mouse_input[mp->mouse_input.size() - 1].x,mp->mouse_input[mp->mouse_input.size() - 1].y),

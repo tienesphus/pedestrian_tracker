@@ -777,18 +777,29 @@ PedestrianTracker::GetActiveTracks() const {
     }
     return active_tracks;
 }
+//----//
 
-TrackedObjects PedestrianTracker::TrackedDetections() const {
+TrackedObjects PedestrianTracker::TrackedDetections(std::vector<cv::Point2f> roi) const {
     TrackedObjects detections;
     for (size_t idx : active_track_ids()) {
         auto track = tracks().at(idx);
         if (IsTrackValid(idx) && !track.lost) {
             detections.emplace_back(track.objects.back());
         }
+        
     }
+    /*for(auto &detection: detections){
+        double check;
+        check = cv::pointPolygonTest(roi,GetBottomPoint(detection),false);
+        uint64_t cur_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        if(check==-1){
+            detection.time_of_stay = cur_timestamp - detection.timestamp;
+            std::cout << "person-"<<detection.object_id << "stayed in the ROI for " << detection.time_of_stay << "\n";
+        }
+    }*/
     return detections;
 }
-
+//----//
 cv::Mat PedestrianTracker::DrawActiveTracks(const cv::Mat &frame) {
     cv::Mat out_frame = frame.clone();
 
@@ -804,12 +815,12 @@ cv::Mat PedestrianTracker::DrawActiveTracks(const cv::Mat &frame) {
         DrawPolyline(centers, colors_[idx % colors_.size()], &out_frame);
         std::stringstream ss;
         ss << idx;
-        //cv::putText(out_frame, ss.str(), centers.back(), cv::FONT_HERSHEY_SCRIPT_COMPLEX, 2.0,
-        //            colors_[idx % colors_.size()], 3);
+        cv::putText(out_frame, ss.str(), centers.back(), cv::FONT_HERSHEY_SCRIPT_COMPLEX, 2.0,
+                    colors_[idx % colors_.size()], 3);
         auto track = tracks().at(idx);
         if (track.lost) {
-        //    cv::line(out_frame, active_track.second.back(),
-        //             Center(track.predicted_rect), cv::Scalar(0, 0, 0), 4);
+            cv::line(out_frame, active_track.second.back(),
+                     Center(track.predicted_rect), cv::Scalar(0, 0, 0), 4);
         }
     }
 

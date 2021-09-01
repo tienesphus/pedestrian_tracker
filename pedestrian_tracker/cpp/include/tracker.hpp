@@ -265,7 +265,7 @@ public:
     /// \brief Get tracked detections.
     /// \return Tracked detections.
     ///
-    TrackedObjects TrackedDetections() const;
+    TrackedObjects TrackedDetections(std::vector<cv::Point2f> roi) const;
 
     ///
     /// \brief Draws active tracks on a given frame.
@@ -306,6 +306,7 @@ public:
     ///
     void PrintReidPerformanceCounts(std::string fullDeviceName) const;
 
+    
 private:
     struct Match {
         int frame_idx1;
@@ -330,7 +331,6 @@ private:
                 PT_CHECK_NE(frame_idx1, frame_idx2);
             }
     };
-
 
     const ObjectTracks all_tracks(bool valid_only) const;
     // Returns shape affinity.
