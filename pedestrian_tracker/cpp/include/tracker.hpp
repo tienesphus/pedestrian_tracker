@@ -75,6 +75,7 @@ struct TrackerParams {
 /// \brief The Track struct describes tracks.
 ///
 struct Track {
+    
     ///
     /// \brief Track constructor.
     /// \param objs Detected objects sequence.
@@ -83,17 +84,22 @@ struct Track {
     /// \param descriptor_strong Strong descriptor (reid embedding).
     ///
     Track(const TrackedObjects &objs, const cv::Mat &last_image,
-          const cv::Mat &descriptor_fast, const cv::Mat &descriptor_strong)
+          const cv::Mat &descriptor_fast, const cv::Mat &descriptor_strong, 
+          int in_roi, uint64_t timestamp, int time_stay)
         : objects(objs),
         predicted_rect(!objs.empty() ? objs.back().rect : cv::Rect()),
         last_image(last_image),
         descriptor_fast(descriptor_fast),
         descriptor_strong(descriptor_strong),
         lost(0),
+        is_in_roi(in_roi),
+        timestamp_roi(timestamp),
+        time_of_stay(time_stay),
         length(1) {
             PT_CHECK(!objs.empty());
             first_object = objs[0];
         }
+
 
     ///
     /// \brief empty returns if track does not contain objects.
@@ -141,6 +147,7 @@ struct Track {
         return objects.back();
     }
 
+    
     TrackedObjects objects;   ///< Detected objects;
     cv::Rect predicted_rect;  ///< Rectangle that represents predicted position
                               /// and size of bounding box if track has been lost.
@@ -150,8 +157,14 @@ struct Track {
     size_t lost;                ///< How many frames ago track has been lost.
 
     TrackedObject first_object;  ///< First object in track.
+    //-----//
+    int is_in_roi;  ///< 
+    uint64_t timestamp_roi;
+    int time_of_stay;    ///< time of stay (in seconds) in a ROI (region of interest).
+    //-----//
     size_t length;  ///< Length of a track including number of objects that were
                     /// removed from track in order to avoid memory usage growth.
+    
 };
 
 ///
@@ -265,7 +278,7 @@ public:
     /// \brief Get tracked detections.
     /// \return Tracked detections.
     ///
-    TrackedObjects TrackedDetections(std::vector<cv::Point2f> roi) const;
+    TrackedObjects TrackedDetections() const;
 
     ///
     /// \brief Draws active tracks on a given frame.
@@ -306,7 +319,8 @@ public:
     ///
     void PrintReidPerformanceCounts(std::string fullDeviceName) const;
 
-    
+    void CheckInRoi(std::vector<cv::Point2f> roi);
+
 private:
     struct Match {
         int frame_idx1;

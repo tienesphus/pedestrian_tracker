@@ -670,7 +670,7 @@ void PedestrianTracker::AddNewTrack(const cv::Mat &frame,
     tracks_.emplace(std::pair<size_t, Track>(
             tracks_counter_,
             Track({detection_with_id}, frame(detection.rect).clone(),
-                  descriptor_fast.clone(), descriptor_strong.clone())));
+                  descriptor_fast.clone(), descriptor_strong.clone(),-1,0,0)));
 
     for (size_t id : active_track_ids_) {
         tracks_dists_.emplace(std::pair<size_t, size_t>(id, tracks_counter_),
@@ -777,27 +777,38 @@ PedestrianTracker::GetActiveTracks() const {
     }
     return active_tracks;
 }
-//----//
 
-TrackedObjects PedestrianTracker::TrackedDetections(std::vector<cv::Point2f> roi) const {
+
+TrackedObjects PedestrianTracker::TrackedDetections() const {
     TrackedObjects detections;
     for (size_t idx : active_track_ids()) {
         auto track = tracks().at(idx);
         if (IsTrackValid(idx) && !track.lost) {
             detections.emplace_back(track.objects.back());
         }
-        
     }
-    /*for(auto &detection: detections){
-        double check;
-        check = cv::pointPolygonTest(roi,GetBottomPoint(detection),false);
-        uint64_t cur_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        if(check==-1){
-            detection.time_of_stay = cur_timestamp - detection.timestamp;
-            std::cout << "person-"<<detection.object_id << "stayed in the ROI for " << detection.time_of_stay << "\n";
-        }
-    }*/
     return detections;
+}
+//----//
+void PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
+    double check;
+    for (size_t idx : active_track_ids()){
+        auto track = tracks().at(idx);
+        if(IsTrackValid(idx) && !IsTrackForgotten(idx)){
+            check = cv::pointPolygonTest(roi,GetBottomPoint(track.objects.back()),false);
+            if((check == 1 || check == 0) && tracks().at(idx).is_in_roi != 0){
+                tracks_.at(idx).timestamp_roi = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                tracks_.at(idx).is_in_roi = 0;
+            }
+            if (check == -1 && tracks().at(idx).is_in_roi == 0){
+                uint64_t cur_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                tracks_.at(idx).time_of_stay = cur_time - tracks().at(idx).timestamp_roi;
+                std::cout << "person-" << tracks().at(idx).objects.back().object_id << "stayed in the box for " << tracks().at(idx).time_of_stay << "ms" << std::endl;
+                tracks_.at(idx).is_in_roi = 1;
+            } 
+        }
+        
+    } 
 }
 //----//
 cv::Mat PedestrianTracker::DrawActiveTracks(const cv::Mat &frame) {

@@ -20,10 +20,7 @@ struct TrackedObject {
     int frame_idx;       ///< Frame index where object was detected (-1 if N/A).
     int object_id;       ///< Unique object identifier (-1 if N/A).
     uint64_t timestamp;  ///< Timestamp in milliseconds.
-    //-----//
-    uint64_t last_frame_idx;  ///< Last Frame index where object is not detected anymore.
-    int time_of_stay;    ///< time of stay (in seconds) in a ROI (region of interest).
-    //-----//
+    
 
     ///
     /// \brief Default constructor.
@@ -32,9 +29,7 @@ struct TrackedObject {
         : confidence(-1),
         frame_idx(-1),
         object_id(-1),
-        timestamp(0),
-        last_frame_idx(-1),
-        time_of_stay(0) {}
+        timestamp(0) {}
 
     ///
     /// \brief Constructor with parameters.

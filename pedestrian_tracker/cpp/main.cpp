@@ -315,22 +315,29 @@ int main(int argc, char **argv) {
 
             // Drawing tracked detections only by RED color and print ID and detection
             // confidence level.
-            for (auto &detection : tracker->TrackedDetections(roi.mouse_input)) {
+            for (auto &detection : tracker->TrackedDetections()) {
                 cv::rectangle(frame, detection.rect, cv::Scalar(0, 0, 255), 3);
                 std::string text = std::to_string(detection.object_id) +
                     " conf: " + std::to_string(detection.confidence);
                 //cv::putText(frame, text, detection.rect.tl(), cv::FONT_HERSHEY_COMPLEX,
                //             1.0, cv::Scalar(0, 0, 255), 3);
-
+                /*
                 double check;
                 check = cv::pointPolygonTest(roi.mouse_input,GetBottomPoint(detection),false);
-                uint64_t cur_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-                if(check!=-1){
-                    detection.time_of_stay = cur_timestamp - detection.timestamp;
-                    std::cout << "person-"<<detection.object_id << "stayed in the ROI for " << detection.time_of_stay << "\n";
+                
+                if((check == 1 || check == 0) && detection.is_in_roi != 0){
+                    detection.timestamp_roi = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                    detection.is_in_roi = 0;
                 }
+                if (check == -1 && detection.is_in_roi == 0){
+                    uint64_t cur_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                    detection.time_of_stay = cur_time - detection.timestamp_roi;
+                    std::cout << "person-" << detection.object_id << "stayed in the box for " << detection.time_of_stay * 1000 << "s" << std::endl;
+                    detection.is_in_roi = 1;
+                }
+               */
             }
-            
+            tracker->CheckInRoi(roi.mouse_input);
             framesProcessed++;
 
             if (should_show) {
