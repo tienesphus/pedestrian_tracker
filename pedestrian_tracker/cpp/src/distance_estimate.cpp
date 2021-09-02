@@ -10,6 +10,12 @@
 
 
 const float THRESHOLD =1.5;
+
+
+
+DistanceEstimate::DistanceEstimate(cv::Mat& video_frame):frame(video_frame){
+    
+}
 DistanceEstimate::DistanceEstimate(cv::Mat& video_frame, std::vector<cv::Point2f> config_points):frame(video_frame){
 
     std::vector<cv::Point2f> src(4); // 4 points for perspective tranform
@@ -34,6 +40,16 @@ DistanceEstimate::DistanceEstimate(cv::Mat& video_frame, std::vector<cv::Point2f
     perspectiveTransform(points_len,warped_pt,perspective_tran);
     distance_w = CalculateDist(warped_pt[0], warped_pt[1]);
     distance_h = CalculateDist(warped_pt[0], warped_pt[2]);
+}
+DistanceEstimate& DistanceEstimate::operator=(const DistanceEstimate &other){
+    if(this == &other){
+        return *this;
+    }
+    perspective_tran = other.perspective_tran;
+    warped_pt = other.warped_pt;
+    distance_h = other.distance_h;
+    distance_w = other.distance_w;
+    return *this;
 }
 std::vector<cv::Point2f> DistanceEstimate::GetTransformedPoints(TrackedObjects boxes){
     std::vector<cv::Point2f> bottom_points;
