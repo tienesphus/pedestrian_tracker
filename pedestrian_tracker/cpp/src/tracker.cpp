@@ -76,7 +76,7 @@ std::vector<cv::Scalar> GenRandomColors(int colors_num) {
 }  // anonymous namespace
 
 TrackerParams::TrackerParams()
-    : min_track_duration(1500),
+    : min_track_duration(500),
     forget_delay(75),
     aff_thr_fast(0.8f),
     aff_thr_strong(0.7f),
@@ -779,22 +779,13 @@ PedestrianTracker::GetActiveTracks() const {
 }
 
 
-TrackedObjects PedestrianTracker::TrackedDetections() const {
+TrackedObjects PedestrianTracker::TrackedDetections(std::vector<cv::Point2f> roi)  {
     TrackedObjects detections;
+    double check;
     for (size_t idx : active_track_ids()) {
         auto track = tracks().at(idx);
         if (IsTrackValid(idx) && !track.lost) {
             detections.emplace_back(track.objects.back());
-        }
-    }
-    return detections;
-}
-//----//
-void PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
-    double check;
-    for (size_t idx : active_track_ids()){
-        auto track = tracks().at(idx);
-        if(IsTrackValid(idx) && !IsTrackForgotten(idx)){
             check = cv::pointPolygonTest(roi,GetBottomPoint(track.objects.back()),false);
             if((check == 1 || check == 0) && tracks().at(idx).is_in_roi != 0){
                 tracks_.at(idx).timestamp_roi = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -803,12 +794,25 @@ void PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
             if (check == -1 && tracks().at(idx).is_in_roi == 0){
                 uint64_t cur_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
                 tracks_.at(idx).time_of_stay = cur_time - tracks().at(idx).timestamp_roi;
-                std::cout << "person-" << tracks().at(idx).objects.back().object_id << "stayed in the box for " << tracks().at(idx).time_of_stay << "ms" << std::endl;
+                std::cout << "person-" << tracks().at(idx).objects.back().object_id << "stayed in the box for " << (float) tracks().at(idx).time_of_stay  / 1000<< "s" << std::endl;
                 tracks_.at(idx).is_in_roi = 1;
             } 
         }
+    }
+    
+    return detections;
+}
+//----//
+void PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
+    /*
+    for (size_t idx : active_track_ids()){
+        auto track = tracks().at(idx);
+        if(IsTrackValid(idx) && track.lost < 150) //assuming the video is at 30fps, then 150/30 = 5seconds ago
+        {
+            
+        }
         
-    } 
+    } */
 }
 //----//
 cv::Mat PedestrianTracker::DrawActiveTracks(const cv::Mat &frame) {

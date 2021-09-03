@@ -278,7 +278,7 @@ public:
     /// \brief Get tracked detections.
     /// \return Tracked detections.
     ///
-    TrackedObjects TrackedDetections() const;
+    TrackedObjects TrackedDetections(std::vector<cv::Point2f> roi) ;
 
     ///
     /// \brief Draws active tracks on a given frame.

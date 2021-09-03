@@ -315,7 +315,7 @@ int main(int argc, char **argv) {
 
             // Drawing tracked detections only by RED color and print ID and detection
             // confidence level.
-            for (auto &detection : tracker->TrackedDetections()) {
+            for (auto &detection : tracker->TrackedDetections(roi.mouse_input)) {
                 cv::rectangle(frame, detection.rect, cv::Scalar(0, 0, 255), 3);
                 std::string text = std::to_string(detection.object_id) +
                     " conf: " + std::to_string(detection.confidence);
