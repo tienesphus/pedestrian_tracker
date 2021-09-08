@@ -101,7 +101,7 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
         throw std::logic_error("Parameter -m_reid is not set");
     }
 
-    if((!FLAGS_out.empty() || FLAGS_r) && FLAGS_location.empty()){
+    if((!FLAGS_out.empty() || !FLAGS_out_a.empty() || FLAGS_r) && FLAGS_location.empty()){
         throw std::logic_error("Parameter -location is not set for output file");
     }
 
@@ -212,13 +212,14 @@ int main(int argc, char **argv) {
 
         auto path_to_config = FLAGS_config;
         bool is_re_config = FLAGS_reconfig;
-    
+        auto detlog_out_a = FLAGS_out_a;
+
         if (!should_show)
             delay = -1;
         should_show = (delay >= 0);
 
         bool should_save_det_log = !detlog_out.empty();
-
+        bool should_save_det_exlog = !detlog_out_a.empty();
         std::vector<std::string> devices{detector_mode, reid_mode};
         InferenceEngine::Core ie =
             LoadInferenceEngine(
@@ -357,6 +358,10 @@ int main(int argc, char **argv) {
             if (should_save_det_log && (frameIdx % 100 == 0)) {
                 DetectionLog log = tracker->GetDetectionLog(true);
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
+            }
+            if (should_save_det_exlog && (frameIdx % 100 == 0)) {
+                DetectionLogExtra log = tracker->GetDetectionLogExtra(true);
+                SaveDetectionLogToTrajFile(detlog_out, log);
             }
             frame = cap->read();
             cv::waitKey(20);
