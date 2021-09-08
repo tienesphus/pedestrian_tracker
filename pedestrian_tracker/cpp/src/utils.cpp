@@ -73,7 +73,7 @@ void SaveDetectionExtraLogToStream(StreamType& stream,
         timeStr = asctime(timestamp);
         timeStr.pop_back();
         stream << entry.object_id << ',' << timeStr << ','
-               << entry.time_of_stay;
+               << (float) entry.time_of_stay/1000;
         stream << '\n';
     }
 }

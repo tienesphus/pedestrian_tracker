@@ -821,7 +821,7 @@ TrackedObjects PedestrianTracker::TrackedDetections(std::vector<cv::Point2f> roi
             }
             if (check == -1 && tracks().at(idx).is_in_roi == 0){
                 uint64_t cur_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-                tracks_.at(idx).time_of_stay = cur_time - tracks().at(idx).timestamp_roi;
+                tracks_.at(idx).time_of_stay += cur_time - tracks().at(idx).timestamp_roi;
                 std::cout << "person-" << tracks().at(idx).objects.back().object_id << "stayed in the box for " << (float) tracks().at(idx).time_of_stay  / 1000<< "s" << std::endl;
                 tracks_.at(idx).is_in_roi = 1;
             } 

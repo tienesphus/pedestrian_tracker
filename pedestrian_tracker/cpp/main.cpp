@@ -359,9 +359,9 @@ int main(int argc, char **argv) {
                 DetectionLog log = tracker->GetDetectionLog(true);
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
             }
-            if (should_save_det_exlog && (frameIdx % 100 == 0)) {
+            if (should_save_det_exlog) {
                 DetectionLogExtra log = tracker->GetDetectionLogExtra(true);
-                SaveDetectionLogToTrajFile(detlog_out, log);
+                SaveDetectionLogToTrajFile(detlog_out_a, log);
             }
             frame = cap->read();
             cv::waitKey(20);
@@ -372,9 +372,11 @@ int main(int argc, char **argv) {
         
         if (should_keep_tracking_info) {
             DetectionLog log = tracker->GetDetectionLog(true);
-
+            DetectionLogExtra extra_log = tracker->GetDetectionLogExtra(true);
             if (should_save_det_log)
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
+            if(should_save_det_exlog)
+                SaveDetectionLogToTrajFile(detlog_out_a,extra_log);
             if (should_print_out)
                 PrintDetectionLog(log, detlocation);
         }
