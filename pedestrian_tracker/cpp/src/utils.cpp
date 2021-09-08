@@ -57,6 +57,27 @@ void SaveDetectionLogToStream(StreamType& stream,
     }
 }
 }  // anonymous namespace
+namespace {
+template <typename StreamType>
+void SaveDetectionExtraLogToStream(StreamType& stream,
+                              const DetectionLogExtra& log) {
+    struct tm * timestamp;
+    time_t tTime;
+    std::chrono::system_clock::time_point tPoint;
+    std::string timeStr;
+    
+    for (const auto& entry : log) {
+        tPoint = std::chrono::system_clock::from_time_t(0) + std::chrono::milliseconds(entry.init_time);
+        tTime = std::chrono::system_clock::to_time_t(tPoint);
+        timestamp = localtime(&tTime);
+        timeStr = asctime(timestamp);
+        timeStr.pop_back();
+        stream << entry.object_id << ',' << timeStr << ','
+               << entry.time_of_stay;
+        stream << '\n';
+    }
+}
+}  // anonymous namespace
 
 void DrawPolyline(const std::vector<cv::Point>& polyline,
                   const cv::Scalar& color, cv::Mat* image, int lwd) {
@@ -70,7 +91,7 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
         cv::line(*image, polyline[i - 1], polyline[i], color, lwd);
     }
 }
-cv::Point2f GetBottomPoint(TrackedObject box){
+cv::Point2f GetBottomPoint(const TrackedObject box){
 
     cv::Point2f temp_pnt(1); 
 
@@ -191,6 +212,12 @@ void SaveDetectionLogToTrajFile(const std::string& path,
     std::ofstream file(path.c_str());
     PT_CHECK(file.is_open());
     SaveDetectionLogToStream(file, log, location);
+}
+void SaveDetectionLogToTrajFile(const std::string& path,
+                                const DetectionLogExtra& log) {
+    std::ofstream file(path.c_str());
+    PT_CHECK(file.is_open());
+    SaveDetectionExtraLogToStream(file, log);
 }
 
 void PrintDetectionLog(const DetectionLog& log, const std::string& location) {

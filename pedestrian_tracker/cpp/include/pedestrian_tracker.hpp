@@ -44,7 +44,7 @@ static const char location_message[] = "Required for output log file.";
 static const char utilization_monitors_message[] = "Optional. List of monitors to show initially.";
 static const char re_configuration_message[] ="Optional.re-calibrate camera. New (x,y) coordinates will be re-written to file provided by -config";
 static const char configuration_message[] = "Optional.An input file to calibrate camera";
-
+static const char output_a_log_message[] ="Optional. The file name to write extra log. Containing time of stay in ROI";
 DEFINE_bool(h, false, help_message);
 DEFINE_uint32(first, 0, first_frame_message);
 DEFINE_uint32(read_limit, gflags::uint32(std::numeric_limits<size_t>::max()), read_limit_message);
@@ -64,6 +64,7 @@ DEFINE_string(u, "", utilization_monitors_message);
 //-----//
 DEFINE_string(config, "",configuration_message);
 DEFINE_bool(reconfig, false,re_configuration_message);
+DEFINE_string(out_a, "",output_a_log_message);
 //-----//
 /**
  * @brief This function show a help message
@@ -96,4 +97,5 @@ static void showUsage() {
     
     std::cout << "    -config                         " << configuration_message << std::endl;
     std::cout << "    -reconfig                         " << re_configuration_message << std::endl;
+    std::cout << "    -out_a                            " << output_a_log_message << std::endl;
 }

@@ -55,6 +55,19 @@ DetectionLog ConvertTracksToDetectionLog(const ObjectTracks& tracks) {
     return log;
 }
 
+DetectionLogExtra ConvertTracksToDetectionLogExtra(const std::vector<Track> &tracks) {
+    DetectionLogExtra log;
+
+    for(const auto& track:tracks){
+        DetectionLogExtraEntry entry;
+        entry.object_id = track.first_object.object_id;
+        entry.init_time = track.timestamp_roi;
+        entry.time_of_stay = track.time_of_stay;
+        log.push_back(std::move(entry));
+    }
+    return log;
+}
+
 inline bool IsInRange(float val, float min, float max) {
     return min <= val && val <= max;
 }
@@ -202,6 +215,9 @@ const std::set<size_t> &PedestrianTracker::active_track_ids() const {
 DetectionLog PedestrianTracker::GetDetectionLog(const bool valid_only) const {
     return ConvertTracksToDetectionLog(all_tracks(valid_only));
 }
+DetectionLogExtra PedestrianTracker::GetDetectionLogExtra(const bool valid_only) const{
+    return ConvertTracksToDetectionLogExtra(all_valid_tracks(valid_only));
+}
 
 TrackedObjects PedestrianTracker::FilterDetections(
     const TrackedObjects &detections) const {
@@ -275,7 +291,19 @@ const ObjectTracks PedestrianTracker::all_tracks(bool valid_only) const {
     }
     return all_objects;
 }
-
+const std::vector<Track> PedestrianTracker::all_valid_tracks(bool valid_only) const{
+    std::vector<Track> valid_tracks;
+    std::set<size_t> sorted_ids;
+    for (const auto &pair : tracks()) {
+        sorted_ids.emplace(pair.first);
+    }
+    for(size_t id :sorted_ids){
+        if(IsTrackValid(id)){
+            valid_tracks.push_back(std::move(tracks_.at(id)));
+        }
+    }
+    return valid_tracks;
+}
 cv::Rect PedestrianTracker::PredictRect(size_t id, size_t k,
                                         size_t s) const {
     const auto &track = tracks_.at(id);

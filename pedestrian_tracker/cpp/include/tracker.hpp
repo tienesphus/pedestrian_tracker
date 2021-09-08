@@ -269,6 +269,13 @@ public:
     DetectionLog GetDetectionLog(const bool valid_only) const;
 
     ///
+    /// \brief Returns a detection extra log which is used for tracks saving.
+    /// \param[in] valid_only If it is true the method returns valid track only.
+    /// \return a detection extra log which is used for tracks saving.
+    ///
+    DetectionLogExtra GetDetectionLogExtra(const bool valid_only) const;
+
+    ///
     /// \brief Get active tracks to draw
     /// \return Active tracks.
     ///
@@ -347,6 +354,8 @@ private:
     };
 
     const ObjectTracks all_tracks(bool valid_only) const;
+
+    const std::vector<Track> all_valid_tracks(bool valid_only) const;
     // Returns shape affinity.
     static float ShapeAffinity(float w, const cv::Rect &trk, const cv::Rect &det);
 

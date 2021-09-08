@@ -75,6 +75,57 @@ struct DetectionLogEntry {
 /// Detection log is a vector of detection entries.
 using DetectionLog = std::vector<DetectionLogEntry>;
 
+struct DetectionLogExtraEntry{
+    int object_id;
+    uint64_t init_time;
+    int time_of_stay;
+    ///
+    /// \brief DetectionLogExtraEntry default constructor.
+    ///
+    DetectionLogExtraEntry() : init_time(0), time_of_stay(0) {}
+
+    ///
+    /// \brief DetectionLogExtraEntry copy constructor.
+    /// \param other Detection extra entry.
+    ///
+    DetectionLogExtraEntry(const DetectionLogExtraEntry &other)
+        : object_id(other.object_id),
+        init_time(other.init_time),
+        time_of_stay(other.time_of_stay) {}
+
+    ///
+    /// \brief DetectionLogExtraEntry move constructor.
+    /// \param other Detection extra entry.
+    ///
+    DetectionLogExtraEntry(DetectionLogExtraEntry &&other)
+        : object_id(other.object_id),
+        init_time(other.init_time),
+        time_of_stay(other.time_of_stay) {}
+
+    ///
+    /// \brief Assignment operator.
+    /// \param other Detection extra entry.
+    /// \return Detection extra entry.
+    ///
+    DetectionLogExtraEntry &operator=(const DetectionLogExtraEntry &other) = default;
+
+    ///
+    /// \brief Move assignment operator.
+    /// \param other Detection extra entry.
+    /// \return Detection extra entry.
+    ///
+    DetectionLogExtraEntry &operator=(DetectionLogExtraEntry &&other) {
+        if (this != &other) {
+            object_id = other.object_id;
+            init_time = other.init_time;
+            time_of_stay = other.time_of_stay;
+        }
+        return *this;
+    }
+};
+/// Detection log extra is a vector of detection extra entries.
+using DetectionLogExtra = std::vector<DetectionLogExtraEntry>;
+
 ///
 /// \brief Save DetectionLog to a txt file in the format
 ///        compatible with the format of MOTChallenge
@@ -85,7 +136,17 @@ using DetectionLog = std::vector<DetectionLogEntry>;
 void SaveDetectionLogToTrajFile(const std::string& path,
                                 const DetectionLog& log,
                                 const std::string& location);
-
+                      
+///
+/// \brief Save DetectionExtraLog to a txt file in the format
+///        compatible with the format of MOTChallenge
+///        evaluation tool.
+/// \param[in] path -- path to a file to store
+/// \param[in] log  -- detection extra log to store
+///
+void SaveDetectionLogToTrajFile(const std::string& path,
+                                const DetectionLogExtra& log);
+                                
 ///
 /// \brief Print DetectionLog to stdout in the format
 ///        compatible with the format of MOTChallenge
@@ -105,7 +166,7 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
                   const cv::Scalar& color, cv::Mat* image,
                   int lwd = 5);
 
-
+cv::Point2f GetBottomPoint(const TrackedObject box);
 ///
 /// \brief The mouse parameters struct 
 ///
@@ -115,7 +176,6 @@ struct MouseParams{
     cv::Mat *frame;
     std::vector<cv::Point2f> mouse_input;
 };
-cv::Point2f GetBottomPoint(TrackedObject box);
 ///
 /// \brief capture coordinates of mouse click, draw circles on those points
 /// \param[in] event one of cv::MouseEventTypes constants (EVENT_LBUTTONDOWN,EVENT_RBUTTONDOWN)
