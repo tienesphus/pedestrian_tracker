@@ -67,14 +67,19 @@ void SaveDetectionExtraLogToStream(StreamType& stream,
     std::string timeStr;
     
     for (const auto& entry : log) {
-        tPoint = std::chrono::system_clock::from_time_t(0) + std::chrono::milliseconds(entry.init_time);
-        tTime = std::chrono::system_clock::to_time_t(tPoint);
-        timestamp = localtime(&tTime);
-        timeStr = asctime(timestamp);
-        timeStr.pop_back();
-        stream << entry.object_id << ',' << timeStr << ','
-               << (float) entry.time_of_stay/1000;
-        stream << '\n';
+        if(entry.second.time_of_stay ==0){
+            continue;
+        }else{
+            tPoint = std::chrono::system_clock::from_time_t(0) + std::chrono::milliseconds(entry.second.init_time);
+            tTime = std::chrono::system_clock::to_time_t(tPoint);
+            timestamp = localtime(&tTime);
+            timeStr = asctime(timestamp);
+            timeStr.pop_back();
+            stream << entry.second.object_id << ',' << timeStr << ','
+                    << (float) entry.second.time_of_stay/1000;
+            stream << '\n';
+        }
+        
     }
 }
 }  // anonymous namespace
@@ -215,8 +220,8 @@ void SaveDetectionLogToTrajFile(const std::string& path,
 }
 void SaveDetectionLogToTrajFile(const std::string& path,
                                 const DetectionLogExtra& log) {
-    std::ofstream file(path.c_str());
-    PT_CHECK(file.is_open());
+    std::ofstream file;
+    file.open(path.c_str(),std::ios_base::app);
     SaveDetectionExtraLogToStream(file, log);
 }
 

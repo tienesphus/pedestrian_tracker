@@ -270,10 +270,10 @@ public:
 
     ///
     /// \brief Returns a detection extra log which is used for tracks saving.
-    /// \param[in] valid_only If it is true the method returns valid track only.
+    /// \param[in] log_track a single track 
     /// \return a detection extra log which is used for tracks saving.
     ///
-    DetectionLogExtra GetDetectionLogExtra(const bool valid_only) const;
+    DetectionLogExtraEntry GetDetectionLogExtra(const Track log_track);
 
     ///
     /// \brief Get active tracks to draw
@@ -285,7 +285,7 @@ public:
     /// \brief Get tracked detections.
     /// \return Tracked detections.
     ///
-    TrackedObjects TrackedDetections(std::vector<cv::Point2f> roi) ;
+    TrackedObjects TrackedDetections() ;
 
     ///
     /// \brief Draws active tracks on a given frame.
@@ -326,7 +326,7 @@ public:
     ///
     void PrintReidPerformanceCounts(std::string fullDeviceName) const;
 
-    void CheckInRoi(std::vector<cv::Point2f> roi);
+    std::vector<Track> CheckInRoi(std::vector<cv::Point2f> roi);
 
 private:
     struct Match {

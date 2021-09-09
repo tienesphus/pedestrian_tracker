@@ -124,7 +124,7 @@ struct DetectionLogExtraEntry{
     }
 };
 /// Detection log extra is a vector of detection extra entries.
-using DetectionLogExtra = std::vector<DetectionLogExtraEntry>;
+using DetectionLogExtra = std::unordered_map<int, DetectionLogExtraEntry>;
 
 ///
 /// \brief Save DetectionLog to a txt file in the format
@@ -139,8 +139,8 @@ void SaveDetectionLogToTrajFile(const std::string& path,
                       
 ///
 /// \brief Save DetectionExtraLog to a txt file in the format
-///        compatible with the format of MOTChallenge
-///        evaluation tool.
+///        (id,inital_time,time_of_stay)
+///        
 /// \param[in] path -- path to a file to store
 /// \param[in] log  -- detection extra log to store
 ///

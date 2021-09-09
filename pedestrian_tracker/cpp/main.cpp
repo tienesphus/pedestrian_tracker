@@ -291,7 +291,7 @@ int main(int argc, char **argv) {
         setPoint(&roi);
         std::vector<TrackedObject> pedestrian_roi;
 
-        
+        DetectionLogExtra extralog;
         //------------------//
         for (unsigned frameIdx = 0; ; ++frameIdx) {
             drawline(&roi);
@@ -316,29 +316,17 @@ int main(int argc, char **argv) {
 
             // Drawing tracked detections only by RED color and print ID and detection
             // confidence level.
-            for (auto &detection : tracker->TrackedDetections(roi.mouse_input)) {
+            for (auto &detection : tracker->TrackedDetections()) {
                 cv::rectangle(frame, detection.rect, cv::Scalar(0, 0, 255), 3);
                 std::string text = std::to_string(detection.object_id) +
                     " conf: " + std::to_string(detection.confidence);
-                //cv::putText(frame, text, detection.rect.tl(), cv::FONT_HERSHEY_COMPLEX,
-               //             1.0, cv::Scalar(0, 0, 255), 3);
-                /*
-                double check;
-                check = cv::pointPolygonTest(roi.mouse_input,GetBottomPoint(detection),false);
-                
-                if((check == 1 || check == 0) && detection.is_in_roi != 0){
-                    detection.timestamp_roi = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-                    detection.is_in_roi = 0;
-                }
-                if (check == -1 && detection.is_in_roi == 0){
-                    uint64_t cur_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-                    detection.time_of_stay = cur_time - detection.timestamp_roi;
-                    std::cout << "person-" << detection.object_id << "stayed in the box for " << detection.time_of_stay * 1000 << "s" << std::endl;
-                    detection.is_in_roi = 1;
-                }
-               */
+            
             }
-            tracker->CheckInRoi(roi.mouse_input);
+            for (auto &track : tracker->CheckInRoi(roi.mouse_input)){
+                DetectionLogExtraEntry entry;
+                entry = tracker->GetDetectionLogExtra(track);
+                extralog.emplace(entry.object_id,entry);
+            }
             framesProcessed++;
 
             if (should_show) {
@@ -359,9 +347,10 @@ int main(int argc, char **argv) {
                 DetectionLog log = tracker->GetDetectionLog(true);
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
             }
-            if (should_save_det_exlog) {
-                DetectionLogExtra log = tracker->GetDetectionLogExtra(true);
-                SaveDetectionLogToTrajFile(detlog_out_a, log);
+            if (should_save_det_exlog && (frameIdx % 100 == 0)) {
+
+                SaveDetectionLogToTrajFile(detlog_out_a, extralog);
+                extralog = DetectionLogExtra();
             }
             frame = cap->read();
             cv::waitKey(20);
@@ -372,11 +361,10 @@ int main(int argc, char **argv) {
         
         if (should_keep_tracking_info) {
             DetectionLog log = tracker->GetDetectionLog(true);
-            DetectionLogExtra extra_log = tracker->GetDetectionLogExtra(true);
             if (should_save_det_log)
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
-            if(should_save_det_exlog)
-                SaveDetectionLogToTrajFile(detlog_out_a,extra_log);
+            // if(should_save_det_exlog)
+            //     SaveDetectionLogToTrajFile(detlog_out_a,extralog);
             if (should_print_out)
                 PrintDetectionLog(log, detlocation);
         }

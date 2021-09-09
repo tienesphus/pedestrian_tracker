@@ -55,17 +55,14 @@ DetectionLog ConvertTracksToDetectionLog(const ObjectTracks& tracks) {
     return log;
 }
 
-DetectionLogExtra ConvertTracksToDetectionLogExtra(const std::vector<Track> &tracks) {
-    DetectionLogExtra log;
+DetectionLogExtraEntry ConvertTracksToDetectionLogExtra(Track track) {
 
-    for(const auto& track:tracks){
-        DetectionLogExtraEntry entry;
-        entry.object_id = track.first_object.object_id;
-        entry.init_time = track.timestamp_roi;
-        entry.time_of_stay = track.time_of_stay;
-        log.push_back(std::move(entry));
-    }
-    return log;
+    DetectionLogExtraEntry entry;
+    entry.object_id = track.objects.back().object_id;
+    entry.init_time = track.timestamp_roi;
+    entry.time_of_stay = track.time_of_stay;
+    
+    return entry;
 }
 
 inline bool IsInRange(float val, float min, float max) {
@@ -215,8 +212,8 @@ const std::set<size_t> &PedestrianTracker::active_track_ids() const {
 DetectionLog PedestrianTracker::GetDetectionLog(const bool valid_only) const {
     return ConvertTracksToDetectionLog(all_tracks(valid_only));
 }
-DetectionLogExtra PedestrianTracker::GetDetectionLogExtra(const bool valid_only) const{
-    return ConvertTracksToDetectionLogExtra(all_valid_tracks(valid_only));
+DetectionLogExtraEntry PedestrianTracker::GetDetectionLogExtra(const Track log_track) {
+    return ConvertTracksToDetectionLogExtra(log_track);
 }
 
 TrackedObjects PedestrianTracker::FilterDetections(
@@ -298,8 +295,8 @@ const std::vector<Track> PedestrianTracker::all_valid_tracks(bool valid_only) co
         sorted_ids.emplace(pair.first);
     }
     for(size_t id :sorted_ids){
-        if(IsTrackValid(id)){
-            valid_tracks.push_back(std::move(tracks_.at(id)));
+        if(tracks().at(id).is_in_roi != -1){
+            valid_tracks.push_back(std::move(tracks().at(id)));
         }
     }
     return valid_tracks;
@@ -807,13 +804,23 @@ PedestrianTracker::GetActiveTracks() const {
 }
 
 
-TrackedObjects PedestrianTracker::TrackedDetections(std::vector<cv::Point2f> roi)  {
+TrackedObjects PedestrianTracker::TrackedDetections()  {
     TrackedObjects detections;
-    double check;
     for (size_t idx : active_track_ids()) {
         auto track = tracks().at(idx);
         if (IsTrackValid(idx) && !track.lost) {
             detections.emplace_back(track.objects.back());
+        }
+    }
+    return detections;
+}
+//----//
+std::vector<Track> PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
+    std::vector<Track> temp_track;
+    double check;
+    for (size_t idx : active_track_ids()) {
+        auto track = tracks().at(idx);
+        if (IsTrackValid(idx) && !track.lost) {
             check = cv::pointPolygonTest(roi,GetBottomPoint(track.objects.back()),false);
             if((check == 1 || check == 0) && tracks().at(idx).is_in_roi != 0){
                 tracks_.at(idx).timestamp_roi = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -824,23 +831,11 @@ TrackedObjects PedestrianTracker::TrackedDetections(std::vector<cv::Point2f> roi
                 tracks_.at(idx).time_of_stay += cur_time - tracks().at(idx).timestamp_roi;
                 std::cout << "person-" << tracks().at(idx).objects.back().object_id << "stayed in the box for " << (float) tracks().at(idx).time_of_stay  / 1000<< "s" << std::endl;
                 tracks_.at(idx).is_in_roi = 1;
+                temp_track.push_back(std::move(tracks().at(idx)));
             } 
         }
     }
-    
-    return detections;
-}
-//----//
-void PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
-    /*
-    for (size_t idx : active_track_ids()){
-        auto track = tracks().at(idx);
-        if(IsTrackValid(idx) && track.lost < 150) //assuming the video is at 30fps, then 150/30 = 5seconds ago
-        {
-            
-        }
-        
-    } */
+    return temp_track;
 }
 //----//
 cv::Mat PedestrianTracker::DrawActiveTracks(const cv::Mat &frame) {
