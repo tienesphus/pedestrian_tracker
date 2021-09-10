@@ -166,6 +166,17 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
                   const cv::Scalar& color, cv::Mat* image,
                   int lwd = 5);
 
+///
+/// \brief Draws a polyline on a frame (very similar to DrawPolyLine)
+/// \param[in] polyline Vector of points (polyline).
+/// \param[in] color Color (BGR).
+/// \param[in,out] image Frame.
+/// \param[in] lwd Line width.
+void DrawRoi(const std::vector<cv::Point>& polyline,
+            const cv::Scalar& color, cv::Mat* image, int lwd=2);
+///
+/// \brief Get the bottom center point given a rectangle box
+/// \param[in] box a trackedObject containing the rectangle box
 cv::Point2f GetBottomPoint(const TrackedObject box);
 ///
 /// \brief The mouse parameters struct 
@@ -186,9 +197,11 @@ struct MouseParams{
 void MouseCallBack(int event, int x, int y, int flags, void* param);
 
 ///
-/// \brief allow user to configure camera by clicking 7 points
-/// \param[in] MouseParams struct containing reference frame and mouse points
-void SetCameraPoints(MouseParams* mp);
+/// \brief allow user to select point of interest on a frame
+/// \param[in] mp struct containing reference frame and mouse points
+/// \param[in] point_num number of points 
+/// \param[in] name name of the window
+void SetPoints(MouseParams* mp,unsigned int point_num,std::string name);
 
 /// 
 /// \brief reading the camera config file (a text file containing points)

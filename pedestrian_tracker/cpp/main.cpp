@@ -148,40 +148,18 @@ void roiCallback(int event, int x, int y, int flags, void* param){
 	}
 }
 
-void setPoint(MouseParams *mp){
+// void setPoint(MouseParams *mp){
+//     for (;;) {
+//         cv::Mat* frame_copy = mp->frame;
+//         cv::imshow("ROI-selection", *frame_copy);
+//         cv::waitKey(1);
+//         if (mp->mouse_input.size() == 4) {
+//             cv::destroyWindow("ROI-selection");
+//             break;
+//             }
+//         }
+// }
 
-    for (;;) {
-        cv::Mat* frame_copy = mp->frame;
-        cv::imshow("ROI-selection", *frame_copy);
-        cv::waitKey(1);
-        if (mp->mouse_input.size() == 5) {
-            cv::destroyWindow("ROI-selection");
-            break;
-            }
-        
-        }
-
-}
-void drawline(MouseParams *mp){
-    MouseParams* roi = (MouseParams *)mp;
-    cv::Mat *frame = ((cv::Mat *)mp->frame);
-    cv::line(*frame, cv::Point2f(roi->mouse_input[0].x, roi->mouse_input[0].y), 
-            cv::Point2f(roi->mouse_input[1].x,roi->mouse_input[1].y),
-            cv::Scalar(70, 70, 70), 
-            2);
-    cv::line(*frame, cv::Point2f(roi->mouse_input[1].x, roi->mouse_input[1].y), 
-            cv::Point2f(roi->mouse_input[2].x,roi->mouse_input[2].y),
-            cv::Scalar(70, 70, 70), 
-            2);
-    cv::line(*frame, cv::Point2f(roi->mouse_input[2].x, roi->mouse_input[2].y), 
-            cv::Point2f(roi->mouse_input[3].x,roi->mouse_input[3].y),
-            cv::Scalar(70, 70, 70), 
-            2);
-    cv::line(*frame, cv::Point2f(roi->mouse_input[3].x, roi->mouse_input[3].y), 
-            cv::Point2f(roi->mouse_input[0].x,roi->mouse_input[0].y),
-            cv::Scalar(70, 70, 70), 
-            2);
-}
 int main(int argc, char **argv) {
     try {
         std::cout << "InferenceEngine: " << printable(*GetInferenceEngineVersion()) << std::endl;
@@ -243,8 +221,6 @@ int main(int argc, char **argv) {
         if(is_re_config && path_to_config.empty()){
             throw std::logic_error("Parameter -config is not set(to use -reconfig, -config must be provided)");
         }
-
-
         cv::Mat frame = cap->read();
         if (!frame.data) throw std::runtime_error("Can't read an image from the input");
         cv::Size firstFrameSize = frame.size();
@@ -267,13 +243,16 @@ int main(int argc, char **argv) {
         std::vector<cv::Point2f> mouse_input,mouse;
         std::vector<cv::Point2f> points;
         MouseParams mp ={&frame,mouse_input};
+        cv::Mat roi_frame;
+        frame.copyTo(roi_frame);
         DistanceEstimate estimator(frame);
+
         if(!path_to_config.empty()){
             
             if(is_re_config){
                 cv::namedWindow("image", 1);
                 cv::setMouseCallback("image", MouseCallBack, (void *) &mp);
-                SetCameraPoints(&mp);
+                SetPoints(&mp,7,"image");
                 points = mp.mouse_input;
                 WriteConfig(FLAGS_config,points);
             }
@@ -285,16 +264,21 @@ int main(int argc, char **argv) {
             estimator = temp;
         }
         //------------------//
-        MouseParams roi ={&frame,mouse};
+        MouseParams roi ={&roi_frame,mouse};
         cv::namedWindow("ROI-selection", 1);
-        cv::setMouseCallback("ROI-selection",roiCallback,(void *)&roi);
-        setPoint(&roi);
+        cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
+        SetPoints(&roi,4,"ROI-selection");
         std::vector<TrackedObject> pedestrian_roi;
 
         DetectionLogExtra extralog;
+        std::vector<cv::Point> poly_line;
+        for(unsigned int i=0;i<roi.mouse_input.size();i++){
+            poly_line.push_back((cv::Point) roi.mouse_input[i]);
+        }
         //------------------//
         for (unsigned frameIdx = 0; ; ++frameIdx) {
-            drawline(&roi);
+
+            DrawRoi(poly_line,cv::Scalar(70,70,70),&frame,2);
             pedestrian_detector.submitFrame(frame, frameIdx);
             pedestrian_detector.waitAndFetchResults();
 
@@ -322,10 +306,13 @@ int main(int argc, char **argv) {
                     " conf: " + std::to_string(detection.confidence);
             
             }
-            for (auto &track : tracker->CheckInRoi(roi.mouse_input)){
-                DetectionLogExtraEntry entry;
-                entry = tracker->GetDetectionLogExtra(track);
-                extralog.emplace(entry.object_id,entry);
+            if(should_save_det_exlog){
+
+                for (auto &track : tracker->CheckInRoi(roi.mouse_input)){
+                    DetectionLogExtraEntry entry;
+                    entry = tracker->GetDetectionLogExtra(track);
+                    extralog.emplace(entry.object_id,entry);
+                }
             }
             framesProcessed++;
 
