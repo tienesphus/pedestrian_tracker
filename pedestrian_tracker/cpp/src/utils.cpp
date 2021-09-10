@@ -96,6 +96,13 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
         cv::line(*image, polyline[i - 1], polyline[i], color, lwd);
     }
 }
+void DrawRoi(const std::vector<cv::Point>& polyline,
+            const cv::Scalar& color, cv::Mat* image, int lwd){
+    for (size_t i = 1; i < polyline.size(); i++) {
+        cv::line(*image, polyline[i - 1], polyline[i], color, lwd);
+    }
+    cv::line(*image,polyline[0],polyline[polyline.size()-1],color,lwd);
+}
 cv::Point2f GetBottomPoint(const TrackedObject box){
 
     cv::Point2f temp_pnt(1); 
@@ -151,14 +158,14 @@ void MouseCallBack(int event, int x, int y, int flags, void* param)
 	}
 }
 
-void SetCameraPoints(MouseParams *mp){
+void SetPoints(MouseParams *mp,unsigned int point_num,std::string name){
 
     for (;;) {
         cv::Mat* frame_copy = mp->frame;
-        cv::imshow("image", *frame_copy);
+        cv::imshow(name, *frame_copy);
         cv::waitKey(1);
-        if (mp->mouse_input.size() == 8) {
-            cv::destroyWindow("image");
+        if (mp->mouse_input.size() == point_num) {
+            cv::destroyWindow(name);
             break;
             }
         
@@ -192,7 +199,7 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path){
         }
         
     }
-    if(points.size() !=8){
+    if(points.size() !=7){
         throw std::runtime_error("config file should have total size of 8 (" +path+ ")");
     }
     return points;
