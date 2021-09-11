@@ -2,6 +2,7 @@
 
 
 ![Sample output image using Spectral_mixed color scheme](https://cdn.discordapp.com/attachments/817277145251971085/874092369094512691/result1.png)
+
 This project uses a high-performance C heatmap generation library by lucasb-eyer/Github. For more information on the library or the author, click [\[here\]](https://github.com/lucasb-eyer/libheatmap).
 ## How it works
 Heatmap generator takes two inputs:

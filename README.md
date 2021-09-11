@@ -1,4 +1,4 @@
-﻿**Development of a video-based system for real-time public space patronage analytics**
+﻿## Development of a video-based system for real-time public space patronage analytics
 
 This is the capstone project for group 17 SEPA/B 2021 Swinburne University of Technology. 
  - Nicholas Anzellotti 		| 101623877
