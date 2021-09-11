@@ -10,7 +10,7 @@ This is the capstone project for group 17 SEPA/B 2021 Swinburne University of Te
 
 ## High level overview
 This project contains two main components:
- - **Pedestrian_tracker***: tracks people and generates heatmap.
+ - **Pedestrian_tracker**: tracks people and generates heatmap.
  - **ELK stack**: Visualises the detection data from **Pedestrian_tracker**. (ELK stack not included in this repository).
  
 

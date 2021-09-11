@@ -1,4 +1,4 @@
-﻿# Pedestrian Tracker C++
+﻿﻿# Pedestrian Tracker C++
 ![Sample run](https://cdn.discordapp.com/attachments/623044410287849492/886126909090594826/samplegif2.gif)
 
 This module is adapted from pedestrian_tracker_demo module from Intel. For information on the original module and how it works, click [\[here\]](https://docs.openvinotoolkit.org/latest/omz_demos_pedestrian_tracker_demo_cpp.html).
@@ -9,7 +9,9 @@ OpenVino 2021.4: [\[Link\]](https://software.seek.intel.com/openvino-toolkit) [\
 
 ## Supported Models
 person-detection-retail-xxxx.
+
 person-reidentification-retail-xxxx.
+
 These models can be downloaded using [Intel Model Downloader](https://docs.openvinotoolkit.org/latest/omz_tools_downloader.html) or from [Intel Open Model Zoo.](https://github.com/openvinotoolkit/open_model_zoo)
 
 ## Building
@@ -72,24 +74,31 @@ Options:
 frame_no | real_time | person_id | x_coord | y_coord | width | height | confidence_level | location | total_count
 ```
 
-**real_time**: real time data when that particular data entry is logged.
-**person_id**: an integer id that uniquely identifies a tracked person.  **person_id** data transfers across frames which means if a tracked person with id 1 goes out of frame, id 1 will never be used again or be assigned to any other person. 
-**confidence_level**: a float number (0 to 1) detection model gives every tracked person that indicates the detection confidence level for that particular person.
-**location**: contains the value that is passed to the -location flag.
-**total_count**: total number of people detected in that frame
+- **real_time**: real time data when that particular data entry is logged.
+
+- **person_id**: an integer id that uniquely identifies a tracked person.  **person_id** data transfers across frames which means if a tracked person with id 1 goes out of frame, id 1 will never be used again or be assigned to any other person. 
+
+- **confidence_level**: a float number (0 to 1) detection model gives every tracked person that indicates the detection confidence level for that particular person.
+
+- **location**: contains the value that is passed to the -location flag.
+
+- **total_count**: total number of people detected in that frame
 
 -out_a flag:
 ```
 person_id | initial_time | time_spent_in_roi
 ```
-**person_id**: an integer id that uniquely identifies a tracked person. 
-**initial_time**: Real time data when that person enters ROI.
+- **person_id**: an integer id that uniquely identifies a tracked person. 
+
+- **initial_time**: Real time data when that person enters ROI.
 
 The program writes to its log file every 100 frames.
 
 ## Re-configure the AI
 This AI has been configured to maximise the accuracy for one specific counting context: Beswick Square.
+
 It is **highly recommended**  for users to re-configure thresholds and sensitivities of the AI (by trial and error) when this project is used for a different counting context to achieve optimal accuracy level.
+
 To re-configure thresholds and sensitivities of the AI, change the following:
 In `tracker.cpp`:
 ```
