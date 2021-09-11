@@ -1,4 +1,4 @@
-﻿﻿# Pedestrian Tracker C++
+# Pedestrian Tracker C++
 ![Sample run](https://cdn.discordapp.com/attachments/623044410287849492/886126909090594826/samplegif2.gif)
 
 This module is adapted from pedestrian_tracker_demo module from Intel. For information on the original module and how it works, click [\[here\]](https://docs.openvinotoolkit.org/latest/omz_demos_pedestrian_tracker_demo_cpp.html).
