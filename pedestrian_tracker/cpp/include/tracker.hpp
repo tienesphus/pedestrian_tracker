@@ -158,8 +158,10 @@ struct Track {
 
     TrackedObject first_object;  ///< First object in track.
     //-----//
-    int is_in_roi;  ///< 
-    uint64_t timestamp_roi;
+    int is_in_roi;  ///< flag for whether the track is in ROI (-1 if outside of ROI)
+                    ///                                       (0 if inside of ROI)
+                    ///                                       (1 if tracked object go outside of ROI)                                               
+    uint64_t timestamp_roi; ///< inital time when tracked object is inside ROI
     int time_of_stay;    ///< time of stay (in seconds) in a ROI (region of interest).
     //-----//
     size_t length;  ///< Length of a track including number of objects that were
@@ -326,6 +328,10 @@ public:
     ///
     void PrintReidPerformanceCounts(std::string fullDeviceName) const;
 
+    ///
+    /// \brief Check weather tracks are in the area of interest
+    /// \param roi the ROI (region of interest)
+    /// \return a list of tracks that left the ROI 
     std::vector<Track> CheckInRoi(std::vector<cv::Point2f> roi);
 
 private:
