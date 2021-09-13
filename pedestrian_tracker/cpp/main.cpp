@@ -13,7 +13,6 @@
 
 #include <monitors/presenter.h>
 #include <utils/images_capture.h>
-#include <nadjieb/mjpeg_streamer.hpp>
 #include <chrono>
 
 
@@ -28,7 +27,6 @@
 #include <math.h>
 using namespace InferenceEngine;
 using ImageWithFrameIndex = std::pair<cv::Mat, int>;
-using MJPEGStreamer = nadjieb::MJPEGStreamer;
 
 std::unique_ptr<PedestrianTracker>
 CreatePedestrianTracker(const std::string& reid_model,
@@ -197,6 +195,7 @@ int main(int argc, char **argv) {
         MouseParams roi ={&roi_frame,mouse};
         DetectionLogExtra extralog;
         std::vector<cv::Point> poly_line;
+        
         if(!path_to_config.empty()){
             
             if(is_re_config){
@@ -220,12 +219,15 @@ int main(int argc, char **argv) {
         SetPoints(&roi,4,"ROI-selection");
 
         //------------------//
-        //stream//
-        std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 90};
-
-        MJPEGStreamer streamer;
-        streamer.start(8080,4);
-
+        cv::VideoWriter stream_writer;
+        stream_writer.open("appsrc ! videoconvert ! x264enc noise-reduction=10000 tune=zerolatency byte-stream=true threads=4 ! mpegtsmux ! udpsink host=localhost port=9999"
+                , 0, (double)30, cv::Size(640, 480), true);
+        if (!stream_writer.isOpened()) {
+            throw std::runtime_error("=ERR= can't create video writer\n");
+        }
+        std::vector<uchar> buff;
+                
+        std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY,90};
         //------------------//
         for (unsigned frameIdx = 0; ; ++frameIdx) {
 
@@ -234,12 +236,6 @@ int main(int argc, char **argv) {
             pedestrian_detector.waitAndFetchResults();
 
             TrackedObjects detections = pedestrian_detector.getResults();
-            if (frame.empty())
-            {
-                std::cerr << "frame not grabbed\n";
-                //continue;
-                exit(EXIT_FAILURE);
-            }
             
             // timestamp in milliseconds
             //uint64_t cur_timestamp = static_cast<uint64_t >(1000.0 / video_fps * frameIdx);
@@ -278,13 +274,17 @@ int main(int argc, char **argv) {
                     estimator.DrawDistance(detections);
                 }              
                 //cv::imshow("dbg", frame);
+                //---------//
+                
+                cv::imencode(".jpg",frame,buff,params);
+                for(auto i = buff.begin();i !=buff.end();i++){
+                    std::cout << *i;
+                }
+                //---------//
                 char k = cv::waitKey(delay);
                 if (k == 27)
                     break;
                 presenter.handleKey(k);
-                std::vector<uchar> buff_bgr;
-                cv::imencode(".jpg", frame, buff_bgr, params);
-                streamer.publish("/bgr", std::string(buff_bgr.begin(), buff_bgr.end()));
             }
             if (videoWriter.isOpened() && (FLAGS_limit == 0 || framesProcessed <= FLAGS_limit)) {
                 videoWriter.write(frame);
@@ -304,7 +304,6 @@ int main(int argc, char **argv) {
             if (frame.size() != firstFrameSize)
                 throw std::runtime_error("Can't track objects on images of different size");
         }
-        streamer.stop();
         if (should_keep_tracking_info) {
             DetectionLog log = tracker->GetDetectionLog(true);
             if (should_save_det_log)
