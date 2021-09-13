@@ -74,7 +74,7 @@ void SaveDetectionExtraLogToStream(StreamType& stream,
             tTime = std::chrono::system_clock::to_time_t(tPoint);
             timestamp = localtime(&tTime);
             timeStr = asctime(timestamp);
-            timeStr.pop_back();
+            timeStr.p_back();
             stream << entry.second.object_id << ',' << timeStr << ','
                     << (float) entry.second.time_of_stay/1000;
             stream << '\n';
@@ -96,7 +96,7 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
         cv::line(*image, polyline[i - 1], polyline[i], color, lwd);
     }
 }
-void DrawRoi(const std::vector<cv::Point>& polyline,
+void DrawRoi(const std::vector<cv::Point2f>& polyline,
             const cv::Scalar& color, cv::Mat* image, int lwd){
     for (size_t i = 1; i < polyline.size(); i++) {
         cv::line(*image, polyline[i - 1], polyline[i], color, lwd);

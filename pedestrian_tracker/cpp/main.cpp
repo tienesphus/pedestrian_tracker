@@ -107,58 +107,6 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
 
     return true;
 }
-void roiCallback(int event, int x, int y, int flags, void* param){
-    MouseParams* mp = (MouseParams *)param;
-    cv::Mat *frame = ((cv::Mat *)mp->frame);
-	if (event == cv::EVENT_LBUTTONDOWN)
-	{
-		if (mp->mouse_input.size() < 4) {
-			cv::circle(*frame, cv::Point2f(x, y), 
-            5, 
-            cv::Scalar(0, 0, 255),
-            4);
-                
-		}
-		else
-		{
-			cv::circle(*frame, 
-            cv::Point2f(x, y), 
-            5, 
-            cv::Scalar(255, 0, 0),
-            4);
-          
-		}
-		if (mp->mouse_input.size() >= 1 and mp->mouse_input.size() <= 3) {			
-			cv::line(*frame, cv::Point2f(x, y), 
-            cv::Point2f(mp->mouse_input[mp->mouse_input.size() - 1].x,mp->mouse_input[mp->mouse_input.size() - 1].y),
-            cv::Scalar(70, 70, 70), 
-            2);
-			if (mp->mouse_input.size() == 3) {
-				line(*frame,  cv::Point2f(x, y),
-                  cv::Point2f(mp->mouse_input[0].x, mp->mouse_input[0].y),
-                    cv::Scalar(70, 70, 70), 
-                   2);
-			}
-
-		}
-        std::cout << "Point2f(" << x << ", " << y << ")," << std::endl;
-		mp->mouse_input.push_back( cv::Point2f((float)x, (float)y));
-        
-        
-	}
-}
-
-// void setPoint(MouseParams *mp){
-//     for (;;) {
-//         cv::Mat* frame_copy = mp->frame;
-//         cv::imshow("ROI-selection", *frame_copy);
-//         cv::waitKey(1);
-//         if (mp->mouse_input.size() == 4) {
-//             cv::destroyWindow("ROI-selection");
-//             break;
-//             }
-//         }
-// }
 
 int main(int argc, char **argv) {
     try {
@@ -246,13 +194,15 @@ int main(int argc, char **argv) {
         cv::Mat roi_frame;
         frame.copyTo(roi_frame);
         DistanceEstimate estimator(frame);
-
+        MouseParams roi ={&roi_frame,mouse};
+        DetectionLogExtra extralog;
+        std::vector<cv::Point> poly_line;
         if(!path_to_config.empty()){
             
             if(is_re_config){
-                cv::namedWindow("image", 1);
-                cv::setMouseCallback("image", MouseCallBack, (void *) &mp);
-                SetPoints(&mp,7,"image");
+                cv::namedWindow("Camera-config", 1);
+                cv::setMouseCallback("Camera-config", MouseCallBack, (void *) &mp);
+                SetPoints(&mp,7,"Camera-config");
                 points = mp.mouse_input;
                 WriteConfig(FLAGS_config,points);
             }
@@ -264,21 +214,15 @@ int main(int argc, char **argv) {
             estimator = temp;
         }
         //------------------//
-        MouseParams roi ={&roi_frame,mouse};
+        
         cv::namedWindow("ROI-selection", 1);
         cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
         SetPoints(&roi,4,"ROI-selection");
-        std::vector<TrackedObject> pedestrian_roi;
 
-        DetectionLogExtra extralog;
-        std::vector<cv::Point> poly_line;
-        for(unsigned int i=0;i<roi.mouse_input.size();i++){
-            poly_line.push_back((cv::Point) roi.mouse_input[i]);
-        }
         //------------------//
         for (unsigned frameIdx = 0; ; ++frameIdx) {
 
-            DrawRoi(poly_line,cv::Scalar(70,70,70),&frame,2);
+            DrawRoi(roi.mouse_input,cv::Scalar(70,70,70),&frame,2);
             pedestrian_detector.submitFrame(frame, frameIdx);
             pedestrian_detector.waitAndFetchResults();
 
