@@ -74,7 +74,7 @@ void SaveDetectionExtraLogToStream(StreamType& stream,
             tTime = std::chrono::system_clock::to_time_t(tPoint);
             timestamp = localtime(&tTime);
             timeStr = asctime(timestamp);
-            timeStr.back();
+            timeStr.pop_back();
             stream << entry.second.object_id << ',' << timeStr << ','
                     << (float) entry.second.time_of_stay/1000;
             stream << '\n';
