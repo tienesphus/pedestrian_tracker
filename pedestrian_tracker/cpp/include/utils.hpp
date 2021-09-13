@@ -74,11 +74,15 @@ struct DetectionLogEntry {
 
 /// Detection log is a vector of detection entries.
 using DetectionLog = std::vector<DetectionLogEntry>;
-
+///
+/// \brief The DetectionLogExtra Entry struct
+///
+/// An entry describing the time of stay of tracked objects in a ROI
+///
 struct DetectionLogExtraEntry{
-    int object_id;
-    uint64_t init_time;
-    int time_of_stay;
+    int object_id;      ///< Tracked objects id
+    uint64_t init_time; ///< The inital time when tracked object is in the roi (0 if N/A)
+    int time_of_stay;   ///< The time of stay of tracked object in ROI 
     ///
     /// \brief DetectionLogExtraEntry default constructor.
     ///
@@ -172,7 +176,7 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
 /// \param[in] color Color (BGR).
 /// \param[in,out] image Frame.
 /// \param[in] lwd Line width.
-void DrawRoi(const std::vector<cv::Point>& polyline,
+void DrawRoi(const std::vector<cv::Point2f>& polyline,
             const cv::Scalar& color, cv::Mat* image, int lwd=2);
 ///
 /// \brief Get the bottom center point given a rectangle box
