@@ -101,10 +101,9 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
         throw std::logic_error("Parameter -m_reid is not set");
     }
 
-    if((!FLAGS_out.empty() || !FLAGS_out_a.empty() || FLAGS_r) && FLAGS_location.empty()){
+    if((!FLAGS_out.empty()|| FLAGS_r) && FLAGS_location.empty()){
         throw std::logic_error("Parameter -location is not set for output file");
     }
-
     return true;
 }
 
@@ -213,16 +212,14 @@ int main(int argc, char **argv) {
             DistanceEstimate temp(frame,mp.mouse_input);
             estimator = temp;
         }
-        //------------------//
-        
-        cv::namedWindow("ROI-selection", 1);
-        cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
-        SetPoints(&roi,4,"ROI-selection");
-
-        //------------------//
+        if(should_save_det_exlog){
+            cv::namedWindow("ROI-selection", 1);
+            cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
+            SetPoints(&roi,4,"ROI-selection");
+        }
         for (unsigned frameIdx = 0; ; ++frameIdx) {
 
-            DrawRoi(roi.mouse_input,cv::Scalar(70,70,70),&frame,2);
+            
             pedestrian_detector.submitFrame(frame, frameIdx);
             pedestrian_detector.waitAndFetchResults();
 
@@ -251,7 +248,7 @@ int main(int argc, char **argv) {
             
             }
             if(should_save_det_exlog){
-
+                DrawRoi(roi.mouse_input,cv::Scalar(70,70,70),&frame,2);
                 for (auto &track : tracker->CheckInRoi(roi.mouse_input)){
                     DetectionLogExtraEntry entry;
                     entry = tracker->GetDetectionLogExtra(track);
@@ -294,8 +291,8 @@ int main(int argc, char **argv) {
             DetectionLog log = tracker->GetDetectionLog(true);
             if (should_save_det_log)
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
-            // if(should_save_det_exlog)
-            //     SaveDetectionLogToTrajFile(detlog_out_a,extralog);
+            if(should_save_det_exlog)
+                SaveDetectionLogToTrajFile(detlog_out_a,extralog);
             if (should_print_out)
                 PrintDetectionLog(log, detlocation);
         }

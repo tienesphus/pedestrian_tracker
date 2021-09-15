@@ -103,14 +103,14 @@ void DrawRoi(const std::vector<cv::Point2f>& polyline,
     }
     cv::line(*image,polyline[0],polyline[polyline.size()-1],color,lwd);
 }
-cv::Point2f GetBottomPoint(const TrackedObject box){
+cv::Point2f GetBottomPoint(const cv::Rect box){
 
     cv::Point2f temp_pnt(1); 
 
     float width, height;
-    width = box.rect.width;
-    height = box.rect.height;
-    temp_pnt = cv::Point2f((box.rect.x + (width*0.5)), (box.rect.y+height));	
+    width = box.width;
+    height = box.height;
+    temp_pnt = cv::Point2f((box.x + (width*0.5)), (box.y+height));	
 		
 	return temp_pnt;
 }
@@ -200,7 +200,7 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path){
         
     }
     if(points.size() !=7){
-        throw std::runtime_error("config file should have total size of 8 (" +path+ ")");
+        throw std::runtime_error("config file should have total size of 7 (" +path+ ")");
     }
     return points;
 }

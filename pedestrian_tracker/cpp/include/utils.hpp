@@ -181,7 +181,7 @@ void DrawRoi(const std::vector<cv::Point2f>& polyline,
 ///
 /// \brief Get the bottom center point given a rectangle box
 /// \param[in] box a trackedObject containing the rectangle box
-cv::Point2f GetBottomPoint(const TrackedObject box);
+cv::Point2f GetBottomPoint(const cv::Rect box);
 ///
 /// \brief The mouse parameters struct 
 ///

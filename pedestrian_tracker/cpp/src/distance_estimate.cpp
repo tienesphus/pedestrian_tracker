@@ -6,7 +6,7 @@
 
 
 #include "distance_estimate.hpp"
-
+#include "utils.hpp"
 
 
 const float THRESHOLD =1.5;
@@ -56,14 +56,11 @@ std::vector<cv::Point2f> DistanceEstimate::GetTransformedPoints(TrackedObjects b
 	for (unsigned int i = 0; i < boxes.size(); i++) {
 		std::vector<cv::Point2f> temp_pnt(1); 
 		std::vector<cv::Point2f> bd_pnt(1);
-		float width, height;
-        width = boxes[i].rect.width;
-        height = boxes[i].rect.height;
-        temp_pnt[0] = cv::Point2f((boxes[i].rect.x + (width*0.5)), (boxes[i].rect.y+height));
-		circle(frame, temp_pnt[0], 
-        5, 
-        cv::Scalar(0, 0, 255),
-        5);
+        temp_pnt[0] = GetBottomPoint(boxes[i].rect);
+		// circle(frame, temp_pnt[0], 
+        // 5, 
+        // cv::Scalar(0, 0, 255),
+        // 5);
 		perspectiveTransform(temp_pnt, bd_pnt,perspective_tran);
 		temp_pnt[0] = cv::Point2f(bd_pnt[0].x, bd_pnt[0].y);
 		bottom_points.push_back(temp_pnt[0]);

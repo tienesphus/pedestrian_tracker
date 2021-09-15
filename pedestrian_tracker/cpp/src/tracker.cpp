@@ -821,7 +821,7 @@ std::vector<Track> PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
     for (size_t idx : active_track_ids()) {
         auto track = tracks().at(idx);
         if (IsTrackValid(idx) && !track.lost) {
-            check = cv::pointPolygonTest(roi,GetBottomPoint(track.objects.back()),false);
+            check = cv::pointPolygonTest(roi,GetBottomPoint(track.objects.back().rect),false);
             if((check == 1 || check == 0) && tracks().at(idx).is_in_roi != 0){
                 tracks_.at(idx).timestamp_roi = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
                 tracks_.at(idx).is_in_roi = 0;
