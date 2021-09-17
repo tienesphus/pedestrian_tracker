@@ -218,8 +218,8 @@ int main(int argc, char **argv) {
         cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
         SetPoints(&roi,4,"ROI-selection");
         cv::VideoWriter stream_writer;
-        stream_writer.open("appsrc ! videoconvert ! x264enc tune=zerolatency ! mpegtsmux ! rtpmp4tpay send-config=true ! udpsink host=localhost port=5000",0,(double) 30, cv::Size(640,480),true);
-
+        //stream_writer.open("appsrc ! videoconvert ! x264enc ! mpegtsmux ! rtpmp4tpay send-config=true ! udpsink host=localhost port=5000",0,(double) 30, cv::Size(640,480),true);
+        //stream_writer.open("appsrc ! videoconvert ! jpegenc ! jpegparse ! rtpjpegpay ! udpsink host=localhost port=5000",0,(double) 30, cv::Size(640,480),true);
         if(!stream_writer.isOpened()){
             std::runtime_error("=ERR= can't create video writer\n");
         }
@@ -270,7 +270,7 @@ int main(int argc, char **argv) {
                 }              
                 //cv::imshow("dbg", frame);
                 //---------//
-                stream_writer << frame;
+                //stream_writer << frame;
                 //---------//
                 char k = cv::waitKey(delay);
                 if (k == 27)
