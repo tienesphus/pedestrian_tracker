@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
         int delay = FLAGS_delay;
 
         auto threshold = FLAGS_th;
-        bool is_re_config = FLAGS_reconfig;
+        auto is_re_config = FLAGS_reconfig;
         auto detlog_out_a = FLAGS_out_a;
 
         if (!should_show)
@@ -145,6 +145,7 @@ int main(int argc, char **argv) {
 
         bool should_save_det_log = !detlog_out.empty();
         bool should_save_det_exlog = !detlog_out_a.empty();
+        
         std::vector<std::string> devices{detector_mode, reid_mode};
         InferenceEngine::Core ie =
             LoadInferenceEngine(
@@ -161,6 +162,11 @@ int main(int argc, char **argv) {
 
         std::unique_ptr<ImagesCapture> cap = openImagesCapture(FLAGS_i, FLAGS_loop, FLAGS_first, FLAGS_read_limit);
         double video_fps = cap->fps();
+        
+        
+        
+        DetectionLogExtra extralog;
+        std::vector<cv::Point> poly_line;
         if (0.0 == video_fps) {
             // the default frame rate for DukeMTMC dataset
             video_fps = 60.0;
@@ -178,43 +184,46 @@ int main(int argc, char **argv) {
         uint32_t framesProcessed = 0;
         cv::Size graphSize{static_cast<int>(frame.cols / 4), 60};
         Presenter presenter(FLAGS_u, 10, graphSize);
-
+        std::vector<cv::Point2f> points;
+        std::vector<cv::Point2f> mouse_input,mouse;
+        cv::Mat roi_frame;
+        MouseParams roi ={&roi_frame,mouse};
+        MouseParams mp ={&frame,mouse_input};       
+        frame.copyTo(roi_frame);
+        DistanceEstimate estimator(frame);
         std::cout << "To close the application, press 'CTRL+C' here";
         if (!FLAGS_no_show) {
             std::cout << " or switch to the output window and press ESC key";
         }
         std::cout << std::endl;
-        
-        std::vector<cv::Point2f> mouse_input,mouse;
-        std::vector<cv::Point2f> points;
-        MouseParams mp ={&frame,mouse_input};
-        cv::Mat roi_frame;
-        frame.copyTo(roi_frame);
-        DistanceEstimate estimator(frame);
-        MouseParams roi ={&roi_frame,mouse};
-        DetectionLogExtra extralog;
-        std::vector<cv::Point> poly_line;
+        std::string path_to_config = "configs/camera_config.txt";
+        if(!is_re_config.empty()){
+            ReConfig(is_re_config,&frame);
+        }
+        // if(is_re_config == "cam"){
+        //     cv::namedWindow("Camera-config", 1);
+        //     cv::setMouseCallback("Camera-config", MouseCallBack, (void *) &mp);
+        //     SetPoints(&mp,7,"Camera-config");
+        //     points = mp.mouse_input;
+        //     WriteConfig(path_to_config,points);
+        // }
+        // if(is_re_config == "roi"){
+        //     cv::namedWindow("ROI-selection", 1);
+        //     cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
+        //     SetPoints(&roi,4,"ROI-selection");
+        // }
         if(!threshold.empty()){
-            std::string path_to_config = "configs/camera_config.txt";
-            if(is_re_config){
-                cv::namedWindow("Camera-config", 1);
-                cv::setMouseCallback("Camera-config", MouseCallBack, (void *) &mp);
-                SetPoints(&mp,7,"Camera-config");
-                points = mp.mouse_input;
-                WriteConfig(path_to_config,points);
-            }
-            else{
-                points = ReadConfig(path_to_config);
-                mp.mouse_input = points;
-            }
+            points = ReadConfig(path_to_config);
+            mp.mouse_input = points;
             DistanceEstimate temp(frame,mp.mouse_input,ToFloat(threshold));
             estimator = temp;
         }
-        if(should_save_det_exlog){
-            cv::namedWindow("ROI-selection", 1);
-            cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
-            SetPoints(&roi,4,"ROI-selection");
-        }
+        // if(should_save_det_exlog){
+        //     points = ReadConfig(path_to_config);
+        //     cv::namedWindow("ROI-selection", 1);
+        //     cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
+        //     SetPoints(&roi,4,"ROI-selection");
+        // }
         for (unsigned frameIdx = 0; ; ++frameIdx) {
 
             

@@ -224,6 +224,18 @@ void WriteConfig(const std::string &path, std::vector<cv::Point2f> points);
 /// \param[in] str a string
 /// \return float 
 float ToFloat(const std::string str);
+
+///
+/// \brief draw the window for users to click on
+/// \param[in] window_name the name of the window
+/// \param[in] mp a struct containing reference image and mouse input
+void ReConfigWindow(const std::string window_name, MouseParams* mp);
+///
+/// \brief reconfig either camera or roi config file 
+/// \param[in] input a string
+/// \param[in] frame reference image
+/// \return keyword for either camera config or roi config 
+std::vector<cv::Point2f> ReConfig(const std::string& input, cv::Mat* image);
 ///
 /// \brief Stream output operator for deque of elements.
 /// \param[in,out] os Output stream.
