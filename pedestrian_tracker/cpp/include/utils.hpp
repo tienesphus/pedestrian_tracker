@@ -14,7 +14,7 @@
 #include <utility>
 #include <deque>
 #include <map>
-
+#include <sstream>
 #include <utils/common.hpp>
 #include <opencv2/core.hpp>
 ///
@@ -218,6 +218,12 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path);
 /// \param[in] path Path to the file
 /// \return points a list of points(x,y coordinates)
 void WriteConfig(const std::string &path, std::vector<cv::Point2f> points);
+
+///
+/// \brief convert string to float
+/// \param[in] str a string
+/// \return float 
+float ToFloat(const std::string str);
 ///
 /// \brief Stream output operator for deque of elements.
 /// \param[in,out] os Output stream.

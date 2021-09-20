@@ -8,15 +8,8 @@
 #include "distance_estimate.hpp"
 #include "utils.hpp"
 
-
-const float THRESHOLD =1.5;
-
-
-
-DistanceEstimate::DistanceEstimate(cv::Mat& video_frame):frame(video_frame){
-    
-}
-DistanceEstimate::DistanceEstimate(cv::Mat& video_frame, std::vector<cv::Point2f> config_points):frame(video_frame){
+DistanceEstimate::DistanceEstimate(cv::Mat& video_frame):frame(video_frame){}
+DistanceEstimate::DistanceEstimate(cv::Mat& video_frame, std::vector<cv::Point2f> config_points,float threshold):frame(video_frame){
 
     std::vector<cv::Point2f> src(4); // 4 points for perspective tranform
     std::vector<cv::Point2f> dst(4);
@@ -40,6 +33,7 @@ DistanceEstimate::DistanceEstimate(cv::Mat& video_frame, std::vector<cv::Point2f
     perspectiveTransform(points_len,warped_pt,perspective_tran);
     distance_w = CalculateDist(warped_pt[0], warped_pt[1]);
     distance_h = CalculateDist(warped_pt[0], warped_pt[2]);
+    threshold_ = threshold;
 }
 DistanceEstimate& DistanceEstimate::operator=(const DistanceEstimate &other){
     if(this == &other){
@@ -49,6 +43,7 @@ DistanceEstimate& DistanceEstimate::operator=(const DistanceEstimate &other){
     warped_pt = other.warped_pt;
     distance_h = other.distance_h;
     distance_w = other.distance_w;
+    threshold_ = other.threshold_;
     return *this;
 }
 std::vector<cv::Point2f> DistanceEstimate::GetTransformedPoints(TrackedObjects boxes){
@@ -148,7 +143,7 @@ std::vector<std::pair<TrackedObjects, float>> DistanceEstimate::EstimateDistAllO
             if (i != j) {
                 float dist = 0.0f;
                 dist = EstimateRealDist(detected_pts[i], detected_pts[j], distance_w, distance_h);  
-                if (dist <=THRESHOLD){
+                if (dist <=threshold_){
                     bxs.push_back(make_pair((TrackedObjects){boxes[i],boxes[j]},dist));      
                 }else{
                     continue;

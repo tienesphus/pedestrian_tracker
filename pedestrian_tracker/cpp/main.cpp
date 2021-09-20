@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
         
         int delay = FLAGS_delay;
 
-        auto path_to_config = FLAGS_config;
+        auto threshold = FLAGS_th;
         bool is_re_config = FLAGS_reconfig;
         auto detlog_out_a = FLAGS_out_a;
 
@@ -165,9 +165,7 @@ int main(int argc, char **argv) {
             // the default frame rate for DukeMTMC dataset
             video_fps = 60.0;
         }
-        if(is_re_config && path_to_config.empty()){
-            throw std::logic_error("Parameter -config is not set(to use -reconfig, -config must be provided)");
-        }
+
         cv::Mat frame = cap->read();
         if (!frame.data) throw std::runtime_error("Can't read an image from the input");
         cv::Size firstFrameSize = frame.size();
@@ -196,20 +194,20 @@ int main(int argc, char **argv) {
         MouseParams roi ={&roi_frame,mouse};
         DetectionLogExtra extralog;
         std::vector<cv::Point> poly_line;
-        if(!path_to_config.empty()){
-            
+        if(!threshold.empty()){
+            std::string path_to_config = "configs/camera_config.txt";
             if(is_re_config){
                 cv::namedWindow("Camera-config", 1);
                 cv::setMouseCallback("Camera-config", MouseCallBack, (void *) &mp);
                 SetPoints(&mp,7,"Camera-config");
                 points = mp.mouse_input;
-                WriteConfig(FLAGS_config,points);
+                WriteConfig(path_to_config,points);
             }
             else{
-                points = ReadConfig(FLAGS_config);
+                points = ReadConfig(path_to_config);
                 mp.mouse_input = points;
             }
-            DistanceEstimate temp(frame,mp.mouse_input);
+            DistanceEstimate temp(frame,mp.mouse_input,ToFloat(threshold));
             estimator = temp;
         }
         if(should_save_det_exlog){
@@ -258,7 +256,7 @@ int main(int argc, char **argv) {
             framesProcessed++;
 
             if (should_show) {
-                if(!path_to_config.empty()){
+                if(!threshold.empty()){
                     estimator.DrawDistance(detections);
                 }              
                 cv::imshow("dbg", frame);

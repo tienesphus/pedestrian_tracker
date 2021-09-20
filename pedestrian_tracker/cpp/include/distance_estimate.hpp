@@ -15,7 +15,8 @@ class DistanceEstimate{
         /// \param[in] video_frame reference frame for drawing lines
         /// \param[in] config_points list of point from -config file 
         /// \param[in] dst_points list of reference points from the video frame.
-        explicit DistanceEstimate(cv::Mat& video_frame,std::vector<cv::Point2f> config_points);
+        /// \param[in] threshold the threshold for showing calculated distance between pedestrians
+        explicit DistanceEstimate(cv::Mat& video_frame,std::vector<cv::Point2f> config_points,float threshold);
 
         
         /// \brief draw the line between all detected objects below a THRESHOLD and show the distance between them
@@ -31,6 +32,7 @@ class DistanceEstimate{
         std::vector<cv::Point2f> warped_pt;
         float distance_w;
         float distance_h;
+        float threshold_;
 
         /// \brief calculate distance between two points given their coordinates (euclidean distance)
         /// \param[in] point_1 coordinate of the first point

@@ -217,7 +217,18 @@ void WriteConfig(const std::string &path, std::vector<cv::Point2f> points){
     config_file.close();
 }
 
-
+float ToFloat(const std::string str){
+    std::istringstream iss(str);
+    float temp;
+    iss >> std::noskipws >> temp;
+    if(iss.eof() && !iss.fail()){
+        temp = std::stof(str);            
+    }
+    else{
+        throw std::runtime_error(str +" is not a valid input(numbers only)");
+    }
+    return temp;
+}
 void SaveDetectionLogToTrajFile(const std::string& path,
                                 const DetectionLog& log,
                                 const std::string& location) {
