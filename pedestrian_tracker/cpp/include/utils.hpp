@@ -210,8 +210,9 @@ void SetPoints(MouseParams* mp,unsigned int point_num,std::string name);
 /// 
 /// \brief reading the camera config file (a text file containing points)
 /// \param[in] path Path to the file
+/// \param[in] line_num number of lines to read from the file
 /// \return points a list of points(x,y coordinates) 
-std::vector<cv::Point2f> ReadConfig(const std::string& path);
+std::vector<cv::Point2f> ReadConfig(const std::string& path,const size_t& line_num);
 
 ///
 /// \brief writing camera configuration to file (x,y coordinates)
@@ -233,9 +234,9 @@ void ReConfigWindow(const std::string window_name, MouseParams* mp);
 ///
 /// \brief reconfig either camera or roi config file 
 /// \param[in] input a string
-/// \param[in] frame reference image
+/// \param[in] mp a struct containing reference image and point clicked
 /// \return keyword for either camera config or roi config 
-std::vector<cv::Point2f> ReConfig(const std::string& input, cv::Mat* image);
+void ReConfig(const std::string& input,MouseParams* mp);
 ///
 /// \brief Stream output operator for deque of elements.
 /// \param[in,out] os Output stream.

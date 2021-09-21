@@ -10,7 +10,7 @@
 #include "detector.hpp"
 #include "pedestrian_tracker.hpp"
 #include "distance_estimate.hpp"
-
+#include "config_paths.hpp"
 #include <monitors/presenter.h>
 #include <utils/images_capture.h>
 
@@ -27,6 +27,7 @@
 #include <string>
 #include <gflags/gflags.h>
 #include <math.h>
+
 using namespace InferenceEngine;
 using ImageWithFrameIndex = std::pair<cv::Mat, int>;
 
@@ -184,46 +185,28 @@ int main(int argc, char **argv) {
         uint32_t framesProcessed = 0;
         cv::Size graphSize{static_cast<int>(frame.cols / 4), 60};
         Presenter presenter(FLAGS_u, 10, graphSize);
-        std::vector<cv::Point2f> points;
-        std::vector<cv::Point2f> mouse_input,mouse;
-        cv::Mat roi_frame;
-        MouseParams roi ={&roi_frame,mouse};
-        MouseParams mp ={&frame,mouse_input};       
-        frame.copyTo(roi_frame);
-        DistanceEstimate estimator(frame);
         std::cout << "To close the application, press 'CTRL+C' here";
         if (!FLAGS_no_show) {
             std::cout << " or switch to the output window and press ESC key";
         }
         std::cout << std::endl;
-        std::string path_to_config = "configs/camera_config.txt";
+
+        std::vector<cv::Point2f> mouse_input;
+        MouseParams mp ={&frame,mouse_input};
         if(!is_re_config.empty()){
-            ReConfig(is_re_config,&frame);
+            ReConfig(is_re_config,&mp);
         }
-        // if(is_re_config == "cam"){
-        //     cv::namedWindow("Camera-config", 1);
-        //     cv::setMouseCallback("Camera-config", MouseCallBack, (void *) &mp);
-        //     SetPoints(&mp,7,"Camera-config");
-        //     points = mp.mouse_input;
-        //     WriteConfig(path_to_config,points);
-        // }
-        // if(is_re_config == "roi"){
-        //     cv::namedWindow("ROI-selection", 1);
-        //     cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
-        //     SetPoints(&roi,4,"ROI-selection");
-        // }
+        DistanceEstimate estimator(frame);
         if(!threshold.empty()){
-            points = ReadConfig(path_to_config);
-            mp.mouse_input = points;
-            DistanceEstimate temp(frame,mp.mouse_input,ToFloat(threshold));
+            std::vector<cv::Point2f> points;
+            points = ReadConfig(config_paths::PATHTOCAMCONFIG,7);
+            DistanceEstimate temp(frame,points,ToFloat(threshold));
             estimator = temp;
         }
-        // if(should_save_det_exlog){
-        //     points = ReadConfig(path_to_config);
-        //     cv::namedWindow("ROI-selection", 1);
-        //     cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
-        //     SetPoints(&roi,4,"ROI-selection");
-        // }
+        std::vector<cv::Point2f> roi_points;
+        if(should_save_det_exlog){
+            roi_points = ReadConfig(config_paths::PATHTOROICONFIG,4);
+        }
         for (unsigned frameIdx = 0; ; ++frameIdx) {
 
             
@@ -255,8 +238,8 @@ int main(int argc, char **argv) {
             
             }
             if(should_save_det_exlog){
-                DrawRoi(roi.mouse_input,cv::Scalar(70,70,70),&frame,2);
-                for (auto &track : tracker->CheckInRoi(roi.mouse_input)){
+                DrawRoi(roi_points,cv::Scalar(70,70,70),&frame,2);
+                for (auto &track : tracker->CheckInRoi(roi_points)){
                     DetectionLogExtraEntry entry;
                     entry = tracker->GetDetectionLogExtra(track);
                     extralog.emplace(entry.object_id,entry);
