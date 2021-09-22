@@ -46,7 +46,7 @@ DistanceEstimate& DistanceEstimate::operator=(const DistanceEstimate &other){
     threshold_ = other.threshold_;
     return *this;
 }
-std::vector<cv::Point2f> DistanceEstimate::GetTransformedPoints(TrackedObjects boxes){
+std::vector<cv::Point2f> DistanceEstimate::GetTransformedPoints(const TrackedObjects &boxes){
     std::vector<cv::Point2f> bottom_points;
 	for (unsigned int i = 0; i < boxes.size(); i++) {
 		std::vector<cv::Point2f> temp_pnt(1); 
@@ -64,13 +64,13 @@ std::vector<cv::Point2f> DistanceEstimate::GetTransformedPoints(TrackedObjects b
 	
 	return bottom_points;
 }
-cv::Point DistanceEstimate::GetMiddle(cv::Point2f point_1, cv::Point2f point_2) {
+cv::Point DistanceEstimate::GetMiddle(const cv::Point2f &point_1, const cv::Point2f &point_2) {
 	cv::Point result;
 	result.x = (point_1.x + point_2.x) / 2;
 	result.y = (point_1.y + point_2.y) / 2;
 	return result;
 }
-void DistanceEstimate::DrawDistance(TrackedObjects boxes){
+void DistanceEstimate::DrawDistance(const TrackedObjects &boxes) {
     std::vector<std::pair<TrackedObjects, float>> distances_mat;
     std::vector<cv::Point2f> detected_pts;
     detected_pts = GetTransformedPoints(boxes);
@@ -111,7 +111,7 @@ void DistanceEstimate::DrawDistance(TrackedObjects boxes){
 		}	
 	}
 }
-float DistanceEstimate::CalculateDist(cv::Point2f point_1, cv::Point2f point_2){
+float DistanceEstimate::CalculateDist(const cv::Point2f &point_1, const cv::Point2f &point_2){
     float dist;
 	float x = 0.0, y = 0.0;
 	x = pow((point_1.x - point_2.x), 2);
@@ -120,7 +120,7 @@ float DistanceEstimate::CalculateDist(cv::Point2f point_1, cv::Point2f point_2){
 	dist = sqrt(x + y);
 	return dist;
 }
-float DistanceEstimate::EstimateRealDist(cv::Point2f point_1, cv::Point2f point_2, float distance_w, float distance_h){
+float DistanceEstimate::EstimateRealDist(const cv::Point2f &point_1, const cv::Point2f &point_2, const float &distance_w, const float &distance_h)const {
     float x, y,dist_y,dist_x;
 	float result;
 	y = abs(point_1.y - point_2.y);
@@ -135,7 +135,7 @@ float DistanceEstimate::EstimateRealDist(cv::Point2f point_1, cv::Point2f point_
 	return result;
 }
 
-std::vector<std::pair<TrackedObjects, float>> DistanceEstimate::EstimateDistAllObj(std::vector<cv::Point2f> detected_pts,TrackedObjects boxes){
+std::vector<std::pair<TrackedObjects, float>> DistanceEstimate::EstimateDistAllObj(const std::vector<cv::Point2f> &detected_pts,const TrackedObjects &boxes){
 
     std::vector<std::pair<TrackedObjects, float>> bxs;
     for (unsigned int i = 0; i < detected_pts.size(); i++) {

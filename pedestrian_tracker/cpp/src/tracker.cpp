@@ -55,13 +55,12 @@ DetectionLog ConvertTracksToDetectionLog(const ObjectTracks& tracks) {
     return log;
 }
 
-DetectionLogExtraEntry ConvertTracksToDetectionLogExtra(Track track) {
+DetectionLogExtraEntry ConvertTracksToDetectionLogExtra(const Track &track) {
 
     DetectionLogExtraEntry entry;
     entry.object_id = track.objects.back().object_id;
     entry.init_time = track.timestamp_roi;
     entry.time_of_stay = track.time_of_stay;
-    
     return entry;
 }
 
@@ -212,7 +211,7 @@ const std::set<size_t> &PedestrianTracker::active_track_ids() const {
 DetectionLog PedestrianTracker::GetDetectionLog(const bool valid_only) const {
     return ConvertTracksToDetectionLog(all_tracks(valid_only));
 }
-DetectionLogExtraEntry PedestrianTracker::GetDetectionLogExtra(const Track log_track) {
+DetectionLogExtraEntry PedestrianTracker::GetDetectionLogExtra(const Track &log_track) const {
     return ConvertTracksToDetectionLogExtra(log_track);
 }
 
@@ -815,7 +814,7 @@ TrackedObjects PedestrianTracker::TrackedDetections()  {
     return detections;
 }
 //----//
-std::vector<Track> PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
+std::vector<Track> PedestrianTracker::CheckInRoi(const std::vector<cv::Point2f> &roi){
     std::vector<Track> temp_track;
     double check;
     for (size_t idx : active_track_ids()) {

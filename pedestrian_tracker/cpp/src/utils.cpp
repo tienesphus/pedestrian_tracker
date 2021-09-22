@@ -77,7 +77,8 @@ void SaveDetectionExtraLogToStream(StreamType& stream,
             timeStr = asctime(timestamp);
             timeStr.pop_back();
             stream << entry.second.object_id << ',' << timeStr << ','
-                    << (float) entry.second.time_of_stay/1000;
+                    << (float) entry.second.time_of_stay/1000 << ','
+                    << entry.second.location;
             stream << '\n';
         }
         
@@ -206,7 +207,7 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path,const size_t& line_n
     return points;
 }
 
-void WriteConfig(const std::string &path, std::vector<cv::Point2f> points){
+void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points){
     std::ofstream config_file(path, std::ofstream::out | std::ofstream::trunc);
 
     if(!config_file.is_open()){
@@ -218,7 +219,7 @@ void WriteConfig(const std::string &path, std::vector<cv::Point2f> points){
     config_file.close();
 }
 
-float ToFloat(const std::string str){
+float ToFloat(const std::string &str){
     std::istringstream iss(str);
     float temp;
     iss >> std::noskipws >> temp;
@@ -230,7 +231,7 @@ float ToFloat(const std::string str){
     }
     return temp;
 }
-void ReConfigWindow(std::string window_name, MouseParams* mp){
+void ReConfigWindow(const std::string &window_name, MouseParams* mp){
     cv::namedWindow(window_name, 1);
     cv::setMouseCallback(window_name, MouseCallBack, (void *) mp);
 }

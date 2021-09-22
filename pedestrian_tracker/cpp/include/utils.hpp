@@ -83,10 +83,16 @@ struct DetectionLogExtraEntry{
     int object_id;      ///< Tracked objects id
     uint64_t init_time; ///< The inital time when tracked object is in the roi (0 if N/A)
     int time_of_stay;   ///< The time of stay of tracked object in ROI 
+    std::string location; ///< The location of the system
     ///
     /// \brief DetectionLogExtraEntry default constructor.
     ///
     DetectionLogExtraEntry() : init_time(0), time_of_stay(0) {}
+
+    ///
+    /// \brief DetectionLogExtraEntry constructor.
+    ///
+    DetectionLogExtraEntry(std::string locat) : init_time(0), time_of_stay(0), location(locat) {}
 
     ///
     /// \brief DetectionLogExtraEntry copy constructor.
@@ -95,7 +101,8 @@ struct DetectionLogExtraEntry{
     DetectionLogExtraEntry(const DetectionLogExtraEntry &other)
         : object_id(other.object_id),
         init_time(other.init_time),
-        time_of_stay(other.time_of_stay) {}
+        time_of_stay(other.time_of_stay),
+        location(other.location) {}
 
     ///
     /// \brief DetectionLogExtraEntry move constructor.
@@ -104,7 +111,8 @@ struct DetectionLogExtraEntry{
     DetectionLogExtraEntry(DetectionLogExtraEntry &&other)
         : object_id(other.object_id),
         init_time(other.init_time),
-        time_of_stay(other.time_of_stay) {}
+        time_of_stay(other.time_of_stay),
+        location(other.location) {}
 
     ///
     /// \brief Assignment operator.
@@ -123,6 +131,7 @@ struct DetectionLogExtraEntry{
             object_id = other.object_id;
             init_time = other.init_time;
             time_of_stay = other.time_of_stay;
+            location = other.location;
         }
         return *this;
     }
@@ -218,19 +227,19 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path,const size_t& line_n
 /// \brief writing camera configuration to file (x,y coordinates)
 /// \param[in] path Path to the file
 /// \return points a list of points(x,y coordinates)
-void WriteConfig(const std::string &path, std::vector<cv::Point2f> points);
+void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points);
 
 ///
 /// \brief convert string to float
 /// \param[in] str a string
 /// \return float 
-float ToFloat(const std::string str);
+float ToFloat(const std::string &str);
 
 ///
 /// \brief draw the window for users to click on
 /// \param[in] window_name the name of the window
 /// \param[in] mp a struct containing reference image and mouse input
-void ReConfigWindow(const std::string window_name, MouseParams* mp);
+void ReConfigWindow(const std::string &window_name, MouseParams* mp);
 ///
 /// \brief reconfig either camera or roi config file 
 /// \param[in] input a string

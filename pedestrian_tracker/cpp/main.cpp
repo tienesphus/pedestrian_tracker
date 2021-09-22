@@ -102,7 +102,7 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
         throw std::logic_error("Parameter -m_reid is not set");
     }
 
-    if((!FLAGS_out.empty()|| FLAGS_r) && FLAGS_location.empty()){
+    if((!FLAGS_out.empty()|| FLAGS_r || !FLAGS_out_a.empty()) && FLAGS_location.empty()){
         throw std::logic_error("Parameter -location is not set for output file");
     }
     return true;
@@ -237,11 +237,12 @@ int main(int argc, char **argv) {
                     " conf: " + std::to_string(detection.confidence);
             
             }
-            if(should_save_det_exlog){
+            if(should_save_det_exlog && !detlocation.empty()){
                 DrawRoi(roi_points,cv::Scalar(70,70,70),&frame,2);
                 for (auto &track : tracker->CheckInRoi(roi_points)){
                     DetectionLogExtraEntry entry;
                     entry = tracker->GetDetectionLogExtra(track);
+                    entry.location = detlocation;
                     extralog.emplace(entry.object_id,entry);
                 }
             }
