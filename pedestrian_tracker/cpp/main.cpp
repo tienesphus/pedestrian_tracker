@@ -190,7 +190,6 @@ int main(int argc, char **argv) {
             std::cout << " or switch to the output window and press ESC key";
         }
         std::cout << std::endl;
-
         std::vector<cv::Point2f> mouse_input;
         MouseParams mp ={&frame,mouse_input};
         if(!is_re_config.empty()){

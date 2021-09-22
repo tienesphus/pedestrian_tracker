@@ -6,7 +6,7 @@
 
 class DistanceEstimate{
     public:
-        cv::Mat &frame;
+        cv::Mat &frame; ///< reference to the video frame for drawing distance estimation.
         
         /// \brief default constructor
         DistanceEstimate(cv::Mat& video_frame);
@@ -28,10 +28,10 @@ class DistanceEstimate{
         DistanceEstimate& operator=(const DistanceEstimate &other);
     private:
         
-        cv::Mat perspective_tran;
-        std::vector<cv::Point2f> warped_pt;
-        float distance_w;
-        float distance_h;
+        cv::Mat perspective_tran;           ///< the perspective transformation.
+        std::vector<cv::Point2f> warped_pt; ///< result vector of the perspective transformation
+        float distance_w;                   ///< the distance width after perspective transformation from selected points. 
+        float distance_h;                   ///< distance height after perspective transformation from selected points.
         float threshold_;
 
         /// \brief calculate distance between two points given their coordinates (euclidean distance)
@@ -47,7 +47,7 @@ class DistanceEstimate{
         cv::Point GetMiddle(const cv::Point2f &point_1, const cv::Point2f &point_2);
 
         /// \brief scaling point to a top down view perspective
-        /// \param[in] perspective_trans Mat 3x3 perspective transformation
+        /// \param[in] boxes a list of tracked predestrians
         /// \return the bottom middle points of the detected boxes. points are scaled to top down perspective
         std::vector<cv::Point2f> GetTransformedPoints(const TrackedObjects &boxes);
 	

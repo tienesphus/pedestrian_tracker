@@ -21,7 +21,6 @@
 #include <chrono>
 #include <ctime>
 
-
 using namespace InferenceEngine;
 namespace {
 template <typename StreamType>
@@ -170,7 +169,6 @@ void SetPoints(MouseParams *mp,unsigned int point_num,std::string name){
             cv::destroyWindow(name);
             break;
             }
-        
         }
 
 }
@@ -235,18 +233,21 @@ void ReConfigWindow(const std::string &window_name, MouseParams* mp){
     cv::namedWindow(window_name, 1);
     cv::setMouseCallback(window_name, MouseCallBack, (void *) mp);
 }
+
 void ReConfig(const std::string& input, MouseParams* mp){
 
     if(input == "cam"){
-        std::string window_name = "Camera-Config";
+        std::string window_name = "Camera-Config"; 
+        unsigned int num_points = 7;    //number of points for re-config
         ReConfigWindow(window_name,mp);
-        SetPoints(mp,7,window_name);
+        SetPoints(mp,num_points,window_name);    
         WriteConfig(config_paths::PATHTOCAMCONFIG,mp->mouse_input);
     }
     else if(input == "roi") {
         std::string window_name = "ROI-Config";
+        unsigned int num_points = 4; //number of points for re-config
         ReConfigWindow(window_name,mp);
-        SetPoints(mp,4,window_name);
+        SetPoints(mp,num_points,window_name);
         WriteConfig(config_paths::PATHTOROICONFIG,mp->mouse_input);
     }else{
         throw std::runtime_error("invalid option (valid option: 'cam' or 'roi')");    

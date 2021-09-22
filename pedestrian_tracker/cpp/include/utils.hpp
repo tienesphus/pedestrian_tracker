@@ -246,6 +246,7 @@ void ReConfigWindow(const std::string &window_name, MouseParams* mp);
 /// \param[in] mp a struct containing reference image and point clicked
 /// \return keyword for either camera config or roi config 
 void ReConfig(const std::string& input,MouseParams* mp);
+
 ///
 /// \brief Stream output operator for deque of elements.
 /// \param[in,out] os Output stream.
