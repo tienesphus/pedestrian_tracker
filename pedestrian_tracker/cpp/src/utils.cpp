@@ -179,7 +179,7 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path,const size_t& line_n
     std::string line;
     std::vector<cv::Point2f>  points;
     if(!config_file.is_open()){
-        throw std::runtime_error("Can't open config file (" +path+ ")");
+        throw std::runtime_error("Can't open config file (" +path+ "). Please ensure the folder/file exists");
     }
     if (config_file.peek() == std::ifstream::traits_type::eof()){
         throw std::runtime_error("config file is empty (" +path+ ")");
@@ -211,7 +211,7 @@ void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points
     std::ofstream config_file(path, std::ofstream::out | std::ofstream::trunc);
 
     if(!config_file.is_open()){
-        throw std::runtime_error("Can't open camera config file (" +path+ ")");
+        throw std::runtime_error("Can't open config file (" +path+ ").Please ensure the folder/file exist.");
     }
     for(const cv::Point2f &point :points){
         config_file << point.x << " " << point.y << std::endl;
@@ -227,7 +227,7 @@ float ToFloat(const std::string &str){
         temp = std::stof(str);            
     }
     else{
-        throw std::runtime_error(str +" is not a valid input(numbers only)");
+        throw std::runtime_error(str +" is not a valid input(numbers only with no white spaces)");
     }
     return temp;
 }
