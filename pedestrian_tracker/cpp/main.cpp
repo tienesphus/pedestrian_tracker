@@ -13,8 +13,6 @@
 #include "config_paths.hpp"
 #include <monitors/presenter.h>
 #include <utils/images_capture.h>
-
-
 #include <chrono>
 
 
@@ -196,6 +194,7 @@ int main(int argc, char **argv) {
             ReConfig(is_re_config,&mp);
         }
         DistanceEstimate estimator(frame);
+
         if(!threshold.empty()){
             std::vector<cv::Point2f> points;
             points = ReadConfig(config_paths::PATHTOCAMCONFIG,7);
@@ -206,6 +205,7 @@ int main(int argc, char **argv) {
         if(should_save_det_exlog){
             roi_points = ReadConfig(config_paths::PATHTOROICONFIG,4);
         }
+
         for (unsigned frameIdx = 0; ; ++frameIdx) {
 
             
@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
             pedestrian_detector.waitAndFetchResults();
 
             TrackedObjects detections = pedestrian_detector.getResults();
-
+            
             // timestamp in milliseconds
             //uint64_t cur_timestamp = static_cast<uint64_t >(1000.0 / video_fps * frameIdx);
             uint64_t cur_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -251,12 +251,14 @@ int main(int argc, char **argv) {
                 if(!threshold.empty()){
                     estimator.DrawDistance(detections);
                 }              
-                cv::imshow("dbg", frame);
+                //cv::imshow("dbg", frame);
+                //---------//
+                stream_writer << frame;
+                //---------//
                 char k = cv::waitKey(delay);
                 if (k == 27)
                     break;
                 presenter.handleKey(k);
-               
             }
             if (videoWriter.isOpened() && (FLAGS_limit == 0 || framesProcessed <= FLAGS_limit)) {
                 videoWriter.write(frame);
@@ -276,7 +278,6 @@ int main(int argc, char **argv) {
             if (frame.size() != firstFrameSize)
                 throw std::runtime_error("Can't track objects on images of different size");
         }
-        
         if (should_keep_tracking_info) {
             DetectionLog log = tracker->GetDetectionLog(true);
             if (should_save_det_log)
