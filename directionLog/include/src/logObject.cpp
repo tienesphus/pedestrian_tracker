@@ -12,7 +12,8 @@ class LogInformation
     string segment;
 
     public:
-    string frameNumber,dateTime, peopleInFrame, x_Location, y_Location,x_box,y_box,confidence,location;
+    string frameNumber,dateTime, peopleInFrame,location;
+    int x_Location, y_Location, x_box, y_box, confidence;
     string entireLog;
     //Split Log into relivant fields
     LogInformation(stringstream &log){
