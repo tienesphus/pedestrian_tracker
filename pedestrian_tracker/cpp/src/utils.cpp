@@ -3,7 +3,7 @@
 //
 
 #include "utils.hpp"
-
+#include "config_paths.hpp"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/core.hpp>
@@ -76,7 +76,8 @@ void SaveDetectionExtraLogToStream(StreamType& stream,
             timeStr = asctime(timestamp);
             timeStr.pop_back();
             stream << entry.second.object_id << ',' << timeStr << ','
-                    << (float) entry.second.time_of_stay/1000;
+                    << (float) entry.second.time_of_stay/1000 << ','
+                    << entry.second.location;
             stream << '\n';
         }
         
@@ -103,14 +104,14 @@ void DrawRoi(const std::vector<cv::Point2f>& polyline,
     }
     cv::line(*image,polyline[0],polyline[polyline.size()-1],color,lwd);
 }
-cv::Point2f GetBottomPoint(const TrackedObject box){
+cv::Point2f GetBottomPoint(const cv::Rect box){
 
     cv::Point2f temp_pnt(1); 
 
     float width, height;
-    width = box.rect.width;
-    height = box.rect.height;
-    temp_pnt = cv::Point2f((box.rect.x + (width*0.5)), (box.rect.y+height));	
+    width = box.width;
+    height = box.height;
+    temp_pnt = cv::Point2f((box.x + (width*0.5)), (box.y+height));	
 		
 	return temp_pnt;
 }
@@ -168,16 +169,15 @@ void SetPoints(MouseParams *mp,unsigned int point_num,std::string name){
             cv::destroyWindow(name);
             break;
             }
-        
         }
 
 }
-std::vector<cv::Point2f> ReadConfig(const std::string& path){
+std::vector<cv::Point2f> ReadConfig(const std::string& path,const size_t& line_num){
     std::ifstream config_file(path);
     std::string line;
     std::vector<cv::Point2f>  points;
     if(!config_file.is_open()){
-        throw std::runtime_error("Can't open camera config file (" +path+ ")");
+        throw std::runtime_error("Can't open config file (" +path+ "). Please ensure the folder/file exists");
     }
     if (config_file.peek() == std::ifstream::traits_type::eof()){
         throw std::runtime_error("config file is empty (" +path+ ")");
@@ -199,17 +199,17 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path){
         }
         
     }
-    if(points.size() !=7){
-        throw std::runtime_error("config file should have total size of 8 (" +path+ ")");
+    if(points.size() !=line_num){
+        throw std::runtime_error("config file should have total size of "+std::to_string(line_num) + "(" +path+ ")");
     }
     return points;
 }
 
-void WriteConfig(const std::string &path, std::vector<cv::Point2f> points){
+void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points){
     std::ofstream config_file(path, std::ofstream::out | std::ofstream::trunc);
 
     if(!config_file.is_open()){
-        throw std::runtime_error("Can't open camera config file (" +path+ ")");
+        throw std::runtime_error("Can't open config file (" +path+ ").Please ensure the folder/file exist.");
     }
     for(const cv::Point2f &point :points){
         config_file << point.x << " " << point.y << std::endl;
@@ -217,7 +217,42 @@ void WriteConfig(const std::string &path, std::vector<cv::Point2f> points){
     config_file.close();
 }
 
+float ToFloat(const std::string &str){
+    std::istringstream iss(str);
+    float temp;
+    iss >> std::noskipws >> temp;
+    if(iss.eof() && !iss.fail()){
+        temp = std::stof(str);            
+    }
+    else{
+        throw std::runtime_error(str +" is not a valid input(numbers only with no white spaces)");
+    }
+    return temp;
+}
+void ReConfigWindow(const std::string &window_name, MouseParams* mp){
+    cv::namedWindow(window_name, 1);
+    cv::setMouseCallback(window_name, MouseCallBack, (void *) mp);
+}
 
+void ReConfig(const std::string& input, MouseParams* mp){
+
+    if(input == "cam"){
+        std::string window_name = "Camera-Config"; 
+        unsigned int num_points = 7;    //number of points for re-config
+        ReConfigWindow(window_name,mp);
+        SetPoints(mp,num_points,window_name);    
+        WriteConfig(config_paths::PATHTOCAMCONFIG,mp->mouse_input);
+    }
+    else if(input == "roi") {
+        std::string window_name = "ROI-Config";
+        unsigned int num_points = 4; //number of points for re-config
+        ReConfigWindow(window_name,mp);
+        SetPoints(mp,num_points,window_name);
+        WriteConfig(config_paths::PATHTOROICONFIG,mp->mouse_input);
+    }else{
+        throw std::runtime_error("invalid option (valid option: 'cam' or 'roi')");    
+    }
+}
 void SaveDetectionLogToTrajFile(const std::string& path,
                                 const DetectionLog& log,
                                 const std::string& location) {

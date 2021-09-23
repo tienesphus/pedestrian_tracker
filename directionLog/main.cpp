@@ -6,7 +6,6 @@
 #include <cmath>
 
 
-
 using namespace std;
 
 class LogInformation
@@ -15,14 +14,15 @@ class LogInformation
     string segment;
 
     public:
-    string frameNumber,dateTime, unqiueID, x_Location, y_Location,x_box,y_box,confidence,location;
+    string frameNumber,dateTime, location;
     string entireLog;
+    int x_Location, y_Location,x_box,y_box,confidence, unqiueID;
     //Split Log into relivant fields
     LogInformation(stringstream &log){
         int i=0;
         while(getline(log, segment, ','))
             {   
-            
+               
             switch (i)
             {
             case 0:
@@ -34,27 +34,29 @@ class LogInformation
                 i++;
                 break;
             case 2:
-                unqiueID = segment;
+                unqiueID = stoi(segment);
                 i++;
                 break;
             case 3:
-                x_Location = segment;
+              
+                x_Location = stoi(segment);
                 i++;
                 break;
             case 4:
-                y_Location = segment;
+                y_Location = stoi(segment);
                 i++;
                 break;
             case 5:
-                x_box = segment;
+                x_box = stoi(segment);
                 i++;
                 break;
             case 6:
-                y_box = segment;
+                
+                y_box = stoi(segment);
                 i++;
                 break;
             case 7:
-                confidence = segment;
+                confidence = stoi(segment);
                 i++;
                 break;
             case 8:
@@ -81,34 +83,36 @@ void listVector(vector<LogInformation> &logList){
 }
 
 
-std::map<std::string,string> locateDirection(vector<LogInformation> &logList){
+std::map<int,string> locateDirection(vector<LogInformation> &logList){
     //if Y is going down the nthe user is walking up
     //if X is going lower they are going towards the left
     //This log will log the user ID and the loction left or right that they are moving
-    std::map<std::string, int> yMap;
-    std::map<std::string, int> xMap;
-    std::map<std::string, string> direction;
+    std::map<int, int> yMap;
+    std::map<int, int> xMap;
+    std::map<int, string> direction;
 
     for(std::vector<LogInformation>::iterator it = logList.begin(); it != logList.end(); ++it) {
 
         //If the user is not in the HashMap at the X,Y Chords with the Unique ID as the key
-        if (yMap.find(it->unqiueID) != yMap.end()){
-            yMap[it->unqiueID] = stoi(it-> y_Location);
-            xMap[it->unqiueID] = stoi(it -> x_Location);
+        //Users starting location
+        if (yMap.count(it->unqiueID)==0){
+            yMap[it->unqiueID] = it-> y_Location;
+            xMap[it->unqiueID] = it -> x_Location;
         }
         else{
             //larger of the two numbers will be the direction that the user is moving
-            int maxXValue = abs(stoi(it->x_Location) - xMap[it->unqiueID]);
-            int maxYValue = abs(stoi(it->y_Location) - yMap[it->unqiueID]);
-
+            int maxXValue = abs(xMap[it->unqiueID] - it->x_Location);
+            int maxYValue = abs(yMap[it->unqiueID] - it->y_Location);
+            
             if(maxXValue > maxYValue){
-                if(xMap[it->unqiueID] < stoi(it->x_Location))
+                if(xMap[it->unqiueID] < it->x_Location)
                     direction[it->unqiueID] = "LEFT";
+                    
                 else
                     direction[it->unqiueID] = "RIGHT";
             }
             else{
-                if(yMap[it->unqiueID] < stoi(it->y_Location))
+                if(yMap[it->unqiueID] > it->y_Location)
                     direction[it->unqiueID] = "FORWARD";
                 else
                     direction[it->unqiueID] = "BACKWARD";
@@ -144,10 +148,10 @@ int main (int argc, char **argv){
         // process pair (a,b)
     }
 
-    std::map<std::string, string> directionList = locateDirection(logList);
+    std::map<int, string> directionList = locateDirection(logList);
 
     for (const auto& p : directionList ) {
-        std::cout << "User ID: " <<p.first << " Direction: " << p.second<< std::endl; 
+        std::cout  <<p.first << "," << p.second<< "," << logList[0].location << std::endl; 
    
     }
 

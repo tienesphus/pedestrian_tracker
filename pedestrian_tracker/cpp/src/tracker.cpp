@@ -55,13 +55,12 @@ DetectionLog ConvertTracksToDetectionLog(const ObjectTracks& tracks) {
     return log;
 }
 
-DetectionLogExtraEntry ConvertTracksToDetectionLogExtra(Track track) {
+DetectionLogExtraEntry ConvertTracksToDetectionLogExtra(const Track &track) {
 
     DetectionLogExtraEntry entry;
     entry.object_id = track.objects.back().object_id;
     entry.init_time = track.timestamp_roi;
     entry.time_of_stay = track.time_of_stay;
-    
     return entry;
 }
 
@@ -212,7 +211,7 @@ const std::set<size_t> &PedestrianTracker::active_track_ids() const {
 DetectionLog PedestrianTracker::GetDetectionLog(const bool valid_only) const {
     return ConvertTracksToDetectionLog(all_tracks(valid_only));
 }
-DetectionLogExtraEntry PedestrianTracker::GetDetectionLogExtra(const Track log_track) {
+DetectionLogExtraEntry PedestrianTracker::GetDetectionLogExtra(const Track &log_track) const {
     return ConvertTracksToDetectionLogExtra(log_track);
 }
 
@@ -815,13 +814,13 @@ TrackedObjects PedestrianTracker::TrackedDetections()  {
     return detections;
 }
 //----//
-std::vector<Track> PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
+std::vector<Track> PedestrianTracker::CheckInRoi(const std::vector<cv::Point2f> &roi){
     std::vector<Track> temp_track;
     double check;
     for (size_t idx : active_track_ids()) {
         auto track = tracks().at(idx);
         if (IsTrackValid(idx) && !track.lost) {
-            check = cv::pointPolygonTest(roi,GetBottomPoint(track.objects.back()),false);
+            check = cv::pointPolygonTest(roi,GetBottomPoint(track.objects.back().rect),false);
             if((check == 1 || check == 0) && tracks().at(idx).is_in_roi != 0){
                 tracks_.at(idx).timestamp_roi = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
                 tracks_.at(idx).is_in_roi = 0;
@@ -829,7 +828,7 @@ std::vector<Track> PedestrianTracker::CheckInRoi(std::vector<cv::Point2f> roi){
             if (check == -1 && tracks().at(idx).is_in_roi == 0){
                 uint64_t cur_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
                 tracks_.at(idx).time_of_stay += cur_time - tracks().at(idx).timestamp_roi;
-                std::cout << "person-" << tracks().at(idx).objects.back().object_id << "stayed in the box for " << (float) tracks().at(idx).time_of_stay  / 1000<< "s" << std::endl;
+                //std::cout << "person-" << tracks().at(idx).objects.back().object_id << "stayed in the box for " << (float) tracks().at(idx).time_of_stay  / 1000<< "s" << std::endl;
                 tracks_.at(idx).is_in_roi = 1;
                 temp_track.push_back(std::move(tracks().at(idx)));
             } 

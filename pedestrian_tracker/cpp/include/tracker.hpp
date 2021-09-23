@@ -275,7 +275,7 @@ public:
     /// \param[in] log_track a single track 
     /// \return a detection extra log which is used for tracks saving.
     ///
-    DetectionLogExtraEntry GetDetectionLogExtra(const Track log_track);
+    DetectionLogExtraEntry GetDetectionLogExtra(const Track &log_track) const;
 
     ///
     /// \brief Get active tracks to draw
@@ -332,7 +332,7 @@ public:
     /// \brief Check weather tracks are in the area of interest
     /// \param roi the ROI (region of interest)
     /// \return a list of tracks that left the ROI 
-    std::vector<Track> CheckInRoi(std::vector<cv::Point2f> roi);
+    std::vector<Track> CheckInRoi(const std::vector<cv::Point2f> &roi);
 
 private:
     struct Match {

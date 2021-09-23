@@ -10,12 +10,12 @@
 #include "detector.hpp"
 #include "pedestrian_tracker.hpp"
 #include "distance_estimate.hpp"
-
+#include "config_paths.hpp"
 #include <monitors/presenter.h>
 #include <utils/images_capture.h>
 #include <chrono>
 
-
+#include <nadjieb/mjpeg_streamer.hpp>
 
 #include <iostream>
 #include <utility>
@@ -25,6 +25,7 @@
 #include <string>
 #include <gflags/gflags.h>
 #include <math.h>
+
 using namespace InferenceEngine;
 using ImageWithFrameIndex = std::pair<cv::Mat, int>;
 
@@ -99,10 +100,9 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
         throw std::logic_error("Parameter -m_reid is not set");
     }
 
-    if((!FLAGS_out.empty() || !FLAGS_out_a.empty() || FLAGS_r) && FLAGS_location.empty()){
+    if((!FLAGS_out.empty()|| FLAGS_r || !FLAGS_out_a.empty()) && FLAGS_location.empty()){
         throw std::logic_error("Parameter -location is not set for output file");
     }
-
     return true;
 }
 
@@ -134,8 +134,8 @@ int main(int argc, char **argv) {
         
         int delay = FLAGS_delay;
 
-        auto path_to_config = FLAGS_config;
-        bool is_re_config = FLAGS_reconfig;
+        auto threshold = FLAGS_th;
+        auto is_re_config = FLAGS_reconfig;
         auto detlog_out_a = FLAGS_out_a;
 
         if (!should_show)
@@ -144,6 +144,7 @@ int main(int argc, char **argv) {
 
         bool should_save_det_log = !detlog_out.empty();
         bool should_save_det_exlog = !detlog_out_a.empty();
+        
         std::vector<std::string> devices{detector_mode, reid_mode};
         InferenceEngine::Core ie =
             LoadInferenceEngine(
@@ -160,13 +161,16 @@ int main(int argc, char **argv) {
 
         std::unique_ptr<ImagesCapture> cap = openImagesCapture(FLAGS_i, FLAGS_loop, FLAGS_first, FLAGS_read_limit);
         double video_fps = cap->fps();
+        
+        
+        
+        DetectionLogExtra extralog;
+        std::vector<cv::Point> poly_line;
         if (0.0 == video_fps) {
             // the default frame rate for DukeMTMC dataset
             video_fps = 60.0;
         }
-        if(is_re_config && path_to_config.empty()){
-            throw std::logic_error("Parameter -config is not set(to use -reconfig, -config must be provided)");
-        }
+
         cv::Mat frame = cap->read();
         if (!frame.data) throw std::runtime_error("Can't read an image from the input");
         cv::Size firstFrameSize = frame.size();
@@ -179,54 +183,36 @@ int main(int argc, char **argv) {
         uint32_t framesProcessed = 0;
         cv::Size graphSize{static_cast<int>(frame.cols / 4), 60};
         Presenter presenter(FLAGS_u, 10, graphSize);
-
         std::cout << "To close the application, press 'CTRL+C' here";
         if (!FLAGS_no_show) {
             std::cout << " or switch to the output window and press ESC key";
         }
         std::cout << std::endl;
-        
-        std::vector<cv::Point2f> mouse_input,mouse;
-        std::vector<cv::Point2f> points;
+        std::vector<cv::Point2f> mouse_input;
         MouseParams mp ={&frame,mouse_input};
-        cv::Mat roi_frame;
-        frame.copyTo(roi_frame);
+        if(!is_re_config.empty()){
+            ReConfig(is_re_config,&mp);
+        }
         DistanceEstimate estimator(frame);
-        MouseParams roi ={&roi_frame,mouse};
-        DetectionLogExtra extralog;
-        std::vector<cv::Point> poly_line;
-        
-        if(!path_to_config.empty()){
-            
-            if(is_re_config){
-                cv::namedWindow("Camera-config", 1);
-                cv::setMouseCallback("Camera-config", MouseCallBack, (void *) &mp);
-                SetPoints(&mp,7,"Camera-config");
-                points = mp.mouse_input;
-                WriteConfig(FLAGS_config,points);
-            }
-            else{
-                points = ReadConfig(FLAGS_config);
-                mp.mouse_input = points;
-            }
-            DistanceEstimate temp(frame,mp.mouse_input);
+
+        if(!threshold.empty()){
+            std::vector<cv::Point2f> points;
+            points = ReadConfig(config_paths::PATHTOCAMCONFIG,7);
+            DistanceEstimate temp(frame,points,ToFloat(threshold));
             estimator = temp;
         }
-        //------------------//
-        
-        cv::namedWindow("ROI-selection", 1);
-        cv::setMouseCallback("ROI-selection",MouseCallBack,(void *)&roi);
-        SetPoints(&roi,4,"ROI-selection");
-        cv::VideoWriter stream_writer;
-        //stream_writer.open("appsrc ! videoconvert ! x264enc ! mpegtsmux ! rtpmp4tpay send-config=true ! udpsink host=localhost port=5000",0,(double) 30, cv::Size(640,480),true);
-        //stream_writer.open("appsrc ! videoconvert ! jpegenc ! jpegparse ! rtpjpegpay ! udpsink host=localhost port=5000",0,(double) 30, cv::Size(640,480),true);
-        if(!stream_writer.isOpened()){
-            std::runtime_error("=ERR= can't create video writer\n");
+        std::vector<cv::Point2f> roi_points;
+        if(should_save_det_exlog){
+            roi_points = ReadConfig(config_paths::PATHTOROICONFIG,4);
         }
-        //------------------//
+        ///------------///
+        std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 90};
+        nadjieb::MJPEGStreamer streamer;
+        streamer.start(8080);
+        ///------------///
         for (unsigned frameIdx = 0; ; ++frameIdx) {
 
-            DrawRoi(roi.mouse_input,cv::Scalar(70,70,70),&frame,2);
+            
             pedestrian_detector.submitFrame(frame, frameIdx);
             pedestrian_detector.waitAndFetchResults();
 
@@ -254,24 +240,25 @@ int main(int argc, char **argv) {
                     " conf: " + std::to_string(detection.confidence);
             
             }
-            if(should_save_det_exlog){
-
-                for (auto &track : tracker->CheckInRoi(roi.mouse_input)){
+            if(should_save_det_exlog && !detlocation.empty()){
+                DrawRoi(roi_points,cv::Scalar(70,70,70),&frame,2);
+                for (auto &track : tracker->CheckInRoi(roi_points)){
                     DetectionLogExtraEntry entry;
                     entry = tracker->GetDetectionLogExtra(track);
+                    entry.location = detlocation;
                     extralog.emplace(entry.object_id,entry);
                 }
             }
             framesProcessed++;
 
             if (should_show) {
-                if(!path_to_config.empty()){
+                if(!threshold.empty()){
                     estimator.DrawDistance(detections);
                 }              
                 //cv::imshow("dbg", frame);
-                //---------//
-                //stream_writer << frame;
-                //---------//
+                std::vector<uchar> buff_bgr;
+                cv::imencode(".jpg",frame,buff_bgr,params);
+                streamer.publish("/bgr", std::string(buff_bgr.begin(),buff_bgr.end()));
                 char k = cv::waitKey(delay);
                 if (k == 27)
                     break;
@@ -299,8 +286,8 @@ int main(int argc, char **argv) {
             DetectionLog log = tracker->GetDetectionLog(true);
             if (should_save_det_log)
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
-            // if(should_save_det_exlog)
-            //     SaveDetectionLogToTrajFile(detlog_out_a,extralog);
+            if(should_save_det_exlog)
+                SaveDetectionLogToTrajFile(detlog_out_a,extralog);
             if (should_print_out)
                 PrintDetectionLog(log, detlocation);
         }
