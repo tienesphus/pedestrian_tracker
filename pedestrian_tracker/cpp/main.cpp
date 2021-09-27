@@ -14,7 +14,6 @@
 #include <monitors/presenter.h>
 #include <utils/images_capture.h>
 #include <chrono>
-
 #include <nadjieb/mjpeg_streamer.hpp>
 
 #include <iostream>
