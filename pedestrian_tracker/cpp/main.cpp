@@ -251,6 +251,7 @@ int main(int argc, char **argv) {
             }
             framesProcessed++;
 
+            //Print the relivant frame numbers for the location
             if (should_show) {
                 if(!threshold.empty()){
                     estimator.DrawDistance(detections);
@@ -278,7 +279,11 @@ int main(int argc, char **argv) {
             }
             frame = cap->read();
             cv::waitKey(20);
-            if (!frame.data) break;
+            if (!frame.data){
+                //Write out user direction log
+                writeDirectionLog(detlog_out);
+                break;
+            }
             if (frame.size() != firstFrameSize)
                 throw std::runtime_error("Can't track objects on images of different size");
         }
