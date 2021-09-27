@@ -19,7 +19,7 @@
 #include <opencv2/core.hpp>
 #include <sys/stat.h>
 #include <sys/types.h>
-//#include "logObject.h"
+#include "logObject.hpp"
 ///
 /// \brief The DetectionLogEntry struct
 ///
@@ -294,5 +294,5 @@ LoadInferenceEngine(const std::vector<std::string>& devices,
 
 
 
-//std::map<int,std::string> locateDirection(std::vector<LogInformation> &logList);
-//void writeDirectionLog(std::string fileName);
+std::map<int,std::string> locateDirection(std::vector<LogInformation> &logList);
+void writeDirectionLog(std::string fileName);

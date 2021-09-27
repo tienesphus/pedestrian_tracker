@@ -20,8 +20,6 @@
 #include <memory>
 #include <chrono>
 #include <ctime>
-//#include "logObject.h"
-
 using namespace InferenceEngine;
 namespace
 {
@@ -341,98 +339,98 @@ void PrintDetectionLog(const DetectionLog &log, const std::string &location)
     SaveDetectionLogToStream(std::cout, log, location);
 }
 
-// //Mark which direction the user was heading towards using the log files as an input
-// std::map<int, std::string> locateDirection(std::vector<LogInformation> &logList)
-// {
-//     //if Y is going down then the user is walking up
-//     //if X is going lower they are going towards the left
-//     //This log will log the user ID and the loction left or right that they are moving
-//     std::map<int, int> yMap;
-//     std::map<int, int> xMap;
-//     std::map<int, std::string> direction;
+//Mark which direction the user was heading towards using the log files as an input
+std::map<int, std::string> locateDirection(std::vector<LogInformation> &logList)
+{
+    //if Y is going down then the user is walking up
+    //if X is going lower they are going towards the left
+    //This log will log the user ID and the loction left or right that they are moving
+    std::map<int, int> yMap;
+    std::map<int, int> xMap;
+    std::map<int, std::string> direction;
 
-//     for (std::vector<LogInformation>::iterator it = logList.begin(); it != logList.end(); ++it)
-//     {
+    for (std::vector<LogInformation>::iterator it = logList.begin(); it != logList.end(); ++it)
+    {
 
-//         //If the user is not in the HashMap at the X,Y Chords with the Unique ID as the key
-//         //Users starting location
-//         if (yMap.count(it->uniqueID) == 0)
-//         {
-//             yMap[it->uniqueID] = it->y_Location;
-//             xMap[it->uniqueID] = it->x_Location;
-//         }
-//         else
-//         {
-//             //larger of the two numbers will be the direction that the user is moving
-//             int maxXValue = abs(xMap[it->uniqueID] - it->x_Location);
-//             int maxYValue = abs(yMap[it->uniqueID] - it->y_Location);
+        //If the user is not in the HashMap at the X,Y Chords with the Unique ID as the key
+        //Users starting location
+        if (yMap.count(it->uniqueID) == 0)
+        {
+            yMap[it->uniqueID] = it->y_Location;
+            xMap[it->uniqueID] = it->x_Location;
+        }
+        else
+        {
+            //larger of the two numbers will be the direction that the user is moving
+            int maxXValue = abs(xMap[it->uniqueID] - it->x_Location);
+            int maxYValue = abs(yMap[it->uniqueID] - it->y_Location);
 
-//             if (maxXValue > maxYValue)
-//             {
-//                 if (xMap[it->uniqueID] < it->x_Location)
-//                     direction[it->uniqueID] = "LEFT";
+            if (maxXValue > maxYValue)
+            {
+                if (xMap[it->uniqueID] < it->x_Location)
+                    direction[it->uniqueID] = "LEFT";
 
-//                 else
-//                     direction[it->uniqueID] = "RIGHT";
-//             }
-//             else
-//             {
-//                 if (yMap[it->uniqueID] > it->y_Location)
-//                     direction[it->uniqueID] = "FORWARD";
-//                 else
-//                     direction[it->uniqueID] = "BACKWARD";
-//             }
-//         }
-//     }
-//     return direction;
-// }
+                else
+                    direction[it->uniqueID] = "RIGHT";
+            }
+            else
+            {
+                if (yMap[it->uniqueID] > it->y_Location)
+                    direction[it->uniqueID] = "FORWARD";
+                else
+                    direction[it->uniqueID] = "BACKWARD";
+            }
+        }
+    }
+    return direction;
+}
 
-// //
-// void writeDirectionLog(std::string fileName)
-// {
+//
+void writeDirectionLog(std::string fileName)
+{
 
-//     //Define relivant private parameters
-//     std::cout << "FileName is: " << fileName << std::endl;
-//     std::ifstream logFile(fileName);
-//     std::vector<LogInformation> logList;
-//     std::map<int, std::string> dateMap;
+    //Define relivant private parameters
+    std::cout << "FileName is: " << fileName << std::endl;
+    std::ifstream logFile(fileName);
+    std::vector<LogInformation> logList;
+    std::map<int, std::string> dateMap;
 
-//     std::string newFileName = fileName.insert(fileName.length() - 4, "_direction");
-//     std::string line;
+    std::string newFileName = fileName.insert(fileName.length() - 4, "_direction");
+    std::string line;
 
-//     std::cout << newFileName << std::endl;
+    std::cout << newFileName << std::endl;
 
-//     while (std::getline(logFile, line))
-//     {
-//         std::stringstream iss(line);
-//         LogInformation log(iss);
-//         logList.push_back(log);
-//         //std::cout << iss.str() << std::endl;
-//         // process pair (a,b)
-//     }
+    while (std::getline(logFile, line))
+    {
+        std::stringstream iss(line);
+        LogInformation log(iss);
+        logList.push_back(log);
+        //std::cout << iss.str() << std::endl;
+        // process pair (a,b)
+    }
 
-//     //Save the date and time of the person exiting the frame
-//     for (std::vector<LogInformation>::iterator it = logList.begin(); it != logList.end(); ++it)
-//     {
-//           if (dateMap.count(it->uniqueID) == 0)
-//         {
-//             dateMap[it->uniqueID] = it->dateTime;
+    //Save the date and time of the person exiting the frame
+    for (std::vector<LogInformation>::iterator it = logList.begin(); it != logList.end(); ++it)
+    {
+          if (dateMap.count(it->uniqueID) == 0)
+        {
+            dateMap[it->uniqueID] = it->dateTime;
 
-//         }
-//     }
+        }
+    }
 
-//     std::map<int, std::string> directionList = locateDirection(logList);
+    std::map<int, std::string> directionList = locateDirection(logList);
 
-//     // Write out to external file
-//     std::ofstream directionFile;
-//     directionFile.open (newFileName);
-//     for (const auto &p : directionList)
-//     {
+    // Write out to external file
+    std::ofstream directionFile;
+    directionFile.open (newFileName);
+    for (const auto &p : directionList)
+    {
 
-//         directionFile << dateMap[p.first] << "," << p.first << "," << p.second << "," << logList[0].location << std::endl;
-//     }
-//     directionFile.close(); 
-// }
+        directionFile << dateMap[p.first] << "," << p.first << "," << p.second << "," << logList[0].location << std::endl;
+    }
+    directionFile.close(); 
+}
 
 
 InferenceEngine::Core
