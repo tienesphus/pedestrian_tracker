@@ -15,7 +15,7 @@
 #include <utils/images_capture.h>
 #include <chrono>
 
-
+#include <nadjieb/mjpeg_streamer.hpp>
 
 #include <iostream>
 #include <utility>
@@ -205,7 +205,11 @@ int main(int argc, char **argv) {
         if(should_save_det_exlog){
             roi_points = ReadConfig(config_paths::PATHTOROICONFIG,4);
         }
-
+        ///------------///
+        std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 90};
+        nadjieb::MJPEGStreamer streamer;
+        streamer.start(8080);
+        ///------------///
         for (unsigned frameIdx = 0; ; ++frameIdx) {
 
             
@@ -252,8 +256,10 @@ int main(int argc, char **argv) {
                 if(!threshold.empty()){
                     estimator.DrawDistance(detections);
                 }              
-                cv::imshow("dbg", frame);
-
+                //cv::imshow("dbg", frame);
+                std::vector<uchar> buff_bgr;
+                cv::imencode(".jpg",frame,buff_bgr,params);
+                streamer.publish("/bgr", std::string(buff_bgr.begin(),buff_bgr.end()));
                 char k = cv::waitKey(delay);
                 if (k == 27)
                     break;
