@@ -177,7 +177,7 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path,const size_t& line_n
     std::string line;
     std::vector<cv::Point2f>  points;
     if(!config_file.is_open()){
-        throw std::runtime_error("Can't open config file (" +path+ "). Please ensure the folder/file exists");
+        throw std::runtime_error("Can't open config file (" +path+ "). Please ensure the folder/file exists.");
     }
     if (config_file.peek() == std::ifstream::traits_type::eof()){
         throw std::runtime_error("config file is empty (" +path+ ")");
@@ -230,8 +230,17 @@ void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points
             for(const cv::Point2f &point :points){
                     config_file << point.x << " " << point.y << std::endl;
                 }
-                config_file.close();
+            config_file.close();
         }
+    }else{
+        if(mkdir(folder_name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1){
+            throw std::runtime_error(strerror(errno));
+        }
+        std::ofstream new_config (path);
+        for(const cv::Point2f &point :points){
+            new_config << point.x << " " << point.y << std::endl;
+        }
+        new_config.close();
     }
 }
 

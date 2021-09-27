@@ -18,6 +18,7 @@
 #include <utils/common.hpp>
 #include <opencv2/core.hpp>
 #include <sys/stat.h>
+#include <sys/types.h>
 ///
 /// \brief The DetectionLogEntry struct
 ///

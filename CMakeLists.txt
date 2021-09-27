@@ -14,6 +14,8 @@ if(NOT GENERATOR_IS_MULTI_CONFIG_VAR AND NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 project(pedestrian_tracker)
+find_package(nadjieb_mjpeg_streamer REQUIRED)
+
 
 if(NOT BIN_FOLDER)
     string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} ARCH)
@@ -106,7 +108,7 @@ macro(add_project)
 
     # Create executable file from sources
     add_executable(${IE_SAMPLE_NAME} ${IE_SAMPLE_SOURCES} ${IE_SAMPLE_HEADERS})
-
+    target_link_libraries(${IE_SAMPLE_NAME}  PRIVATE nadjieb_mjpeg_streamer::nadjieb_mjpeg_streamer)
     if(WIN32)
         set_target_properties(${IE_SAMPLE_NAME} PROPERTIES COMPILE_PDB_NAME ${IE_SAMPLE_NAME})
     endif()

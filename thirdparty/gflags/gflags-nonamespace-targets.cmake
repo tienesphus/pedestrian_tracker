@@ -4,7 +4,7 @@ if("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" LESS 2.5)
    message(FATAL_ERROR "CMake >= 2.6.0 required")
 endif()
 cmake_policy(PUSH)
-cmake_policy(VERSION 2.6...3.19)
+cmake_policy(VERSION 2.6)
 #----------------------------------------------------------------
 # Generated CMake target import file.
 #----------------------------------------------------------------
@@ -46,14 +46,14 @@ add_library(gflags_nothreads_static STATIC IMPORTED)
 
 set_target_properties(gflags_nothreads_static PROPERTIES
   INTERFACE_COMPILE_DEFINITIONS "GFLAGS_IS_A_DLL=0"
-  INTERFACE_INCLUDE_DIRECTORIES "/Users/tphungo/Documents/dev/GitHub/cpp_counting/thirdparty/gflags/include"
+  INTERFACE_INCLUDE_DIRECTORIES "/home/phu/Desktop/pedestrian_tracker/thirdparty/gflags/include"
 )
 
 # Import target "gflags_nothreads_static" for configuration "Release"
 set_property(TARGET gflags_nothreads_static APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(gflags_nothreads_static PROPERTIES
   IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
-  IMPORTED_LOCATION_RELEASE "/Users/tphungo/Documents/dev/GitHub/cpp_counting/intel64/Release/lib/libgflags_nothreads.a"
+  IMPORTED_LOCATION_RELEASE "/home/phu/Desktop/pedestrian_tracker/intel64/Release/lib/libgflags_nothreads.a"
   )
 
 # This file does not depend on other imported targets which have
