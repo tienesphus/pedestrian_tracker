@@ -17,6 +17,9 @@
 #include <sstream>
 #include <utils/common.hpp>
 #include <opencv2/core.hpp>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include "logObject.hpp"
 ///
 /// \brief The DetectionLogEntry struct
 ///
@@ -139,6 +142,7 @@ struct DetectionLogExtraEntry{
 /// Detection log extra is a vector of detection extra entries.
 using DetectionLogExtra = std::unordered_map<int, DetectionLogExtraEntry>;
 
+
 ///
 /// \brief Save DetectionLog to a txt file in the format
 ///        compatible with the format of MOTChallenge
@@ -247,6 +251,7 @@ void ReConfigWindow(const std::string &window_name, MouseParams* mp);
 /// \return keyword for either camera config or roi config 
 void ReConfig(const std::string& input,MouseParams* mp);
 
+bool IsPathExist(const std::string &path);
 ///
 /// \brief Stream output operator for deque of elements.
 /// \param[in,out] os Output stream.
@@ -286,3 +291,8 @@ LoadInferenceEngine(const std::vector<std::string>& devices,
                     const std::string& custom_cpu_library,
                     const std::string& custom_cldnn_kernels,
                     bool should_use_perf_counter);
+
+
+
+std::map<int,std::string> locateDirection(std::vector<LogInformation> &logList);
+void writeDirectionLog(std::string fileName);
