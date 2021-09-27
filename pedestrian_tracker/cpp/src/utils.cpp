@@ -204,17 +204,35 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path,const size_t& line_n
     }
     return points;
 }
-
+std::vector<std::string> SplitString(const std::string &s, char delim){
+    std::vector<std::string> result;
+    std::stringstream ss(s);
+    std::string item;
+    while (getline(ss,item,delim)){
+        result.push_back(item);
+    }
+    return result;  
+}
 void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points){
-    std::ofstream config_file(path, std::ofstream::out | std::ofstream::trunc);
-
-    if(!config_file.is_open()){
-        throw std::runtime_error("Can't open config file (" +path+ ").Please ensure the folder/file exist.");
+    
+    std::vector<std::string> temp = SplitString(path,'/');
+    std::string folder_name = temp[0];
+    std::string file_name = temp[1];
+    if(IsPathExist(folder_name)){
+        std::ofstream config_file(path, std::ofstream::out | std::ofstream::trunc);
+        if(!config_file.is_open()){
+            std::ofstream new_config (file_name);
+            for(const cv::Point2f &point :points){
+                new_config << point.x << " " << point.y << std::endl;
+            }
+            new_config.close();
+        }else{
+            for(const cv::Point2f &point :points){
+                    config_file << point.x << " " << point.y << std::endl;
+                }
+                config_file.close();
+        }
     }
-    for(const cv::Point2f &point :points){
-        config_file << point.x << " " << point.y << std::endl;
-    }
-    config_file.close();
 }
 
 float ToFloat(const std::string &str){
@@ -252,6 +270,10 @@ void ReConfig(const std::string& input, MouseParams* mp){
     }else{
         throw std::runtime_error("invalid option (valid option: 'cam' or 'roi')");    
     }
+}
+bool IsPathExist(const std::string &path){
+    struct stat info;
+    return (stat(path.c_str(),&info) == 0 && S_ISDIR(info.st_mode));
 }
 void SaveDetectionLogToTrajFile(const std::string& path,
                                 const DetectionLog& log,
