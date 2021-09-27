@@ -46,7 +46,11 @@ add_library(gflags::gflags_nothreads_static STATIC IMPORTED)
 
 set_target_properties(gflags::gflags_nothreads_static PROPERTIES
   INTERFACE_COMPILE_DEFINITIONS "GFLAGS_IS_A_DLL=0"
+<<<<<<< HEAD
   INTERFACE_INCLUDE_DIRECTORIES "/home/phu/Desktop/pedestrian_tracker/thirdparty/gflags/include"
+=======
+  INTERFACE_INCLUDE_DIRECTORIES "/home/nick/Documents/pedestrian_tracker/thirdparty/gflags/include"
+>>>>>>> 4ebd03e09bbf3f5951e023f33136e700cf815598
 )
 
 # Import target "gflags::gflags_nothreads_static" for configuration "Release"

@@ -19,6 +19,7 @@
 #include <opencv2/core.hpp>
 #include <sys/stat.h>
 #include <sys/types.h>
+//#include "logObject.h"
 ///
 /// \brief The DetectionLogEntry struct
 ///
@@ -290,3 +291,8 @@ LoadInferenceEngine(const std::vector<std::string>& devices,
                     const std::string& custom_cpu_library,
                     const std::string& custom_cldnn_kernels,
                     bool should_use_perf_counter);
+
+
+
+//std::map<int,std::string> locateDirection(std::vector<LogInformation> &logList);
+//void writeDirectionLog(std::string fileName);
