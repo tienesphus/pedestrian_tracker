@@ -287,7 +287,10 @@ int main(int argc, char **argv) {
             cv::waitKey(20);
             if (!frame.data){
                 //Write out user direction log
-                WriteDirectionLog(detlog_out);
+                if(should_save_det_log){
+                    WriteDirectionLog(detlog_out);
+                }
+                
                 break;
             }
             if (frame.size() != firstFrameSize)
