@@ -14,7 +14,6 @@
 #include <monitors/presenter.h>
 #include <utils/images_capture.h>
 #include <chrono>
-
 #include <nadjieb/mjpeg_streamer.hpp>
 
 #include <iostream>
@@ -137,7 +136,7 @@ int main(int argc, char **argv) {
         auto threshold = FLAGS_th;
         auto is_re_config = FLAGS_reconfig;
         auto detlog_out_a = FLAGS_out_a;
-
+        bool should_stream = FLAGS_stream;
         if (!should_show)
             delay = -1;
         should_show = (delay >= 0);
@@ -205,11 +204,12 @@ int main(int argc, char **argv) {
         if(should_save_det_exlog){
             roi_points = ReadConfig(config_paths::PATHTOROICONFIG,4);
         }
-        ///------------///
         std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 90};
         nadjieb::MJPEGStreamer streamer;
-        streamer.start(8080);
-        ///------------///
+        if(should_stream){
+            streamer.start(8080);
+            GetIpAddress();
+        }
         for (unsigned frameIdx = 0; ; ++frameIdx) {
 
             
@@ -240,8 +240,10 @@ int main(int argc, char **argv) {
                     " conf: " + std::to_string(detection.confidence);
             
             }
+            //getting the logs for pedestrains in region of interest
             if(should_save_det_exlog && !detlocation.empty()){
-                DrawRoi(roi_points,cv::Scalar(70,70,70),&frame,2);
+                //draw the region of interest
+                DrawRoi(roi_points,cv::Scalar(70,70,70),&frame,2); 
                 for (auto &track : tracker->CheckInRoi(roi_points)){
                     DetectionLogExtraEntry entry;
                     entry = tracker->GetDetectionLogExtra(track);
@@ -255,11 +257,15 @@ int main(int argc, char **argv) {
             if (should_show) {
                 if(!threshold.empty()){
                     estimator.DrawDistance(detections);
+                }
+                //stream the frame to localhost:<port number>/bgr
+                if(should_stream){
+                    std::vector<uchar> buff_bgr;
+                    cv::imencode(".jpg",frame,buff_bgr,params);
+                    streamer.publish("/bgr", std::string(buff_bgr.begin(),buff_bgr.end()));
+                }else{
+                    cv::imshow("dbg", frame);
                 }              
-                //cv::imshow("dbg", frame);
-                std::vector<uchar> buff_bgr;
-                cv::imencode(".jpg",frame,buff_bgr,params);
-                streamer.publish("/bgr", std::string(buff_bgr.begin(),buff_bgr.end()));
                 char k = cv::waitKey(delay);
                 if (k == 27)
                     break;
@@ -268,12 +274,12 @@ int main(int argc, char **argv) {
             if (videoWriter.isOpened() && (FLAGS_limit == 0 || framesProcessed <= FLAGS_limit)) {
                 videoWriter.write(frame);
             }
+            //saving logs every 100 frames
             if (should_save_det_log && (frameIdx % 100 == 0)) {
                 DetectionLog log = tracker->GetDetectionLog(true);
                 SaveDetectionLogToTrajFile(detlog_out, log, detlocation);
             }
             if (should_save_det_exlog && (frameIdx % 100 == 0)) {
-
                 SaveDetectionLogToTrajFile(detlog_out_a, extralog);
                 extralog = DetectionLogExtra();
             }
@@ -281,7 +287,10 @@ int main(int argc, char **argv) {
             cv::waitKey(20);
             if (!frame.data){
                 //Write out user direction log
-                writeDirectionLog(detlog_out);
+                if(should_save_det_log){
+                    WriteDirectionLog(detlog_out);
+                }
+                
                 break;
             }
             if (frame.size() != firstFrameSize)

@@ -5,7 +5,7 @@
 #include <fstream>
 
 
-#include "logObject.h"
+#include "logObject.hpp"
 
     //Split Log into relivant fields
    LogInformation::LogInformation(std::stringstream &log){
