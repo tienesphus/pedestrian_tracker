@@ -45,6 +45,7 @@ static const char utilization_monitors_message[] = "Optional. List of monitors t
 static const char re_configuration_message[] ="Optional. 'cam' for re-calibrate camera or 'roi' for re-config the region of interest.";
 static const char configuration_message[] = "Optional.Threshold for distance estimation";
 static const char output_a_log_message[] ="Optional. The file name to write extra log. Containing time of stay in ROI";
+static const char stream_message[]="Optional. Stream the feed to localhost:8080";
 DEFINE_bool(h, false, help_message);
 DEFINE_uint32(first, 0, first_frame_message);
 DEFINE_uint32(read_limit, gflags::uint32(std::numeric_limits<size_t>::max()), read_limit_message);
@@ -65,6 +66,7 @@ DEFINE_string(u, "", utilization_monitors_message);
 DEFINE_string(th, "",configuration_message);
 DEFINE_string(reconfig, "",re_configuration_message);
 DEFINE_string(out_a, "",output_a_log_message);
+DEFINE_bool(stream,false,stream_message);
 //-----//
 /**
  * @brief This function show a help message
@@ -98,4 +100,5 @@ static void showUsage() {
     std::cout << "    -th                         " << configuration_message << std::endl;
     std::cout << "    -reconfig                         " << re_configuration_message << std::endl;
     std::cout << "    -out_a                            " << output_a_log_message << std::endl;
+    std::cout << "    -stream                           " << stream_message << std::endl;
 }

@@ -21,13 +21,21 @@ class LogInformation
     //New Demo Location 3 (Location)
 
     private:
-    std::string segment;
+    std::string segment;        ///< 
 
     public:
-    std::string frameNumber,dateTime, peopleInFrame,location;
-    int x_Location, y_Location, x_box, y_box, confidence, uniqueID;
+    std::string frameNumber;    ///< the frame number
+    std::string dateTime;       ///< time of the of the logging
+    std::string peopleInFrame;  ///<
+    std::string location;       ///< location of the system
+    int x_Location;             ///< 
+    int y_Location;             ///< 
+    int x_box;                  ///<
+    int y_box;                  ///<
+    int confidence;             ///<
+    int uniqueID;               ///< pedestrain unique id
     //Split Log into relivant fields
-     LogInformation(std::stringstream &log);
+    LogInformation(std::stringstream &log);
 
 
 };

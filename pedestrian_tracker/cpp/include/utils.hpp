@@ -19,6 +19,9 @@
 #include <opencv2/core.hpp>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <ifaddrs.h>
+#include <netinet/in.h> 
+#include <arpa/inet.h>
 #include "logObject.hpp"
 ///
 /// \brief The DetectionLogEntry struct
@@ -230,9 +233,14 @@ std::vector<cv::Point2f> ReadConfig(const std::string& path,const size_t& line_n
 ///
 /// \brief writing camera configuration to file (x,y coordinates)
 /// \param[in] path Path to the file
-/// \return points a list of points(x,y coordinates)
+/// \param[in] points a list of points(x,y coordinates)
 void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points);
 
+///
+/// \brief writing configuration to a new file
+/// \param[in] file_name File name of the file
+/// \param[in] points a list of points(x,y coordinates)
+void WriteToNewFile(const std::string &file_name, const std::vector<cv::Point2f> &points);
 ///
 /// \brief convert string to float
 /// \param[in] str a string
@@ -251,7 +259,28 @@ void ReConfigWindow(const std::string &window_name, MouseParams* mp);
 /// \return keyword for either camera config or roi config 
 void ReConfig(const std::string& input,MouseParams* mp);
 
+///
+/// \brief check whether a folder exists
+/// \param[in] path a string containing the path to the folder
+/// \return true if the folder exists otherwise false
 bool IsPathExist(const std::string &path);
+
+///
+/// \brief print the ip address of the system
+///
+void GetIpAddress();
+
+/// 
+/// \brief Mark which direction the user was heading towards 
+///        using the log files as an input
+/// \param[in] logList a list of LogInformation
+/// \return a map of pedestrains' id along with their direction 
+std::map<int,std::string> LocateDirection(std::vector<LogInformation> &logList);
+
+///
+/// \brief write the Direction log to file
+/// \param[in] fileName a string containing the filename
+void WriteDirectionLog(std::string fileName);
 ///
 /// \brief Stream output operator for deque of elements.
 /// \param[in,out] os Output stream.
@@ -294,5 +323,4 @@ LoadInferenceEngine(const std::vector<std::string>& devices,
 
 
 
-std::map<int,std::string> locateDirection(std::vector<LogInformation> &logList);
-void writeDirectionLog(std::string fileName);
+

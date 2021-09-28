@@ -108,7 +108,6 @@ void DrawPolyline(const std::vector<cv::Point> &polyline,
     }
 }
 
-//Draw the region of intreset
 void DrawRoi(const std::vector<cv::Point2f> &polyline,
              const cv::Scalar &color, cv::Mat *image, int lwd)
 {
@@ -122,7 +121,6 @@ cv::Point2f GetBottomPoint(const cv::Rect box)
 {
 
     cv::Point2f temp_pnt(1);
-
     float width, height;
     width = box.width;
     height = box.height;
@@ -240,15 +238,12 @@ void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points
     
     std::vector<std::string> temp = SplitString(path,'/');
     std::string folder_name = temp[0];
-    std::string file_name = temp[1];
+    //check whether the folder exists
     if(IsPathExist(folder_name)){
         std::ofstream config_file(path, std::ofstream::out | std::ofstream::trunc);
         if(!config_file.is_open()){
-            std::ofstream new_config (file_name);
-            for(const cv::Point2f &point :points){
-                new_config << point.x << " " << point.y << std::endl;
-            }
-            new_config.close();
+            WriteToNewFile(path,points);
+            config_file.close();
         }else{
             for(const cv::Point2f &point :points){
                     config_file << point.x << " " << point.y << std::endl;
@@ -259,31 +254,32 @@ void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points
         if(mkdir(folder_name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1){
             throw std::runtime_error(strerror(errno));
         }
-        std::ofstream new_config (path);
-        for(const cv::Point2f &point :points){
-            new_config << point.x << " " << point.y << std::endl;
-        }
-        new_config.close();
+        WriteToNewFile(path,points);
     }
 }
-
-float ToFloat(const std::string &str)
-{
+void WriteToNewFile(const std::string &file_name, const std::vector<cv::Point2f> &points){
+    std::ofstream config_file(file_name);
+    for(const cv::Point2f &point :points){
+        config_file << point.x << " " << point.y << std::endl;
+    }
+    config_file.close();
+}
+float ToFloat(const std::string &str){
     std::istringstream iss(str);
     float temp;
     iss >> std::noskipws >> temp;
-    if (iss.eof() && !iss.fail())
-    {
+    //checking whether input is a valid number
+    if (iss.eof() && !iss.fail()) {
         temp = std::stof(str);
     }
-    else
-    {
+    else{
         throw std::runtime_error(str + " is not a valid input(numbers only with no white spaces)");
     }
     return temp;
 }
-void ReConfigWindow(const std::string &window_name, MouseParams *mp)
-{
+void ReConfigWindow(const std::string &window_name, MouseParams *mp){
+    
+    //opening a window
     cv::namedWindow(window_name, 1);
     cv::setMouseCallback(window_name, MouseCallBack, (void *)mp);
 }
@@ -291,7 +287,6 @@ void ReConfigWindow(const std::string &window_name, MouseParams *mp)
 //Triggers the reconfig sequence for both the roi or camera
 void ReConfig(const std::string &input, MouseParams *mp)
 {
-
     if (input == "cam")
     {
         std::string window_name = "Camera-Config";
@@ -338,9 +333,30 @@ void PrintDetectionLog(const DetectionLog &log, const std::string &location)
 {
     SaveDetectionLogToStream(std::cout, log, location);
 }
+void GetIpAddress(){
+    struct ifaddrs * ifAddrStruct=NULL;
+    struct ifaddrs * ifa=NULL;
+    void * tmpAddrPtr=NULL;
 
-//Mark which direction the user was heading towards using the log files as an input
-std::map<int, std::string> locateDirection(std::vector<LogInformation> &logList)
+    getifaddrs(&ifAddrStruct);
+    printf("Streaming on\n");
+    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+        if (!ifa->ifa_addr) {
+            continue;
+        }
+        if (ifa->ifa_addr->sa_family == AF_INET) { // check it is IP4
+            // is a valid IP4 Address
+            tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+            char addressBuffer[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+            
+            printf("%s IP Address %s:8080/bgr\n", ifa->ifa_name, addressBuffer);  
+        }
+    }
+    if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
+}
+
+std::map<int, std::string> LocateDirection(std::vector<LogInformation> &logList)
 {
     //if Y is going down then the user is walking up
     //if X is going lower they are going towards the left
@@ -386,7 +402,7 @@ std::map<int, std::string> locateDirection(std::vector<LogInformation> &logList)
 }
 
 //
-void writeDirectionLog(std::string fileName)
+void WriteDirectionLog(std::string fileName)
 {
 
     //Define relivant private parameters
@@ -419,7 +435,7 @@ void writeDirectionLog(std::string fileName)
         }
     }
 
-    std::map<int, std::string> directionList = locateDirection(logList);
+    std::map<int, std::string> directionList = LocateDirection(logList);
 
     // Write out to external file
     std::ofstream directionFile;
