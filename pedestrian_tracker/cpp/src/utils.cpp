@@ -21,6 +21,7 @@
 #include <chrono>
 #include <ctime>
 using namespace InferenceEngine;
+
 namespace
 {
     template <typename StreamType>
