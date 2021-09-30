@@ -82,16 +82,19 @@ Options:
     -stream                      Optional. Stream the feed to localhost:8080.
 ```
 ### Samples for running the project
-In order to run to the project, the binary file is used. The binary file can be found in `pedestrian_tracker/intel64/Release/` after building the project. 
+In order to run to the project, the binary file is used. The binary file can be found in `intel64/Release/` after building the project. 
 ```
 ./pedestrian_tracker -m_det '<path_to_model>' -m_reid '<path_to_model>' -i '<path_to_video>'
 ```
-#### Example for running the project
+#### Examples for running the project
+##### Bare Miminum with pedestrain detection and tracking
 ```
 ./pedestrian_tracker -m_det 'models/person-detection-retail-0013.xml' -m_reid 'models/person-reidentification-retail-0288.xml' -i 'demo.mp4'
 ```
-Note: in the example above **models** folder and **dem0.mp4** file are in the **pedestrian_tracker** folder.
+Note: in the example above **models** folder and **demo.mp4** file are in the `intel64/Release/` folder.
 
+##### Pedestrain detection, tracking and distance estimation
+The system requires camera configuration before distance estimation can be used. Please refer to [\Camera-Config\](http://github.com)
 ## Logs
 
 -out flag:
