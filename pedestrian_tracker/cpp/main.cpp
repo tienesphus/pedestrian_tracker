@@ -290,7 +290,9 @@ int main(int argc, char **argv) {
                 if(should_save_det_log){
                     WriteDirectionLog(detlog_out);
                 }
-                
+                if(should_stream){
+                    streamer.stop();
+                }
                 break;
             }
             if (frame.size() != firstFrameSize)
@@ -309,7 +311,7 @@ int main(int argc, char **argv) {
             pedestrian_detector.PrintPerformanceCounts(getFullDeviceName(ie, FLAGS_d_det));
             tracker->PrintReidPerformanceCounts(getFullDeviceName(ie, FLAGS_d_reid));
         }
-
+        
         std::cout << presenter.reportMeans() << '\n';
     }
     catch (const std::exception& error) {
