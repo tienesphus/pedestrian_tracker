@@ -4,11 +4,11 @@
 This module is adapted from pedestrian_tracker_demo module from Intel. For information on the original module and how it works, click [\[here\]](https://docs.openvinotoolkit.org/latest/omz_demos_pedestrian_tracker_demo_cpp.html).
 
 **Contents**
-[Dependencies](#dependencies)
-[Supported Models](#supported-models)
-[Installation](#installation)
-[Running](#running)
-[Logs Format](#logs-format)
+[Dependencies](#dependencies)<br>
+[Supported Models](#supported-models)<br>
+[Installation](#installation)<br>
+[Running](#running)<br>
+[Logs Format](#logs-format)<br>
 
 
 ## Dependencies
