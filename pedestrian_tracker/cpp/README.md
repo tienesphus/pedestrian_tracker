@@ -3,6 +3,14 @@
 
 This module is adapted from pedestrian_tracker_demo module from Intel. For information on the original module and how it works, click [\[here\]](https://docs.openvinotoolkit.org/latest/omz_demos_pedestrian_tracker_demo_cpp.html).
 
+**Contents**
+[Dependencies](#dependencies)
+[Supported Models](#supported-models)
+[Installation](#installation)
+[Running](#running)
+[Logs Format](#logs-format)
+
+
 ## Dependencies
 OpenVino 2021.4 and its dependencies.
 OpenVino 2021.4: [\[Link\]](https://software.seek.intel.com/openvino-toolkit) [\[Installation instruction\]](https://docs.openvinotoolkit.org/2021.4/omz_demos_pedestrian_tracker_demo_cpp.html)
@@ -87,15 +95,23 @@ In order to run to the project, the binary file is used. The binary file can be 
 ./pedestrian_tracker -m_det '<path_to_model>' -m_reid '<path_to_model>' -i '<path_to_video>'
 ```
 #### Examples for running the project
-##### Bare Miminum with pedestrain detection and tracking
+##### Bare minimum with pedestrain detection and tracking
 ```
 ./pedestrian_tracker -m_det 'models/person-detection-retail-0013.xml' -m_reid 'models/person-reidentification-retail-0288.xml' -i 'demo.mp4'
 ```
 Note: in the example above **models** folder and **demo.mp4** file are in the `intel64/Release/` folder.
 
+
+##### Pedestrain detection, tracking and output logs
+There are two  flags for using log `-out` and `-out_a`. Please refer to [Logs Format](#logs-format).
 ##### Pedestrain detection, tracking and distance estimation
-The system requires camera configuration before distance estimation can be used. Please refer to [\Camera-Config\](http://github.com)
-## Logs
+The system requires camera configuration before distance estimation can be used. Please refer to [\Camera-Config\](https://github.com/tienesphus/pedestrian_tracker/blob/streamDev/pedestrian_tracker/cpp/camera-config.md)
+
+After configuration `-th` can be used to specific the distance estimation's threshold. If the configuration is done correctly, the system would draw a line and **display the distance** in **meter** between pedestrains that are below the threshold. In the command below `-th` is given "1.5" meaning 1.5 meter threshold.
+```
+./pedestrian_tracker -m_det 'models/person-detection-retail-0013.xml' -m_reid 'models/person-reidentification-retail-0288.xml' -i 'demo.mp4' -th "1.5"
+```
+## Logs Format
 
 -out flag:
 ```
