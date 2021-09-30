@@ -3,12 +3,13 @@
 
 This module is adapted from pedestrian_tracker_demo module from Intel. For information on the original module and how it works, click [\[here\]](https://docs.openvinotoolkit.org/latest/omz_demos_pedestrian_tracker_demo_cpp.html).
 
-**Contents**
-[Dependencies](#dependencies)<br>
-[Supported Models](#supported-models)<br>
-[Installation](#installation)<br>
-[Running](#running)<br>
-[Logs Format](#logs-format)<br>
+## Contents
+
++ [Dependencies](#dependencies)<br>
++ [Supported Models](#supported-models)<br>
++ [Installation](#installation)<br>
++ [Running](#running)<br>
++ [Logs Format](#logs-format)<br>
 
 
 ## Dependencies
@@ -39,13 +40,12 @@ For Windows
 Open the generated .sln files and build via Microsoft Visual Studio 2019 or newer/MSBuild  
 ```
 NOTE: `cmake .` will generate files for all submodules. Users can use cmake build flag to set build target to one sub-module only. See [\[here\]](https://cmake.org/cmake/help/latest/command/build_command.html).
+
 ### Adding http streaming
-In order to use -stream, another library must be install. (nadjieb/cpp-mjpeg-streamer)
+-stream flag will not function without cpp-mjpeg-streamer library (nadjieb/cpp-mjpeg-streamer)
 ```
 git clone https://github.com/nadjieb/cpp-mjpeg-streamer.git
-```
 #### Building
-```
 cd cpp-mjpeg-streamer
 mkdir build && cd build
 cmake .. 
@@ -85,29 +85,21 @@ Options:
     -out_a						 Optional. Generate an additional log file which contains average time each detected person spent inside the region of interest. 
     -location                    Required when -out flag is present. Specify value for location field in log file. 
     -u                           Optional. List of monitors to show initially.
-    -th                          Optional.Threshold for distance estimation.
+    -th                          Optional. Threshold for distance estimation.
     -reconfig                    Optional. 'cam' for re-calibrate camera or 'roi' for re-config the region of interest.
     -stream                      Optional. Stream the feed to localhost:8080.
 ```
-### Samples for running the project
-In order to run to the project, the binary file is used. The binary file can be found in `intel64/Release/` after building the project. 
-```
-./pedestrian_tracker -m_det '<path_to_model>' -m_reid '<path_to_model>' -i '<path_to_video>'
-```
-#### Examples for running the project
-##### Bare minimum with pedestrain detection and tracking
+##### Example 
 ```
 ./pedestrian_tracker -m_det 'models/person-detection-retail-0013.xml' -m_reid 'models/person-reidentification-retail-0288.xml' -i 'demo.mp4'
 ```
-Note: in the example above **models** folder and **demo.mp4** file are in the `intel64/Release/` folder.
+This command will launch pedestrian_tracker to process 'demo.mp4' using 'models/person-detection-retail-0013.xml' as its detection model and 'models/person-reidentification-retail-0288.xml' as its reidentification model.
+Note: in the example above **models** folder and **demo.mp4** file are in the same folder as pedestrian_tracker binary. Absolute filepaths can also be used.
 
+##### -reconfig flag (Distance estimation)
+The system requires camera configuration before distance estimation feature can be used. Please refer to [\[camera-config.md\]](https://github.com/tienesphus/pedestrian_tracker/blob/streamDev/pedestrian_tracker/cpp/camera-config.md)
 
-##### Pedestrain detection, tracking and output logs
-There are two  flags for using log `-out` and `-out_a`. Please refer to [Logs Format](#logs-format).
-##### Pedestrain detection, tracking and distance estimation
-The system requires camera configuration before distance estimation can be used. Please refer to [\Camera-Config\](https://github.com/tienesphus/pedestrian_tracker/blob/streamDev/pedestrian_tracker/cpp/camera-config.md)
-
-After configuration `-th` can be used to specific the distance estimation's threshold. If the configuration is done correctly, the system would draw a line and **display the distance** in **meter** between pedestrains that are below the threshold. In the command below `-th` is given "1.5" meaning 1.5 meter threshold.
+`-th` can then be used to specific the distance estimation's threshold. If the configuration is done correctly, the system would draw a line and display the distance in **meter** between pedestrains whose distance are below the threshold. In the command below `-th` is given "1.5" meaning 1.5 meter threshold.
 ```
 ./pedestrian_tracker -m_det 'models/person-detection-retail-0013.xml' -m_reid 'models/person-reidentification-retail-0288.xml' -i 'demo.mp4' -th "1.5"
 ```
