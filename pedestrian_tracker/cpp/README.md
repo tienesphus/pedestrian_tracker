@@ -14,9 +14,11 @@ person-reidentification-retail-xxxx.
 
 These models can be downloaded using [Intel Model Downloader](https://docs.openvinotoolkit.org/latest/omz_tools_downloader.html) or from [Intel Open Model Zoo.](https://github.com/openvinotoolkit/open_model_zoo)
 
-## Building
+## Installation
+Start off by cloning the repository.Then
+#### Building
 ```
-#from pedestrian_tracker root
+cd pedestrian_tracker
 mkdir build && cd build
 cmake .
 ```
@@ -29,7 +31,19 @@ For Windows
 Open the generated .sln files and build via Microsoft Visual Studio 2019 or newer/MSBuild  
 ```
 NOTE: `cmake .` will generate files for all submodules. Users can use cmake build flag to set build target to one sub-module only. See [\[here\]](https://cmake.org/cmake/help/latest/command/build_command.html).
-
+### adding http streaming
+In order to use -stream, another library must be install. (nadjieb/cpp-mjpeg-streamer)
+```
+git clone https://github.com/nadjieb/cpp-mjpeg-streamer.git
+```
+#### Building
+```
+cd cpp-mjpeg-streamer
+mkdir build && cd build
+cmake .. 
+make
+sudo make install
+```
 ## Running
 Running the application with the  `-h`  option yields the following usage message:
 
