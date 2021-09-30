@@ -94,7 +94,7 @@ In order to run to the project, the binary file is used. The binary file can be 
 Note: in the example above **models** folder and **demo.mp4** file are in the `intel64/Release/` folder.
 
 ##### Pedestrain detection, tracking and distance estimation
-The system requires camera configuration before distance estimation can be used. Please refer to [\[Camera-Config\]](http://github.com)
+The system requires camera configuration before distance estimation can be used. Please refer to [\Camera-Config\](http://github.com)
 ## Logs
 
 -out flag:
