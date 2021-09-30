@@ -31,7 +31,7 @@ For Windows
 Open the generated .sln files and build via Microsoft Visual Studio 2019 or newer/MSBuild  
 ```
 NOTE: `cmake .` will generate files for all submodules. Users can use cmake build flag to set build target to one sub-module only. See [\[here\]](https://cmake.org/cmake/help/latest/command/build_command.html).
-### adding http streaming
+### Adding http streaming
 In order to use -stream, another library must be install. (nadjieb/cpp-mjpeg-streamer)
 ```
 git clone https://github.com/nadjieb/cpp-mjpeg-streamer.git
@@ -73,14 +73,25 @@ Options:
     -pc                          Optional. Enable per-layer performance statistics.
     -no_show                     Optional. Don't show output.
     -delay                       Optional. Delay between frames used for visualization. If negative, the visualization is turned off (like with the option 'no_show'). If zero, the visualization is made frame-by-frame.
-    -out "<path>"                Optional. The file name to write output log file with results of pedestrian tracking. The format of the log file is 
+    -out "<path>"                Optional. The file name to write output log file with results of pedestrian tracking. The format of the log file is
+    -out_a						 Optional. Generate an additional log file which contains average time each detected person spent inside the region of interest. 
     -location                    Required when -out flag is present. Specify value for location field in log file. 
     -u                           Optional. List of monitors to show initially.
-    -config "<config.txt>"       Optional. Enable distance estimation feature. The data in [config.txt] is used as calibration data for distance estimation algorithm. For more info on how to modify config.txt or to generate one, click [here].
-    -reconfig                    Optional. Generate a new config.txt file using interactive GUI. Please refer to aforementioned document on -config flag above.
-    -out_a						 Optional. Generate an additional log file which contains average time each detected person spent inside the region of interest.
-
+    -th                          Optional.Threshold for distance estimation.
+    -reconfig                    Optional. 'cam' for re-calibrate camera or 'roi' for re-config the region of interest.
+    -stream                      Optional. Stream the feed to localhost:8080.
 ```
+### Samples for running the project
+In order to run to the project, the binary file is used. The binary file can be found in `pedestrian_tracker/intel64/Release/` after building the project. 
+```
+./pedestrian_tracker -m_det '<path_to_model>' -m_reid '<path_to_model>' -i '<path_to_video>'
+```
+#### Example for running the project
+```
+./pedestrian_tracker -m_det 'models/person-detection-retail-0013.xml' -m_reid 'models/person-reidentification-retail-0288.xml' -i 'demo.mp4'
+```
+Note: in the example above **models** folder and **dem0.mp4** file are in the **pedestrian_tracker** folder.
+
 ## Logs
 
 -out flag:
