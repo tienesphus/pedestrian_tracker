@@ -1,5 +1,5 @@
 # Pedestrian Tracker C++
-![Sample run](https://cdn.discordapp.com/attachments/623044410287849492/886126909090594826/samplegif2.gif)
+![Sample run](pedestrian.gif)
 
 This module is adapted from pedestrian_tracker_demo module from Intel. For information on the original module and how it works, click [\[here\]](https://docs.openvinotoolkit.org/latest/omz_demos_pedestrian_tracker_demo_cpp.html).
 
@@ -72,7 +72,7 @@ Then linking the library
 ...
 ```
 ### Camera and Region of Interest Configuration
-By using `-reconfig` after building the inital build of the application. **Camera and Region of Interest** can be configured by providing the necesscary keyword `"cam"` or `"roi"`. For more info on how to select the coordinates, please check out [\[Camera-Config\]](https://github.com/tienesphus/pedestrian_tracker/blob/streamDev/doc/camera-config.md) and [\[ROI-Config\]](https://github.com/tienesphus/pedestrian_tracker/blob/streamDev/doc/roi-config.md).
+By using `-reconfig` after building the inital build of the application. **Camera and Region of Interest** can be configured by providing the necesscary keyword `"cam"` or `"roi"`. For more info on how to select the coordinates, please check out [\[Camera-Config\]](https://github.com/tienesphus/pedestrian_tracker/blob/master/docs/camera-config.md) and [\[ROI-Config\]](https://github.com/tienesphus/pedestrian_tracker/blob/master/docs/roi-config.md).
 
 E.g. Configuring Region of Interest. <br>
 NOTE:The system requires `-m_det`,`-m_reid`,`-i` as a bare **minimum** to run. For more info on the options, checkout [Running](#running).
