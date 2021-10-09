@@ -20,6 +20,7 @@ struct TrackedObject {
     int frame_idx;       ///< Frame index where object was detected (-1 if N/A).
     int object_id;       ///< Unique object identifier (-1 if N/A).
     uint64_t timestamp;  ///< Timestamp in milliseconds.
+    
 
     ///
     /// \brief Default constructor.

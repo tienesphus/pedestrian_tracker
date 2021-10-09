@@ -6,6 +6,8 @@
 
 #include "core.hpp"
 #include "logging.hpp"
+#include "logObject.hpp"
+#include "config_log_paths.hpp"
 
 #include <set>
 #include <string>
@@ -14,9 +16,15 @@
 #include <utility>
 #include <deque>
 #include <map>
-
+#include <sstream>
 #include <utils/common.hpp>
 #include <opencv2/core.hpp>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <netinet/in.h> 
+#include <arpa/inet.h>
+
 ///
 /// \brief The DetectionLogEntry struct
 ///
@@ -74,6 +82,71 @@ struct DetectionLogEntry {
 
 /// Detection log is a vector of detection entries.
 using DetectionLog = std::vector<DetectionLogEntry>;
+///
+/// \brief The DetectionLogExtra Entry struct
+///
+/// An entry describing the time of stay of tracked objects in a ROI
+///
+struct DetectionLogExtraEntry{
+    int object_id;      ///< Tracked objects id
+    uint64_t init_time; ///< The inital time when tracked object is in the roi (0 if N/A)
+    int time_of_stay;   ///< The time of stay of tracked object in ROI 
+    std::string location; ///< The location of the system
+    ///
+    /// \brief DetectionLogExtraEntry default constructor.
+    ///
+    DetectionLogExtraEntry() : init_time(0), time_of_stay(0) {}
+
+    ///
+    /// \brief DetectionLogExtraEntry constructor.
+    ///
+    DetectionLogExtraEntry(std::string locat) : init_time(0), time_of_stay(0), location(locat) {}
+
+    ///
+    /// \brief DetectionLogExtraEntry copy constructor.
+    /// \param other Detection extra entry.
+    ///
+    DetectionLogExtraEntry(const DetectionLogExtraEntry &other)
+        : object_id(other.object_id),
+        init_time(other.init_time),
+        time_of_stay(other.time_of_stay),
+        location(other.location) {}
+
+    ///
+    /// \brief DetectionLogExtraEntry move constructor.
+    /// \param other Detection extra entry.
+    ///
+    DetectionLogExtraEntry(DetectionLogExtraEntry &&other)
+        : object_id(other.object_id),
+        init_time(other.init_time),
+        time_of_stay(other.time_of_stay),
+        location(other.location) {}
+
+    ///
+    /// \brief Assignment operator.
+    /// \param other Detection extra entry.
+    /// \return Detection extra entry.
+    ///
+    DetectionLogExtraEntry &operator=(const DetectionLogExtraEntry &other) = default;
+
+    ///
+    /// \brief Move assignment operator.
+    /// \param other Detection extra entry.
+    /// \return Detection extra entry.
+    ///
+    DetectionLogExtraEntry &operator=(DetectionLogExtraEntry &&other) {
+        if (this != &other) {
+            object_id = other.object_id;
+            init_time = other.init_time;
+            time_of_stay = other.time_of_stay;
+            location = other.location;
+        }
+        return *this;
+    }
+};
+/// Detection log extra is a vector of detection extra entries.
+using DetectionLogExtra = std::unordered_map<int, DetectionLogExtraEntry>;
+
 
 ///
 /// \brief Save DetectionLog to a txt file in the format
@@ -84,15 +157,26 @@ using DetectionLog = std::vector<DetectionLogEntry>;
 ///
 void SaveDetectionLogToTrajFile(const std::string& path,
                                 const DetectionLog& log,
-                                const std::string& location);
-
+                                const std::string& location,
+                                const std::string& uuid);
+                      
+///
+/// \brief Save DetectionExtraLog to a txt file in the format
+///        (id,inital_time,time_of_stay)
+///        
+/// \param[in] path -- path to a file to store
+/// \param[in] log  -- detection extra log to store
+///
+void SaveDetectionLogToTrajFile(const std::string& path,
+                                const DetectionLogExtra& log);
+                                
 ///
 /// \brief Print DetectionLog to stdout in the format
 ///        compatible with the format of MOTChallenge
 ///        evaluation tool.
 /// \param[in] log  -- detection log to print
 ///
-void PrintDetectionLog(const DetectionLog& log, const std::string& location);
+void PrintDetectionLog(const DetectionLog& log, const std::string& location,const std::string& uuid);
 
 ///
 /// \brief Draws a polyline on a frame.
@@ -105,7 +189,18 @@ void DrawPolyline(const std::vector<cv::Point>& polyline,
                   const cv::Scalar& color, cv::Mat* image,
                   int lwd = 5);
 
-
+///
+/// \brief Draws a polyline on a frame (very similar to DrawPolyLine)
+/// \param[in] polyline Vector of points (polyline).
+/// \param[in] color Color (BGR).
+/// \param[in,out] image Frame.
+/// \param[in] lwd Line width.
+void DrawRoi(const std::vector<cv::Point2f>& polyline,
+            const cv::Scalar& color, cv::Mat* image, int lwd=2);
+///
+/// \brief Get the bottom center point given a rectangle box
+/// \param[in] box a trackedObject containing the rectangle box
+cv::Point2f GetBottomPoint(const cv::Rect box);
 ///
 /// \brief The mouse parameters struct 
 ///
@@ -125,21 +220,93 @@ struct MouseParams{
 void MouseCallBack(int event, int x, int y, int flags, void* param);
 
 ///
-/// \brief allow user to configure camera by clicking 7 points
-/// \param[in] MouseParams struct containing reference frame and mouse points
-void SetCameraPoints(MouseParams* mp);
+/// \brief allow user to select point of interest on a frame
+/// \param[in] mp struct containing reference frame and mouse points
+/// \param[in] point_num number of points 
+/// \param[in] name name of the window
+void SetPoints(MouseParams* mp,unsigned int point_num,std::string name);
 
 /// 
 /// \brief reading the camera config file (a text file containing points)
 /// \param[in] path Path to the file
+/// \param[in] line_num number of lines to read from the file
 /// \return points a list of points(x,y coordinates) 
-std::vector<cv::Point2f> ReadConfig(const std::string& path);
+std::vector<cv::Point2f> ReadConfig(const std::string& path,const size_t& line_num);
 
 ///
 /// \brief writing camera configuration to file (x,y coordinates)
 /// \param[in] path Path to the file
-/// \return points a list of points(x,y coordinates)
-void WriteConfig(const std::string &path, std::vector<cv::Point2f> points);
+/// \param[in] points a list of points(x,y coordinates)
+void WriteConfig(const std::string &path, const std::vector<cv::Point2f> &points);
+
+///
+/// \brief writing configuration to a new file
+/// \param[in] file_name File name of the file
+/// \param[in] points a list of points(x,y coordinates)
+void WriteToNewFile(const std::string &file_name, const std::vector<cv::Point2f> &points);
+///
+/// \brief convert string to float
+/// \param[in] str a string
+/// \return float 
+float ToFloat(const std::string &str);
+
+///
+/// \brief draw the window for users to click on
+/// \param[in] window_name the name of the window
+/// \param[in] mp a struct containing reference image and mouse input
+void ReConfigWindow(const std::string &window_name, MouseParams* mp);
+///
+/// \brief reconfig either camera or roi config file 
+/// \param[in] input a string
+/// \param[in] mp a struct containing reference image and point clicked
+/// \return keyword for either camera config or roi config 
+void ReConfig(const std::string& input,MouseParams* mp);
+
+///
+/// \brief check whether a folder exists
+/// \param[in] path a string containing the path to the folder
+/// \return true if the folder exists otherwise false
+bool IsPathExist(const std::string &path);
+
+///
+/// \brief print the ip address of the system
+///
+void GetIpAddress();
+///
+/// \brief spliting a string by delimiter
+/// \param[in] s a string 
+/// \param[in] delim the delimiter
+/// \return a list of strings
+std::vector<std::string> SplitString(const std::string &s, char delim);
+///
+/// \brief getting log path for output logs
+/// \param[in] file_name the file name for the log
+/// \param[in] extension the unique extension for different output logs
+/// \return a string contain the path to output log
+std::string GetLogPath(const std::string &file_name,const std::string &extension);
+
+///
+/// \brief creating a new directory for logs and configs files
+/// \param[in] path string containing the path to the new directory
+/// \return a bool to signify success or failure
+bool CreateDir(const std::string &path);
+/// 
+/// \brief Mark which direction the user was heading towards 
+///        using the log files as an input
+/// \param[in] logList a list of LogInformation
+/// \return a map of pedestrains' id along with their direction 
+std::map<int,std::string> LocateDirection(std::vector<LogInformation> &logList);
+
+///
+/// \brief write the Direction log to file
+/// \param[in] path a string containing the path 
+void WriteDirectionLog(const std::string &path);
+
+///
+///
+/// \brief generate a unique id
+/// \return a string unique id
+std::string GenUuid();
 ///
 /// \brief Stream output operator for deque of elements.
 /// \param[in,out] os Output stream.
@@ -179,3 +346,7 @@ LoadInferenceEngine(const std::vector<std::string>& devices,
                     const std::string& custom_cpu_library,
                     const std::string& custom_cldnn_kernels,
                     bool should_use_perf_counter);
+
+
+
+
