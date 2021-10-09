@@ -140,7 +140,7 @@ The system requires camera configuration before distance estimation can be used.
 
 `-out` flag:
 ```
-frame_no | real_time | person_id | x_coord | y_coord | width | height | confidence_level | location | total_count
+frame_no | real_time | person_id | x_coord | y_coord | width | height | confidence_level | location | uuid
 ```
 
 - **real_time**: real time data when that particular data entry is logged.
@@ -151,7 +151,7 @@ frame_no | real_time | person_id | x_coord | y_coord | width | height | confiden
 
 - **location**: location of the system which is the value that is passed to the -location flag.
 
-- **total_count**: total number of people detected in that frame.
+- **uuid**: a unique id is generated, each time the program runs.
 The program writes to its log file every 100 frames when `-out` flag is called.
 The `-out` flag produces an additional log. The direction log of each pedestrains.
 ```
