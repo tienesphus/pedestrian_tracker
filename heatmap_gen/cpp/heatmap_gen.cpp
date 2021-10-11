@@ -289,7 +289,7 @@ int main(int argc, char* argv[])
         praised_result = praise_csv(line);
         x = praised_result[0];
         y = praised_result[1];
-        if(x <= w && y <= h) {
+        if(x < w && y < h) {
             heatmap_add_weighted_point_with_stamp(hm, x, y, weight, stamp);
         } else {
             std::cerr << "[Warning]: Skipping out-of-bound input coordinate: (" << x << "," << y << ")." << std::endl;
