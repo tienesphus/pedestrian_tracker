@@ -19,11 +19,13 @@ Choose 4 points as followed (as shown in the gif)
 
 ![Camera-config](docs/../camera-calibration.gif))
 
+
 Starting with the closest coordinates to the camera by forming the **width** first then **height**. Bottom-left(point-1) then bottom-right(point-2) to form the width. Next are bottom right(point-2) to top-right(point-3) for the width. Lastly, top-right(point-3) to top-left(point-4).
 **Ensure that the four lines are parallel in real-life.**
 Next are the 3 points. First the main point. Then the point for width distance from the main point. Lastly, the point for height distance from the main point.
 **Ensure that the height distance and width distance are 1.5 meter in real-life.**
 
+**Note**: The camera may not be position as shown in the gif, hence a good rule of thumb to configure the camera is to always mark the **width closest to the camera** first then the **the height**. This may take few trail and errors to get it just right.
 ### Pedestrian detection
 This stage utilises the current AI system. 
 ### Measurement

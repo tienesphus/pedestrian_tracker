@@ -9,6 +9,7 @@ This module is adapted from pedestrian_tracker_demo module from Intel. For infor
 3. [Installation](#installation)<br>
 4. [Running](#running)<br>
 5. [Logs Format](#logs-format)<br>
+6. [Trouble Shooting](#troubleshooting)<br>
 
 
 ## Dependencies
@@ -110,7 +111,7 @@ Options:
     -pc                          Optional. Enable per-layer performance statistics.
     -no_show                     Optional. Don't show output.
     -delay                       Optional. Delay between frames used for visualization. If negative, the visualization is turned off (like with the option 'no_show'). If zero, the visualization is made frame-by-frame.
-    -out "<path>"                Optional. The file name to write output log file with results of pedestrian tracking. The format of the log file is
+    -out                         Optional. The file name to write output log file with results of pedestrian tracking. The format of the log file is
     -out_a						 Optional. Generate an additional log file which contains average time each detected person spent inside the region of interest. 
     -u                           Optional. List of monitors to show initially.
     -th                          Optional. Threshold for distance estimation.
@@ -220,4 +221,31 @@ Instruction on how these variables affect the way this AI detects can be found i
 
 
 
+## TroubleShooting
+### AI troubleshooting
 
+#### -th flag
+```
+[ ERROR ] Can't open config file (configs/camera_config.txt). Please ensure the folder/file exists.
+```
+As the error suggest, this happen when running the system with -th flag for the **first time** without **configuring** the camera. Internally, the system is looking for `camera_config.txt` file in the `configs` folder for the calculation.  Use `-reconfig 'cam'` to solve this issue. Find out more on how to config the camera [[Here]](#camera-and-region-of-interest-configuration).
+
+#### -out_a flag
+```
+[ ERROR ] Can't open config file (configs/roi_config.txt). Please ensure the folder/file exists.
+```
+Again, similar error to `-th` flag. this happen when running the system with -th flag for the **first time** without **configuring** the region of interest. Use `-reconfig 'roi'` to solve this issue. Find out more on how to config the region of interest [[Here]](#camera-and-region-of-interest-configuration).
+#### -out
+```
+[ERROR] [GENERAL_ERROR] AssertionFailed:file.is_open()
+```
+ This error will occur if the input parameter is a **path (E.g. /home/Documents/test.csv)** to a file for `-out` and `-out_a` flags. `-out` and `-out_a` flags both take in filename only (E.g. `file-name.csv` or `file-name.txt`).
+
+#### -stream
+```
+terminate called after throwing an instance of 'std::runtime_error'
+  what(): ERROR: read
+
+Aborted (core dumped)
+```
+This error occur rarely when running -stream. It only happens when the input video is finished and doesn't affect anything at all.
