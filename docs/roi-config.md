@@ -19,5 +19,5 @@ To configuring this feature is straightforward. use `-reconfig 'roi'`, then pick
    - To minimise this issue, we suggest that lowering the `min_track_duration` in `tracker_.cpp`, so that the system would track pedestrains faster.
 2. An unstable frame rate may also affect the logs since the underlying calculation is using real time. 
    - unstable frame can occur when there are too many pedestrains on any given frame.
-3. depend heavily on the tracker system, if the tracker fails, incorrect logs are produced.
+3. Depend heavily on the tracker system, if the tracker fails, incorrect logs are produced. This can occur if the region of interest is too big or when pedestrains walking out of the region of interest can no longer be tracked by the AI system.
    - improving the tracking would also improve this feature.
