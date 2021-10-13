@@ -58,5 +58,6 @@ systemctl enable kibana
 curl -i localhost:5601
 
 
+
 echo "Install Complete, refer to Localhost:5601 for the kibana dashboards"
 

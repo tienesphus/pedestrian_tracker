@@ -30,6 +30,8 @@ wget https://storage.openvinotoolkit.org/repositories/openvino/packages/2021.4/l
 #Extract OpenVINO
 sudo tar -xf  l_openvino_toolkit_runtime_raspbian_p_2021.4.582.tgz --strip 1 -C /opt/intel/openvino_2021
 
-echo "/opt/intel/openvino_2021/bin/setupvars.sh" >> ./bashrc
+echo "/opt/intel/openvino_2021/bin/setupvars.sh" >> /home/pi/.bashrc
+
+mv filebeat.yml /etc/filebeat
 
 
