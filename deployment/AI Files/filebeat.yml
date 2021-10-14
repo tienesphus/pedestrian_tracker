@@ -28,7 +28,6 @@ filebeat.inputs:
   tags: [roi]
   paths:
     - /home/ai/Documents/pedestrian_tracker/build/intel64/Release/logs/*roi*.csv
-    - /home/ai/Documents/pedestrian_tracker/build/intel64/Release/logs/*ROI*.csv
   # Include lines. A list of regular expressions to match. It exports the lines that are
   # matching any regular expression from the list.
   #include_lines: ['^ERR', '^WARN']
