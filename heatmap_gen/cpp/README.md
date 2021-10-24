@@ -28,8 +28,12 @@ Open the generated .sln files and build via Microsoft Visual Studio 2019 or newe
 NOTE: `cmake .` will generate files for all submodules. Users can use cmake build flag to set build target to one sub-module only. See [\[here\]](https://cmake.org/cmake/help/latest/command/build_command.html).
 
 ## Running
-Running the application yields the following usage message:
 ```
+usage: ./heatmap_gen reference.png output.png [STAMP_RADIUS [COLORSCHEME]] < logfile-people-track.csv
+
+
+Running the application yields the following usage message:
+
 Invalid number of arguments!
 Usage:
 ./heatmap_gen reference.png output.png [STAMP_RADIUS [COLORSCHEME]] < data.csv
